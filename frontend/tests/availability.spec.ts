@@ -104,7 +104,7 @@ test('busy reads honor Retry-After and recover without losing fleet data',async(
 });
 
 test('persistent busy reads stop after bounded retries and expose an error',async({page})=>{
- await fixture(page);await page.clock.install();let calls=0;
+ await fixture(page);const start=new Date();await page.clock.install({time:start});await page.clock.pauseAt(start);let calls=0;
  await page.route('**/api/v1/fleet?**',r=>{calls++;return r.fulfill({status:503,headers:{'Retry-After':'1'},json:{code:'busy',message:'Pedidos em curso'}})});
  await page.goto('/');await page.getByRole('button',{name:'Frota',exact:true}).click();await page.getByRole('button',{name:'Veículos',exact:true}).click();
  await expect.poll(()=>calls).toBe(1);

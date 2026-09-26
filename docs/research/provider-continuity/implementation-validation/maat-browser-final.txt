@@ -1,0 +1,37 @@
+npm notice run lisboa-publica@1.0.0 npx
+npm notice run 'playwright' test tests/availability.spec.ts tests/corrections.spec.ts tests/continuity.spec.ts --workers=1
+
+Running 26 tests using 1 worker
+
+(node:8823) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/availability.spec.ts:20:1 › Metro alone and overlays enabled by default, limited to selected modes (2.0s)
+  ✓   2 tests/availability.spec.ts:26:1 › traffic shows loading without a false empty result (1.5s)
+  ✓   3 tests/availability.spec.ts:32:1 › operator gray state follows each view rather than current positions only (1.9s)
+  ✓   4 tests/availability.spec.ts:38:1 › unsupported metrics explain absence and published fleet fields stay visible (2.0s)
+  ✓   5 tests/availability.spec.ts:43:1 › cold source loading and failed searches are not shown as stale or empty (2.7s)
+  ✓   6 tests/availability.spec.ts:52:72 › search rows remain readable and clickable at 1280x720 (1.9s)
+  ✓   7 tests/availability.spec.ts:52:72 › search rows remain readable and clickable at 390x667 (1.8s)
+  ✓   8 tests/availability.spec.ts:61:1 › search with no selected operators explains selection and sends no search calls (1.7s)
+  ✓   9 tests/availability.spec.ts:66:1 › unsupported controls disclose application limits and depot explanation ignores pending fleet (2.8s)
+  ✓  10 tests/availability.spec.ts:73:1 › Metro speed is unsupported across views while reported operators retain temporary empty states (2.0s)
+  ✓  11 tests/availability.spec.ts:80:1 › mixed selection charts valid reported speed and explains Metro exclusion (1.6s)
+  ✓  12 tests/availability.spec.ts:85:1 › speed capability follows a Metro route filter within a mixed operator selection (1.7s)
+  ✓  13 tests/availability.spec.ts:90:1 › estimated Metro vehicle detail labels speed unsupported (1.6s)
+  ✓  14 tests/availability.spec.ts:96:1 › busy reads honor Retry-After and recover without losing fleet data (1.5s)
+  ✓  15 tests/availability.spec.ts:106:1 › persistent busy reads stop after bounded retries and expose an error (1.5s)
+  ✓  16 tests/continuity.spec.ts:30:1 › selected CP retains one dimmed marker, truthful counts and inactive detail through gaps (2.2s)
+  ✓  17 tests/continuity.spec.ts:43:1 › healthy repeated reports keep current counts between 90 and 180 seconds (1.6s)
+  ✓  18 tests/continuity.spec.ts:48:1 › failed operator refresh makes cached coverage unknown while retaining positions (1.8s)
+  ✓  19 tests/continuity.spec.ts:58:31 › rail and ferry overlays follow selected operators without live reports at width 1280 (2.2s)
+  ✓  20 tests/continuity.spec.ts:58:31 › rail and ferry overlays follow selected operators without live reports at width 390 (2.3s)
+{"width":1280,"variants":2261,"points":607609,"first_all_geometry_ms":2186,"main_js_heap_bytes":232137336,"operator_refreshes":2,"unchanged_network_posts":5}
+  ✓  21 tests/continuity.spec.ts:75:31 › full official geometry remains responsive through operator refresh at width 1280 (4.5s)
+{"width":390,"variants":2261,"points":607609,"first_all_geometry_ms":1834,"main_js_heap_bytes":231667660,"operator_refreshes":2,"unchanged_network_posts":5}
+  ✓  22 tests/continuity.spec.ts:75:31 › full official geometry remains responsive through operator refresh at width 390 (4.8s)
+  ✓  23 tests/corrections.spec.ts:18:1 › disconnected historical speed samples have visible markers (3.6s)
+  ✓  24 tests/corrections.spec.ts:24:1 › live speed is available before the first historical bucket closes (1.2s)
+  ✓  25 tests/corrections.spec.ts:28:1 › refresh retains values and changing operators cannot display previous values (2.5s)
+  ✓  26 tests/corrections.spec.ts:38:1 › route overlays start enabled, follow operators and have independent controls (4.9s)
+
+  26 passed (1.0m)

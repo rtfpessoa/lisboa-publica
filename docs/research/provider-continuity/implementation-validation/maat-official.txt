@@ -1,0 +1,16 @@
+=== RUN   TestOfficialShapeCacheFootprint
+    geometry_measure_test.go:38: cp variants=57 retained_points=36348 metadata=0 gzip_bytes=693087 reservation_bytes=2772348 covered_routes=36/44 status=partial
+    geometry_measure_test.go:38: ttsl variants=17 retained_points=224 metadata=0 gzip_bytes=14096 reservation_bytes=56384 covered_routes=5/5 status=available
+    geometry_measure_test.go:38: fertagus variants=4 retained_points=1137 metadata=18 gzip_bytes=31708 reservation_bytes=126832 covered_routes=2/2 status=available
+    geometry_measure_test.go:38: carris variants=323 retained_points=40861 metadata=841 gzip_bytes=21289148 reservation_bytes=85156592 covered_routes=174/174 status=available
+    geometry_measure_test.go:38: tcb variants=76 retained_points=14756 metadata=0 gzip_bytes=829097 reservation_bytes=3316388 covered_routes=76/76 status=available
+    geometry_measure_test.go:38: mobi variants=144 retained_points=34097 metadata=164 gzip_bytes=1085832 reservation_bytes=4343328 covered_routes=99/99 status=available
+    geometry_measure_test.go:38: metro variants=19 retained_points=1401 metadata=113 gzip_bytes=344354 reservation_bytes=1377416 covered_routes=5/5 status=available
+    geometry_measure_test.go:38: cm-LA77N variants=474 retained_points=132406 metadata=414 gzip_bytes=492102 reservation_bytes=1968408 covered_routes=180/0 status=stale
+    geometry_measure_test.go:38: cm-BNA17 variants=558 retained_points=224514 metadata=545 gzip_bytes=938665 reservation_bytes=3754660 covered_routes=262/0 status=stale
+    geometry_measure_test.go:38: cm-YA15B variants=298 retained_points=66465 metadata=356 gzip_bytes=369755 reservation_bytes=1479020 covered_routes=134/0 status=stale
+    geometry_measure_test.go:38: cm-A2L1N variants=291 retained_points=55400 metadata=302 gzip_bytes=212781 reservation_bytes=851124 covered_routes=133/0 status=stale
+    geometry_measure_test.go:49: combined_CM variants=1621 gzip_bytes=2012109 reservation_bytes=8048436
+--- PASS: TestOfficialShapeCacheFootprint (14.38s)
+PASS
+ok  	lisboapublica/internal/app	15.281s

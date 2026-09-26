@@ -19,3 +19,6 @@ The availability/fleet/polling amendment's normal commit gate passed at scoped G
 
 
 The search/unsupported-state amendment (72c8a63) changes TypeScript/CSS/docs only. The normal pinned Git guard correctly skipped supported-language structural analysis; no Go source/spec or thresholds changed. TypeScript production compilation and21 serialized browser checks passed, with the affected post-cleanup depot/error regression passing separately. No absolute-score or TypeScript Maat-pass claim is made. The first signing attempt failed because the1Password agent was locked; after the user unlocked it, the normal signed commit and SSH push succeeded without bypasses.
+
+
+The provider-continuity/rail-ferry overlay commit `be07fc3` passes the normal pinned regression gate at scoped Go score **84**, delta **+3**, no critical regressions, zero suppressions. The first attempt correctly blocked31 regressions; main split publication/projection/revision, GTFS table/integrity/geometry, cache serialization and test responsibilities without changing behavior or workload. Full Postgres/Cockroach race, generation/vet/build, official fixtures,26browser checks and1,011.4MiB retained-network resource validation pass after refactoring. TypeScript remains separately validated and unchecked by Maat; the absolute95 target is unresolved.

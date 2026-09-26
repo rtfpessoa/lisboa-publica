@@ -1,6 +1,6 @@
 # Provider continuity and rail/ferry overlay validation
 
-Date: 2026-09-26. Status: local implementation accepted after independent final review and main-agent requirement verification. No commit, push or deployment for this change has occurred.
+Date: 2026-09-26. Local implementation and subsequent Maat refactoring are validated below. Authorized publication and production acceptance are recorded separately when completed.
 
 ## Implemented behavior
 
@@ -54,3 +54,15 @@ The [final PostgreSQL race result](research/provider-continuity/implementation-v
 The independent real `quasar-alpha` reviewer at `xhigh` reviewed the final plan, research, actual changes, compatibility/error regressions, database/browser results and three passing strengthened memory measurements. Its final verdict is: “Recommend acceptance of the local implementation. No remaining blockers.” It explicitly excludes production rollout from that recommendation.
 
 The main agent confirms the original one-hour/five-minute policy, immediate exclusion of previous positions from current metrics/history, all-eight-provider handling, replay/restart protection, immutable frozen paging, single generated API contract, selected-provider/default-overlay behavior, truthful CP partial coverage, unchanged source/security/storage budgets and the measured resource ceiling. The implementation is accepted locally. Production is unchanged; commit, push and deployment remain a subsequent authorized stage.
+
+## Authorized Maat refactoring and reruns
+
+The user authorized Maat fixes, commit, push and deployment. The first normal commit gate blocked 31 new/worsened Go findings in continuity publication, GTFS parsing/admission, revision validation, streamed JSON, projection/restoration and oversized tests. Main extracted these existing responsibilities without changing thresholds, suppressions, policy, API or upstream cadence. An extraction typo failed compilation and was corrected before the signed commit.
+
+The normal pinned gate passed commit `be07fc3aa2a1a1a97cac3fc3818cd76eaedaabac`: scoped Go score **84**, delta **+3**, no critical regressions and **zero suppressions**. TypeScript is unchecked by Maat. The absolute95 target remains unresolved; this is a normal structural-regression gate pass.
+
+Post-refactor full race suites pass: PostgreSQL **16.122s**, CockroachDB **160.796s**. All11 official archives parse/admit in **14.38s**. Generation, vet, TypeScript build and strict continuity-fixture typecheck pass. The retained-network resource probe passes in58.61s with maximum RSS **1,060,487,168bytes (1,011.4MiB)**, below1,024MiB, retaining all8 providers/64revisions, 1,000source/500previous/2,000ledger entries per provider and20,000 pending history entries.
+
+The first combined browser rerun passed25/26: the bounded-retry test allowed its fake clock to advance in real time, crossing the separate30-second polling boundary and observing a sixth request. Main paused that test clock before navigation, preserving every retry-limit assertion and product behavior. The final combined rerun passes **26/26,1.0m**, including both desktop/mobile full official geometry tests (2,261variants/607,609points). No application change was needed for this test-timing correction. Independent quasar-alpha/xhigh review found no refactor semantics blocker; final local and production verdicts are recorded at their checkpoints.
+
+Post-Maat evidence is persisted under `research/provider-continuity/implementation-validation/maat-*`. The original pre-refactor evidence above remains available. Off-host Linux/ARM64 Go1.27.1 compilation uses the committed source; packaging retains the exact verified existing Alpine/CA runtime and compares every executable/frontend hash before deployment. Existing production Compose limits, secret values, database and shared Caddy are preserved.
