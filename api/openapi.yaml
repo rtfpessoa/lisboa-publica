@@ -1478,13 +1478,33 @@
           },
           "history_retention_days": {
             "type": "integer"
+          },
+          "history_resolution_seconds": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "history_storage_limit_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "history_collection_status": {
+            "type": "string",
+            "enum": [
+              "collecting",
+              "paused",
+              "unavailable"
+            ]
           }
         },
         "required": [
           "google_client_id",
           "dev_auth",
           "login_nonce",
-          "history_retention_days"
+          "history_retention_days",
+          "history_resolution_seconds",
+          "history_storage_limit_bytes",
+          "history_collection_status"
         ]
       },
       "Health": {

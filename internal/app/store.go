@@ -27,7 +27,10 @@ CREATE TABLE IF NOT EXISTS snapshots (
  generation BIGINT NOT NULL, route_id TEXT, trip_id TEXT, position_kind TEXT NOT NULL,
  lat DOUBLE PRECISION NOT NULL, lon DOUBLE PRECISION NOT NULL, speed_kmh DOUBLE PRECISION,
  distance_km DOUBLE PRECISION, payload JSONB NOT NULL,
+ first_observed_at TIMESTAMPTZ, speed_sample_count INT NOT NULL DEFAULT 1,
  PRIMARY KEY(operator_id,vehicle_id,observed_at));
+ALTER TABLE snapshots ADD COLUMN IF NOT EXISTS first_observed_at TIMESTAMPTZ;
+ALTER TABLE snapshots ADD COLUMN IF NOT EXISTS speed_sample_count INT NOT NULL DEFAULT 1;
 CREATE INDEX IF NOT EXISTS snapshots_time ON snapshots(observed_at,operator_id,generation);
 CREATE INDEX IF NOT EXISTS snapshots_route ON snapshots(route_id,observed_at);
 CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, email TEXT NOT NULL, name TEXT NOT NULL, auth_kind TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL);
@@ -37,9 +40,13 @@ CREATE INDEX IF NOT EXISTS keys_owner ON api_keys(owner_email,created_at);
 
 // Store persists cached feeds, observations, hashed sessions and scoped API keys.
 type Store struct {
-	DB            *pgxpool.Pool
-	RetentionDays int
-	PublishMu     sync.Mutex
+	DB              *pgxpool.Pool
+	RetentionDays   int
+	HistoryInterval time.Duration
+	historyMu       sync.Mutex
+	collector       *historyCollector
+	budget          *storageBudget
+	PublishMu       sync.Mutex
 }
 
 // OpenStore opens a database pool and applies compatible Postgres/Cockroach migrations.
@@ -186,60 +193,32 @@ func (s *Store) Restore(ctx context.Context, c *Cache) error {
 
 // Save commits a provider refresh and deduplicated observations atomically.
 func (s *Store) Save(ctx context.Context, id string, static *StaticData, live *LiveData, op api.Operator, distances map[string]*float64) error {
-	var statBlob, liveBlob []byte
-	var e error
-	if static != nil {
-		statBlob, e = encodeCache(static)
-		if e != nil {
-			return e
-		}
+	update, err := prepareCacheUpdate(static, live, op)
+	if err != nil {
+		return err
 	}
-	if live != nil {
-		liveBlob, e = encodeCache(live)
-		if e != nil {
-			return e
-		}
+	s.historyMu.Lock()
+	defer s.historyMu.Unlock()
+	records, next := s.prepareHistory(id, live, distances)
+	records, err = s.guardUpdate(ctx, update, records)
+	if err != nil {
+		return err
 	}
-	opJSON, e := json.Marshal(op)
-	if e != nil {
-		return e
+	err = s.persistUpdate(ctx, id, update, records)
+	if err == nil && next != nil {
+		s.collector = next
 	}
-	return s.transaction(ctx, func(tx pgx.Tx) error {
-		var generation int64
-		if e := tx.QueryRow(ctx, "UPDATE app_state SET generation=generation+1 WHERE id=1 RETURNING generation").Scan(&generation); e != nil {
-			return e
-		}
-		if static != nil {
-			if e := writeCache(ctx, tx, id, "static", statBlob); e != nil {
-				return e
-			}
-		}
-		if live != nil {
-			if e := writeCache(ctx, tx, id, "live", liveBlob); e != nil {
-				return e
-			}
-			batch := &pgx.Batch{}
-			for _, v := range live.Vehicles {
-				blob, e := json.Marshal(v)
-				if e != nil {
-					return e
-				}
-				batch.Queue("INSERT INTO snapshots(operator_id,vehicle_id,observed_at,generation,route_id,trip_id,position_kind,lat,lon,speed_kmh,distance_km,payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT(operator_id,vehicle_id,observed_at) DO NOTHING", id, v.Id, v.ObservedAt, generation, v.RouteId, v.TripId, string(v.PositionKind), v.Lat, v.Lon, v.SpeedKmh, distances[v.Id], blob)
-			}
-			br := tx.SendBatch(ctx, batch)
-			if e := br.Close(); e != nil {
-				return e
-			}
-		}
-		_, e := tx.Exec(ctx, "INSERT INTO source_health(operator_id,payload) VALUES($1,$2) ON CONFLICT(operator_id) DO UPDATE SET payload=excluded.payload", id, opJSON)
-		return e
-	})
+	return err
 }
+
 func (s *Store) prune(ctx context.Context) error {
+	if err := s.reserveStorage(ctx, cleanupReservation, maximumDatabaseBytes); err != nil {
+		return err
+	}
 	return s.transaction(ctx, func(tx pgx.Tx) error {
-		for _, q := range []string{"DELETE FROM snapshots WHERE observed_at < $1", "DELETE FROM sessions WHERE expires_at < $1", "DELETE FROM api_keys WHERE expires_at < $1"} {
+		for _, q := range []string{"DELETE FROM snapshots WHERE (operator_id,vehicle_id,observed_at) IN (SELECT operator_id,vehicle_id,observed_at FROM snapshots WHERE observed_at < $1 ORDER BY observed_at LIMIT 10000)", "DELETE FROM sessions WHERE token_hash IN (SELECT token_hash FROM sessions WHERE expires_at < $1 LIMIT 10000)", "DELETE FROM api_keys WHERE id IN (SELECT id FROM api_keys WHERE expires_at < $1 LIMIT 10000)"} {
 			cutoff := time.Now()
-			if q == "DELETE FROM snapshots WHERE observed_at < $1" {
+			if q == "DELETE FROM snapshots WHERE (operator_id,vehicle_id,observed_at) IN (SELECT operator_id,vehicle_id,observed_at FROM snapshots WHERE observed_at < $1 ORDER BY observed_at LIMIT 10000)" {
 				cutoff = cutoff.AddDate(0, 0, -s.retentionDays()).Add(-time.Hour)
 			}
 			if _, e := tx.Exec(ctx, q, cutoff); e != nil {

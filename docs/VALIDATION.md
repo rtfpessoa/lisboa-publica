@@ -23,7 +23,7 @@ GTFS tests cover calendar exceptions, dates beyond24:00, Lisbon DST, parent-stat
 
 ## Honest limitations
 
-Historical observations begin with this installation, with configurable public retention (default30 days, this deployment3 days) and one hour of physical pruning grace for stable pagination. Operator positions may be sparse or stale. Exact commercial speed, completed trips, operational headway and depot/permanent allocation data remain clearly unavailable. TTSL direct TLS failure uses safe official TML data. Metro map positions are explicitly estimated and excluded from sampled speed/distance.
+Historical observations begin with this installation, with configurable public retention (default30 days, this deployment30 days) and one hour of physical pruning grace for stable pagination. Operator positions may be sparse or stale. Exact commercial speed, completed trips, operational headway and depot/permanent allocation data remain clearly unavailable. TTSL direct TLS failure uses safe official TML data. Metro map positions are explicitly estimated and excluded from sampled speed/distance.
 
 Public UI requires no authentication. Google account sign-in needs GOOGLE_CLIENT_ID and an authorized origin. Local development login is explicit and rejected in production. Run one ingestion instance: the900-request rolling-minute budget is per process and includes every upstream/token request.
 
@@ -49,10 +49,24 @@ Final running-server smoke after restart: health200/ok; operators200 with eight 
 
 ## Commit and deployment preparation
 
-Maat cleanup preserves behavior under the existing integration fixtures. Latest Postgres race suite including configured-retention and proxy-budget regression checks:3.886s. Browser suite:4 passed in27.2s; the initial rerun began before cache restoration finished and failed connection checks, then passed after health became ready. Trusted proxy tests prove separate public clients have separate budgets, direct untrusted spoofing cannot create new buckets, and malformed forwarded values fall back to the proxy peer. Retention tests prove a configured three-day public window, config reporting, and three-day retention with one hour of physical pruning grace. Default retention remains30 days; deployment retention is three days, as selected by the user.
+Maat cleanup preserves behavior under the existing integration fixtures. Latest Postgres race suite including configured-retention and proxy-budget regression checks:3.886s. Browser suite:4 passed in27.2s; the initial rerun began before cache restoration finished and failed connection checks, then passed after health became ready. Trusted proxy tests prove separate public clients have separate budgets, direct untrusted spoofing cannot create new buckets, and malformed forwarded values fall back to the proxy peer. Retention tests prove a configured three-day public window, config reporting, and three-day retention with one hour of physical pruning grace. Default retention remains30 days; the initial deployment retention was three days; the external-storage amendment below supersedes it.
 
 Maat absolute score improved47→68, but remains below its configured95 threshold. No hook or rule suppression is used. These remaining advisories are documented in MAAT.md.
 
 Production cold ingestion loaded all eight providers with a kernel-measured823.8MiB peak under the1280MiB container limit, no OOM or restart. The direct Metro endpoint initially failed TLS on Linux because the provider sent only its leaf certificate. Its AIA names Sectigo Public Server Authentication CA OV R36. The issuer-distributed intermediate and Metro hostname certificate both verify against the host's public CA bundle; the image now installs that verified intermediate with TLS verification still enabled. Final refreshed-image/cutover checks follow.
 
 The user subsequently selected the external1Password item `cockroach-lisboapublica` and30-day retention, superseding the initial3-day local deployment. A read-only verified-TLS query connected to CockroachDB Cloud v26.2.7 in AWS eu-west-1 and confirmed the dedicated lisboapublica database initially had no public tables. The app retention range supports1–30 days, and the same configurable-retention regression runs at3 and30 days. Cloud billing/storage caps are not altered.
+
+## Five-GB external storage amendment
+
+Production now selects 30 days with five-minute compact history, preserving weighted speed samples, summed valid distance, first/last timestamps and separate route/trip/position-kind aggregates. Map refresh remains 30 seconds. Finalized rows stay immutable; late observations are discarded, failed transactions preserve pending collector state, and paused collection clears closed pending history. Pending maps are bounded to 20,000 entries.
+
+Postgres race suite after implementation: 3.800s; after portable weighted numeric casts: 9.634s. Local CockroachDB race suite with portable casts: 67.582s. Go vet and deterministic generated checks pass. TypeScript production build passes; browser suite: four passed in 27.3s.
+
+The remote collector sample contains 3,561 compact vehicle/route/trip/kind records over 1,200 complete seconds. Postgres table plus indexes: 1,474,560 bytes, projecting 3,185,049,600 bytes for 30 days. Existing compressed cache table: 30,621,696 bytes. This short current sample is a capacity estimate, not a promise of future daily volume. Historical writes pause at 4 GB if traffic exceeds the estimate.
+
+CockroachDB Cloud testing caught a mixed float/integer multiplication incompatibility; weighted SQL now casts counts to DOUBLE PRECISION on both engines. It also caught the Cloud range-statistics query crossing tenant boundaries. WITH TABLES, DETAILS clips statistics to table spans, works with the configured login, and avoids restricted diagnostic-function access. Actual Cloud tests and indexed sample measurements follow.
+
+The user will set the Cloud cap; confirmation of the exact cluster-wide 5,000,000,000-byte limit is still pending. Application guards are additional protection and do not replace that quota.
+
+Actual selected CockroachDB Cloud focused tests passed in 20.612s, including history rollback/revision, paused-history live cache and database measurement. Importing the same 3,561 representative records into a temporary table with the production primary key and both secondary indexes measured 1,365,277 bytes across table spans, projecting 2,948,998,320 bytes for 30 days. The temporary benchmark schema was removed. No credentials were printed or committed.

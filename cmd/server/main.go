@@ -35,11 +35,9 @@ func main() {
 		log.Fatal("database initialization failed", zap.Error(err))
 	}
 	defer store.DB.Close()
-	retention, retentionErr := strconv.Atoi(env("SNAPSHOT_RETENTION_DAYS", "30"))
-	if retentionErr != nil || retention < 1 || retention > 30 {
-		log.Fatal("SNAPSHOT_RETENTION_DAYS must be between 1 and 30")
+	if err := configureHistory(store); err != nil {
+		log.Fatal("history configuration failed", zap.Error(err))
 	}
-	store.RetentionDays = retention
 	cache := app.NewCache()
 	if err = store.Restore(ctx, cache); err != nil {
 		log.Fatal("cache restoration failed", zap.Error(err))

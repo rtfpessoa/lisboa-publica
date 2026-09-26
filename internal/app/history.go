@@ -57,7 +57,7 @@ func (s *Server) GetMetrics(ctx context.Context, _ api.GetMetricsRequestObject) 
 	}
 	metrics := api.Metrics{Revision: revision, From: filter.From, To: filter.To, UnavailableFields: []string{"Velocidade comercial exata", "Viagens concluídas", "Frequência operacional", "Inventário completo da frota"}}
 	var trips *int
-	err = s.Store.DB.QueryRow(ctx, `SELECT avg(speed_kmh),sum(distance_km),NULLIF(count(DISTINCT trip_id) FILTER (WHERE position_kind='reported' AND trip_id IS NOT NULL),0)`+snapshotWhere, args(filter, generation)...).Scan(&metrics.SpeedKmh, &metrics.DistanceKm, &trips)
+	err = s.Store.DB.QueryRow(ctx, `SELECT sum(speed_kmh*speed_sample_count::DOUBLE PRECISION)/NULLIF(sum(speed_sample_count::DOUBLE PRECISION) FILTER(WHERE speed_kmh IS NOT NULL),0),sum(distance_km),NULLIF(count(DISTINCT trip_id) FILTER (WHERE position_kind='reported' AND trip_id IS NOT NULL),0)`+snapshotWhere, args(filter, generation)...).Scan(&metrics.SpeedKmh, &metrics.DistanceKm, &trips)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (s *Server) ListHistory(ctx context.Context, _ api.ListHistoryRequestObject
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.Store.DB.Query(ctx, `SELECT floor(extract(epoch from observed_at)/300)*300 AS bucket,count(DISTINCT vehicle_id) FILTER(WHERE position_kind='reported'),count(DISTINCT vehicle_id) FILTER(WHERE position_kind='estimated'),avg(speed_kmh),sum(distance_km)`+snapshotWhere+` GROUP BY bucket ORDER BY bucket`, args(filter, generation)...)
+	rows, err := s.Store.DB.Query(ctx, `SELECT floor(extract(epoch from observed_at)/300)*300 AS bucket,count(DISTINCT vehicle_id) FILTER(WHERE position_kind='reported'),count(DISTINCT vehicle_id) FILTER(WHERE position_kind='estimated'),sum(speed_kmh*speed_sample_count::DOUBLE PRECISION)/NULLIF(sum(speed_sample_count::DOUBLE PRECISION) FILTER(WHERE speed_kmh IS NOT NULL),0),sum(distance_km)`+snapshotWhere+` GROUP BY bucket ORDER BY bucket`, args(filter, generation)...)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func (s *Server) ListFleet(ctx context.Context, _ api.ListFleetRequestObject) (a
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.Store.DB.Query(ctx, `SELECT vehicle_id,operator_id,max(payload->>'source_id'),max(payload->>'model'),max(payload->>'license_plate'),max(position_kind),min(observed_at),max(observed_at),sum(distance_km),NULLIF(count(DISTINCT trip_id) FILTER (WHERE position_kind='reported' AND trip_id IS NOT NULL),0),array_agg(DISTINCT route_id) FILTER (WHERE route_id IS NOT NULL)`+snapshotWhere+` GROUP BY operator_id,vehicle_id ORDER BY vehicle_id`, args(filter, generation)...)
+	rows, err := s.Store.DB.Query(ctx, `SELECT vehicle_id,operator_id,max(payload->>'source_id'),max(payload->>'model'),max(payload->>'license_plate'),max(position_kind),min(COALESCE(first_observed_at,observed_at)),max(observed_at),sum(distance_km),NULLIF(count(DISTINCT trip_id) FILTER (WHERE position_kind='reported' AND trip_id IS NOT NULL),0),array_agg(DISTINCT route_id) FILTER (WHERE route_id IS NOT NULL)`+snapshotWhere+` GROUP BY operator_id,vehicle_id ORDER BY vehicle_id`, args(filter, generation)...)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func (s *Server) ListTraffic(ctx context.Context, _ api.ListTrafficRequestObject
 	}
 	left := args(filter, generation)
 	left = append(left, filter.HourStart, filter.HourEnd, filter.Weekdays)
-	rows, err := s.Store.DB.Query(ctx, `SELECT operator_id,floor(lat*1000)/1000 AS y,floor(lon*1000)/1000 AS x,avg(speed_kmh),count(*)`+snapshotWhere+` AND position_kind='reported' AND speed_kmh IS NOT NULL AND extract(hour from observed_at AT TIME ZONE 'Europe/Lisbon') >= $6 AND extract(hour from observed_at AT TIME ZONE 'Europe/Lisbon') < $7 AND (NOT $8 OR extract(isodow from observed_at AT TIME ZONE 'Europe/Lisbon')<=5) GROUP BY operator_id,y,x ORDER BY operator_id,y,x`, left...)
+	rows, err := s.Store.DB.Query(ctx, `SELECT operator_id,floor(lat*1000)/1000 AS y,floor(lon*1000)/1000 AS x,sum(speed_kmh*speed_sample_count::DOUBLE PRECISION)/NULLIF(sum(speed_sample_count::DOUBLE PRECISION) FILTER(WHERE speed_kmh IS NOT NULL),0),sum(speed_sample_count)`+snapshotWhere+` AND position_kind='reported' AND speed_kmh IS NOT NULL AND extract(hour from observed_at AT TIME ZONE 'Europe/Lisbon') >= $6 AND extract(hour from observed_at AT TIME ZONE 'Europe/Lisbon') < $7 AND (NOT $8 OR extract(isodow from observed_at AT TIME ZONE 'Europe/Lisbon')<=5) GROUP BY operator_id,y,x ORDER BY operator_id,y,x`, left...)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +217,7 @@ func (s *Server) ListRankings(ctx context.Context, _ api.ListRankingsRequestObje
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.Store.DB.Query(ctx, `SELECT operator_id,route_id,count(DISTINCT vehicle_id) FILTER (WHERE position_kind='reported'),avg(speed_kmh),sum(distance_km),NULLIF(count(DISTINCT trip_id) FILTER (WHERE position_kind='reported' AND trip_id IS NOT NULL),0)`+snapshotWhere+` AND route_id IS NOT NULL GROUP BY operator_id,route_id ORDER BY route_id`, args(filter, generation)...)
+	rows, err := s.Store.DB.Query(ctx, `SELECT operator_id,route_id,count(DISTINCT vehicle_id) FILTER (WHERE position_kind='reported'),sum(speed_kmh*speed_sample_count::DOUBLE PRECISION)/NULLIF(sum(speed_sample_count::DOUBLE PRECISION) FILTER(WHERE speed_kmh IS NOT NULL),0),sum(distance_km),NULLIF(count(DISTINCT trip_id) FILTER (WHERE position_kind='reported' AND trip_id IS NOT NULL),0)`+snapshotWhere+` AND route_id IS NOT NULL GROUP BY operator_id,route_id ORDER BY route_id`, args(filter, generation)...)
 	if err != nil {
 		return nil, err
 	}

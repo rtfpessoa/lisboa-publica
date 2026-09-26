@@ -17,6 +17,8 @@ services:
       TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:?set the existing Caddy network subnet}
       INGEST_ENABLED: "true"
       SNAPSHOT_RETENTION_DAYS: ${SNAPSHOT_RETENTION_DAYS:?select retention to fit available storage}
+      HISTORY_INTERVAL_SECONDS: ${HISTORY_INTERVAL_SECONDS:-300}
+      STORAGE_GUARD: ${STORAGE_GUARD:-true}
       GOMEMLIMIT: 768MiB
       GOMAXPROCS: "2"
       METRO_CLIENT_ID: ${METRO_CLIENT_ID:-}

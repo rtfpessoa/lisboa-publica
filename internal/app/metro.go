@@ -220,6 +220,9 @@ func (s *Store) SaveMetro(ctx context.Context, d *MetroData, op api.Operator) er
 	if e != nil {
 		return e
 	}
+	if err := s.reserveStorage(ctx, int64(len(blob)+len(opJSON))*storageWriteOverhead+historyRecordOverhead, operationalDatabaseBytes); err != nil {
+		return err
+	}
 	return s.transaction(ctx, func(tx pgx.Tx) error {
 		if e := writeCache(ctx, tx, "metro", "direct", blob); e != nil {
 			return e

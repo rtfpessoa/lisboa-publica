@@ -27,6 +27,9 @@ export type Config = {
     dev_auth: boolean;
     login_nonce: string;
     history_retention_days: number;
+    history_resolution_seconds: number;
+    history_storage_limit_bytes: number | null;
+    history_collection_status: "collecting" | "paused" | "unavailable";
 };
 export type GoogleLogin = {
     credential: string;

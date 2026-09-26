@@ -113,7 +113,7 @@ func (s *Server) newSession(ctx context.Context, email, name, kind string) (api.
 		return api.User{}, e
 	}
 	expiry := time.Now().UTC().Add(sessionLifetime)
-	_, e = s.Store.DB.Exec(ctx, "INSERT INTO sessions(token_hash,email,name,auth_kind,expires_at) VALUES($1,$2,$3,$4,$5)", tokenHash(secret), email, name, kind, expiry)
+	_, e = s.Store.exec(ctx, "INSERT INTO sessions(token_hash,email,name,auth_kind,expires_at) VALUES($1,$2,$3,$4,$5)", tokenHash(secret), email, name, kind, expiry)
 	if e != nil {
 		return api.User{}, e
 	}
@@ -175,7 +175,7 @@ func (s *Server) GetMe(ctx context.Context, _ api.GetMeRequestObject) (api.GetMe
 func (s *Server) Logout(ctx context.Context, _ api.LogoutRequestObject) (api.LogoutResponseObject, error) {
 	cookie, _ := request(ctx).Cookie("lp_session")
 	if cookie != nil {
-		if _, e := s.Store.DB.Exec(ctx, "DELETE FROM sessions WHERE token_hash=$1", tokenHash(cookie.Value)); e != nil {
+		if _, e := s.Store.exec(ctx, "DELETE FROM sessions WHERE token_hash=$1", tokenHash(cookie.Value)); e != nil {
 			return nil, e
 		}
 	}
@@ -241,7 +241,7 @@ func (s *Server) CreateKey(ctx context.Context, r api.CreateKeyRequestObject) (a
 	for _, v := range scopes {
 		key.Scopes = append(key.Scopes, api.ApiKeyScopes(v))
 	}
-	_, err = s.Store.DB.Exec(ctx, "INSERT INTO api_keys(id,owner_email,name,token_hash,scopes,created_at,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7)", id, principal(ctx).Email, key.Name, tokenHash(secret), scopes, key.CreatedAt, key.ExpiresAt)
+	_, err = s.Store.exec(ctx, "INSERT INTO api_keys(id,owner_email,name,token_hash,scopes,created_at,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7)", id, principal(ctx).Email, key.Name, tokenHash(secret), scopes, key.CreatedAt, key.ExpiresAt)
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +251,7 @@ func (s *Server) CreateKey(ctx context.Context, r api.CreateKeyRequestObject) (a
 
 // RevokeKey revokes a key belonging to the current browser user.
 func (s *Server) RevokeKey(ctx context.Context, r api.RevokeKeyRequestObject) (api.RevokeKeyResponseObject, error) {
-	result, e := s.Store.DB.Exec(ctx, "UPDATE api_keys SET revoked=TRUE WHERE id=$1 AND owner_email=$2", r.KeyId, principal(ctx).Email)
+	result, e := s.Store.exec(ctx, "UPDATE api_keys SET revoked=TRUE WHERE id=$1 AND owner_email=$2", r.KeyId, principal(ctx).Email)
 	if e != nil {
 		return nil, e
 	}
