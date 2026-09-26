@@ -1,0 +1,10 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import App from './App';
+import * as api from './api';
+import './style.css';
+api.defaults.baseUrl='';
+api.defaults.credentials='same-origin';
+export const queries=new QueryClient({defaultOptions:{queries:{retry:1,staleTime:20000,refetchOnWindowFocus:false}}});
+createRoot(document.getElementById('root')!).render(<React.StrictMode><QueryClientProvider client={queries}><App/></QueryClientProvider></React.StrictMode>);

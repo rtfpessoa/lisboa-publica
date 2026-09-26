@@ -1,0 +1,14 @@
+.git
+.data
+.venv
+backend
+bin
+frontend/node_modules
+frontend/dist
+frontend/test-results
+frontend/playwright-report
+frontend/*.tsbuildinfo
+docs
+.env
+.env.*
+*.log

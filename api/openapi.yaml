@@ -1,0 +1,2617 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Lisboa P\u00fablica API",
+    "version": "1.0.0",
+    "description": "Provider-backed Lisbon transit. apiKey scopes use x-required-scopes; all data lists are paginated. Live revisions expire with410; snapshot revisions freeze committed ingestion membership. Scheduled and estimated data are explicitly classified. Dashboard reads are public for now and rate-limited; supplied API keys still enforce x-required-scopes. Key management requires a Google session."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "getHealth",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/config": {
+      "get": {
+        "operationId": "getConfig",
+        "summary": "getConfig",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Config"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/auth/google": {
+      "post": {
+        "operationId": "googleLogin",
+        "summary": "googleLogin",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleLogin"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/development": {
+      "post": {
+        "operationId": "developmentLogin",
+        "summary": "developmentLogin",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevLogin"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "operationId": "getMe",
+        "summary": "getMe",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-session-only": true
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "summary": "logout",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-session-only": true
+      }
+    },
+    "/api/v1/operators": {
+      "get": {
+        "operationId": "listOperators",
+        "summary": "listOperators",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/offset"
+          },
+          {
+            "$ref": "#/components/parameters/revision"
+          }
+        ],
+        "x-public-read": true
+      }
+    },
+    "/api/v1/routes": {
+      "get": {
+        "operationId": "listRoutes",
+        "summary": "listRoutes",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutePage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/offset"
+          },
+          {
+            "$ref": "#/components/parameters/revision"
+          },
+          {
+            "$ref": "#/components/parameters/operators"
+          },
+          {
+            "$ref": "#/components/parameters/q"
+          }
+        ],
+        "x-public-read": true
+      }
+    },
+    "/api/v1/routes/{route_id}": {
+      "get": {
+        "operationId": "getRoute",
+        "summary": "getRoute",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "parameters": [
+          {
+            "name": "route_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          }
+        ],
+        "x-public-read": true
+      }
+    },
+    "/api/v1/stops": {
+      "get": {
+        "operationId": "listStops",
+        "summary": "listStops",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/offset"
+          },
+          {
+            "$ref": "#/components/parameters/revision"
+          },
+          {
+            "$ref": "#/components/parameters/operators"
+          },
+          {
+            "$ref": "#/components/parameters/route_id"
+          },
+          {
+            "$ref": "#/components/parameters/q"
+          }
+        ],
+        "x-public-read": true
+      }
+    },
+    "/api/v1/vehicles": {
+      "get": {
+        "operationId": "listVehicles",
+        "summary": "listVehicles",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehiclePage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/offset"
+          },
+          {
+            "$ref": "#/components/parameters/revision"
+          },
+          {
+            "$ref": "#/components/parameters/operators"
+          },
+          {
+            "$ref": "#/components/parameters/route_id"
+          }
+        ],
+        "x-public-read": true
+      }
+    },
+    "/api/v1/trips": {
+      "get": {
+        "operationId": "listTrips",
+        "summary": "listTrips",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/offset"
+          },
+          {
+            "$ref": "#/components/parameters/revision"
+          },
+          {
+            "$ref": "#/components/parameters/operators"
+          },
+          {
+            "$ref": "#/components/parameters/route_id"
+          },
+          {
+            "$ref": "#/components/parameters/from"
+          },
+          {
+            "$ref": "#/components/parameters/to"
+          }
+        ],
+        "x-public-read": true
+      }
+    },
+    "/api/v1/arrivals": {
+      "get": {
+        "operationId": "listArrivals",
+        "summary": "listArrivals",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArrivalPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/offset"
+          },
+          {
+            "$ref": "#/components/parameters/revision"
+          },
+          {
+            "$ref": "#/components/parameters/operators"
+          },
+          {
+            "$ref": "#/components/parameters/route_id"
+          },
+          {
+            "$ref": "#/components/parameters/from"
+          },
+          {
+            "$ref": "#/components/parameters/to"
+          },
+          {
+            "$ref": "#/components/parameters/stop_id"
+          }
+        ],
+        "x-public-read": true
+      }
+    },
+    "/api/v1/metrics": {
+      "get": {
+        "operationId": "getMetrics",
+        "summary": "getMetrics",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Metrics"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/operators"
+          },
+          {
+            "$ref": "#/components/parameters/route_id"
+          },
+          {
+            "$ref": "#/components/parameters/from"
+          },
+          {
+            "$ref": "#/components/parameters/to"
+          },
+          {
+            "$ref": "#/components/parameters/revision"
+          }
+        ],
+        "x-public-read": true
+      }
+    },
+    "/api/v1/history": {
+      "get": {
+        "operationId": "listHistory",
+        "summary": "listHistory",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryPointPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-required-scopes": [
+          "read:history"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/offset"
+          },
+          {
+            "$ref": "#/components/parameters/revision"
+          },
+          {
+            "$ref": "#/components/parameters/operators"
+          },
+          {
+            "$ref": "#/components/parameters/route_id"
+          },
+          {
+            "$ref": "#/components/parameters/from"
+          },
+          {
+            "$ref": "#/components/parameters/to"
+          }
+        ],
+        "x-public-read": true
+      }
+    },
+    "/api/v1/fleet": {
+      "get": {
+        "operationId": "listFleet",
+        "summary": "listFleet",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FleetVehiclePage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-required-scopes": [
+          "read:history"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/offset"
+          },
+          {
+            "$ref": "#/components/parameters/revision"
+          },
+          {
+            "$ref": "#/components/parameters/operators"
+          },
+          {
+            "$ref": "#/components/parameters/route_id"
+          },
+          {
+            "$ref": "#/components/parameters/from"
+          },
+          {
+            "$ref": "#/components/parameters/to"
+          },
+          {
+            "$ref": "#/components/parameters/q"
+          },
+          {
+            "$ref": "#/components/parameters/sort"
+          }
+        ],
+        "x-public-read": true
+      }
+    },
+    "/api/v1/traffic": {
+      "get": {
+        "operationId": "listTraffic",
+        "summary": "listTraffic",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrafficPointPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-required-scopes": [
+          "read:history"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/offset"
+          },
+          {
+            "$ref": "#/components/parameters/revision"
+          },
+          {
+            "$ref": "#/components/parameters/operators"
+          },
+          {
+            "$ref": "#/components/parameters/route_id"
+          },
+          {
+            "$ref": "#/components/parameters/from"
+          },
+          {
+            "$ref": "#/components/parameters/to"
+          },
+          {
+            "$ref": "#/components/parameters/hour_start"
+          },
+          {
+            "$ref": "#/components/parameters/hour_end"
+          },
+          {
+            "$ref": "#/components/parameters/weekdays_only"
+          }
+        ],
+        "x-public-read": true
+      }
+    },
+    "/api/v1/rankings": {
+      "get": {
+        "operationId": "listRankings",
+        "summary": "listRankings",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RankingPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-required-scopes": [
+          "read:history"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/offset"
+          },
+          {
+            "$ref": "#/components/parameters/revision"
+          },
+          {
+            "$ref": "#/components/parameters/operators"
+          },
+          {
+            "$ref": "#/components/parameters/route_id"
+          },
+          {
+            "$ref": "#/components/parameters/from"
+          },
+          {
+            "$ref": "#/components/parameters/to"
+          },
+          {
+            "$ref": "#/components/parameters/sort"
+          }
+        ],
+        "x-public-read": true
+      }
+    },
+    "/api/v1/keys": {
+      "get": {
+        "operationId": "listKeys",
+        "summary": "listKeys",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-session-only": true,
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/offset"
+          }
+        ]
+      },
+      "post": {
+        "operationId": "createKey",
+        "summary": "createKey",
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeySecret"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-session-only": true,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateKey"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/keys/{key_id}": {
+      "delete": {
+        "operationId": "revokeKey",
+        "summary": "revokeKey",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-session-only": true,
+        "parameters": [
+          {
+            "name": "key_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/metro/status": {
+      "get": {
+        "operationId": "getMetroStatus",
+        "summary": "Verified direct Metro service status (server-side consumer credentials)",
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-public-read": true,
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "responses": {
+          "200": {
+            "description": "Integration/service status; unconfigured/error is explicit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetroStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "description": "Bearer lp_... Scoped read:transit or read:history; requirements are x-required-scopes."
+      },
+      "SessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "lp_session"
+      }
+    },
+    "parameters": {
+      "limit": {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 100
+        }
+      },
+      "offset": {
+        "name": "offset",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000,
+          "default": 0
+        }
+      },
+      "revision": {
+        "name": "revision",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "description": "Opaque collection revision from page.revision; reuse on later pages. Schedule revisions also freeze their time window and prediction eligibility. Expired revisions return410."
+      },
+      "operators": {
+        "name": "operators",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Comma-separated operator IDs."
+        }
+      },
+      "route_id": {
+        "name": "route_id",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "q": {
+        "name": "q",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "maxLength": 120
+        }
+      },
+      "from": {
+        "name": "from",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "to": {
+        "name": "to",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "stop_id": {
+        "name": "stop_id",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "hour_start": {
+        "name": "hour_start",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23,
+          "default": 0
+        }
+      },
+      "hour_end": {
+        "name": "hour_end",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 24,
+          "default": 24
+        }
+      },
+      "weekdays_only": {
+        "name": "weekdays_only",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      "sort": {
+        "name": "sort",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "speed",
+            "distance",
+            "trips",
+            "last_seen",
+            "first_seen",
+            "vehicle",
+            "model"
+          ],
+          "default": "last_seen"
+        }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
+      "Page": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "revision": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "limit",
+          "offset",
+          "total",
+          "has_more",
+          "revision"
+        ]
+      },
+      "Config": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "google_client_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "dev_auth": {
+            "type": "boolean"
+          },
+          "login_nonce": {
+            "type": "string"
+          },
+          "history_retention_days": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "google_client_id",
+          "dev_auth",
+          "login_nonce",
+          "history_retention_days"
+        ]
+      },
+      "Health": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "database": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "database"
+        ]
+      },
+      "User": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "auth_kind": {
+            "type": "string",
+            "enum": [
+              "google",
+              "development"
+            ]
+          }
+        },
+        "required": [
+          "email",
+          "name",
+          "scopes",
+          "expires_at",
+          "auth_kind"
+        ]
+      },
+      "GoogleLogin": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "credential": {
+            "type": "string",
+            "maxLength": 16384
+          }
+        },
+        "required": [
+          "credential"
+        ]
+      },
+      "DevLogin": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "login_nonce": {
+            "type": "string",
+            "minLength": 16,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "login_nonce"
+        ]
+      },
+      "Operator": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "bus",
+              "metro",
+              "train",
+              "ferry"
+            ]
+          },
+          "static_source": {
+            "type": "string"
+          },
+          "live_source": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "stale",
+              "error",
+              "loading"
+            ]
+          },
+          "static_status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "stale",
+              "error",
+              "loading"
+            ]
+          },
+          "static_updated_at": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "live_updated_at": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "observed_at": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "plan_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "valid_from": {
+            "type": "string",
+            "nullable": true
+          },
+          "valid_until": {
+            "type": "string",
+            "nullable": true
+          },
+          "reported_positions": {
+            "type": "integer",
+            "nullable": true
+          },
+          "estimated_positions": {
+            "type": "integer",
+            "nullable": true
+          },
+          "note": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "static_error": {
+            "type": "string",
+            "nullable": true
+          },
+          "direct_status": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "unconfigured",
+              "ok",
+              "error"
+            ]
+          },
+          "direct_error": {
+            "type": "string",
+            "nullable": true
+          },
+          "direct_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "mode",
+          "static_source",
+          "live_source",
+          "status",
+          "static_status",
+          "static_updated_at",
+          "live_updated_at",
+          "observed_at",
+          "plan_id",
+          "valid_from",
+          "valid_until",
+          "reported_positions",
+          "estimated_positions",
+          "note",
+          "error",
+          "static_error",
+          "direct_status",
+          "direct_error",
+          "direct_updated_at"
+        ]
+      },
+      "Route": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source_id": {
+            "type": "string"
+          },
+          "operator_id": {
+            "type": "string"
+          },
+          "short_name": {
+            "type": "string"
+          },
+          "long_name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "stop_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "plan_id": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "source_id",
+          "operator_id",
+          "short_name",
+          "long_name",
+          "color",
+          "stop_ids",
+          "plan_id"
+        ]
+      },
+      "RouteDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Route"
+          },
+          {
+            "type": "object",
+            "required": [
+              "geometry"
+            ],
+            "properties": {
+              "geometry": {
+                "type": "array",
+                "nullable": true,
+                "items": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": {
+                    "type": "number",
+                    "format": "double"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Stop": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source_id": {
+            "type": "string"
+          },
+          "operator_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "lat": {
+            "type": "number",
+            "format": "double"
+          },
+          "lon": {
+            "type": "number",
+            "format": "double"
+          },
+          "parent_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "route_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "source_id",
+          "operator_id",
+          "name",
+          "lat",
+          "lon",
+          "parent_id",
+          "route_ids"
+        ]
+      },
+      "Vehicle": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source_id": {
+            "type": "string"
+          },
+          "operator_id": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "route_name": {
+            "type": "string"
+          },
+          "trip_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "lat": {
+            "type": "number",
+            "format": "double"
+          },
+          "lon": {
+            "type": "number",
+            "format": "double"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "collected_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "position_kind": {
+            "type": "string",
+            "enum": [
+              "reported",
+              "estimated"
+            ]
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "speed_kmh": {
+            "type": "number",
+            "nullable": true,
+            "format": "double"
+          },
+          "bearing": {
+            "type": "number",
+            "nullable": true,
+            "format": "double"
+          },
+          "model": {
+            "type": "string",
+            "nullable": true
+          },
+          "license_plate": {
+            "type": "string",
+            "nullable": true
+          },
+          "stale": {
+            "type": "boolean"
+          },
+          "plan_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Observed source trip plan, retained independently of the active static plan."
+          }
+        },
+        "required": [
+          "id",
+          "source_id",
+          "operator_id",
+          "route_id",
+          "route_name",
+          "trip_id",
+          "lat",
+          "lon",
+          "observed_at",
+          "collected_at",
+          "position_kind",
+          "source_url",
+          "speed_kmh",
+          "bearing",
+          "model",
+          "license_plate",
+          "stale",
+          "plan_id"
+        ]
+      },
+      "Trip": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "operator_id": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          },
+          "headsign": {
+            "type": "string"
+          },
+          "planned_departure": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "planned_end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "scheduled"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "operator_id",
+          "route_id",
+          "headsign",
+          "planned_departure",
+          "planned_end",
+          "kind"
+        ]
+      },
+      "Arrival": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "operator_id": {
+            "type": "string"
+          },
+          "stop_id": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          },
+          "trip_id": {
+            "type": "string"
+          },
+          "headsign": {
+            "type": "string"
+          },
+          "scheduled_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "prediction"
+            ]
+          },
+          "expected_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "source_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "operator_id",
+          "stop_id",
+          "route_id",
+          "trip_id",
+          "headsign",
+          "scheduled_at",
+          "kind",
+          "expected_at",
+          "observed_at",
+          "source_url"
+        ]
+      },
+      "Metrics": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "reported_vehicles": {
+            "type": "integer",
+            "nullable": true
+          },
+          "estimated_vehicles": {
+            "type": "integer",
+            "nullable": true
+          },
+          "speed_kmh": {
+            "type": "number",
+            "nullable": true,
+            "format": "double"
+          },
+          "distance_km": {
+            "type": "number",
+            "nullable": true,
+            "format": "double"
+          },
+          "detected_trips": {
+            "type": "integer",
+            "nullable": true
+          },
+          "first_snapshot": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unavailable_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "reported_vehicles",
+          "estimated_vehicles",
+          "speed_kmh",
+          "distance_km",
+          "detected_trips",
+          "first_snapshot",
+          "revision",
+          "from",
+          "to",
+          "unavailable_fields"
+        ]
+      },
+      "HistoryPoint": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "bucket": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reported_vehicles": {
+            "type": "integer"
+          },
+          "estimated_vehicles": {
+            "type": "integer"
+          },
+          "speed_kmh": {
+            "type": "number",
+            "nullable": true,
+            "format": "double"
+          },
+          "distance_km": {
+            "type": "number",
+            "nullable": true,
+            "format": "double"
+          }
+        },
+        "required": [
+          "bucket",
+          "reported_vehicles",
+          "estimated_vehicles",
+          "speed_kmh",
+          "distance_km"
+        ]
+      },
+      "FleetVehicle": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "operator_id": {
+            "type": "string"
+          },
+          "source_id": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string",
+            "nullable": true
+          },
+          "license_plate": {
+            "type": "string",
+            "nullable": true
+          },
+          "position_kind": {
+            "type": "string",
+            "enum": [
+              "reported",
+              "estimated"
+            ]
+          },
+          "first_seen": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_seen": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "distance_km": {
+            "type": "number",
+            "nullable": true,
+            "format": "double"
+          },
+          "detected_trips": {
+            "type": "integer",
+            "nullable": true
+          },
+          "route_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "operator_id",
+          "source_id",
+          "model",
+          "license_plate",
+          "position_kind",
+          "first_seen",
+          "last_seen",
+          "distance_km",
+          "detected_trips",
+          "route_ids"
+        ]
+      },
+      "TrafficPoint": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "operator_id": {
+            "type": "string"
+          },
+          "lat": {
+            "type": "number",
+            "format": "double"
+          },
+          "lon": {
+            "type": "number",
+            "format": "double"
+          },
+          "speed_kmh": {
+            "type": "number",
+            "format": "double"
+          },
+          "observations": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "operator_id",
+          "lat",
+          "lon",
+          "speed_kmh",
+          "observations"
+        ]
+      },
+      "Ranking": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "operator_id": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          },
+          "route_name": {
+            "type": "string"
+          },
+          "reported_vehicles": {
+            "type": "integer"
+          },
+          "speed_kmh": {
+            "type": "number",
+            "nullable": true,
+            "format": "double"
+          },
+          "distance_km": {
+            "type": "number",
+            "nullable": true,
+            "format": "double"
+          },
+          "detected_trips": {
+            "type": "integer",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "operator_id",
+          "route_id",
+          "route_name",
+          "reported_vehicles",
+          "speed_kmh",
+          "distance_km",
+          "detected_trips"
+        ]
+      },
+      "ApiKey": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "read:transit",
+                "read:history"
+              ]
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revoked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scopes",
+          "created_at",
+          "expires_at",
+          "revoked"
+        ]
+      },
+      "CreateKey": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "scopes": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 2,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "read:transit",
+                "read:history"
+              ]
+            }
+          }
+        },
+        "required": [
+          "name",
+          "scopes"
+        ]
+      },
+      "KeySecret": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/ApiKey"
+          },
+          "secret": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "secret"
+        ]
+      },
+      "OperatorPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Operator"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
+      "RoutePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Route"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
+      "StopPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Stop"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
+      "VehiclePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Vehicle"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
+      "TripPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Trip"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
+      "ArrivalPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Arrival"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
+      "HistoryPointPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HistoryPoint"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
+      "FleetVehiclePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FleetVehicle"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
+      "TrafficPointPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrafficPoint"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
+      "RankingPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Ranking"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
+      "ApiKeyPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiKey"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
+      "MetroLine": {
+        "type": "object",
+        "required": [
+          "line",
+          "state",
+          "description"
+        ],
+        "properties": {
+          "line": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "MetroStatus": {
+        "type": "object",
+        "required": [
+          "status",
+          "checked_at",
+          "message",
+          "source_url",
+          "lines"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "unconfigured",
+              "ok",
+              "error"
+            ]
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "message": {
+            "type": "string"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetroLine"
+            }
+          }
+        }
+      }
+    }
+  }
+}
