@@ -48,7 +48,7 @@ An outage does not erase previous good data or renew its freshness.
 Deduplicate snapshots and compute metrics from valid observations only; reject impossible coordinates/speeds, out-of-order or future observations and long sampling gaps.
 Snapshot identity is (operator, vehicle_id, provider observation timestamp); duplicate polling never adds distance or samples.
 An atomic refresh transaction writes entity cache, source health and new snapshots together; malformed/partial payloads fail without clearing good data.
-Expose 30 days of history and physically retain31 days of snapshots, with explicit bounded query windows and pagination; history times use Europe/Lisbon service dates including DST and GTFS times beyond 24:00.
+Expose 30 days of history and physically retain30 days plus one hour of pruning grace, with explicit bounded query windows and pagination; history times use Europe/Lisbon service dates including DST and GTFS times beyond 24:00.
 Static GTFS contributes stops, routes, shapes and scheduled trips only where a verified feed is accessible.
 Unavailable providers remain visible with an explanation and official source links.
 
@@ -73,7 +73,7 @@ Live entity lists return an immutable collection revision: subsequent pages supp
 Retain revision references for5 minutes (bounded to24 versions); frontend retries the whole collection on410, never mixes revisions.
 Historical/fleet/traffic/ranking pages also bind to a committed ingestion generation read from app_state, returned as a snapshot revision.
 Every refresh transaction locks and increments that generation and writes it onto snapshots; all pages exclude later generations, including delayed observations with earlier event timestamps.
-History read range is30 days while physical retention is31 days, preventing boundary cleanup from shifting an in-progress page sequence; expired query windows fail clearly.
+History read range is30 days while physical retention is30 days plus one hour, preventing boundary cleanup from shifting an in-progress page sequence; expired query windows fail clearly.
 All offsets use deterministic secondary ID ordering.
 API features have matching UI controls, including API key management, arrivals, source status, fleet and history.
 No existing CLI was found; the only command will be the Go server, configured by environment.
@@ -156,3 +156,5 @@ Close buckets90 seconds after their end to tolerate documented provider freshnes
 Measure all application database ranges in CockroachDB (or the database size in Postgres). Historical writes stop at4GB; operational writes stop at4.5GB with conservative reservations for every persistent write path, transaction byte bounds and fail-closed measurement behavior. Live-cache writes have their own reserved headroom; history is clearly paused/unavailable in API/UI when the budget prevents collection. Never accumulate a paused-history backlog or automatically raise a Cloud limit. The user explicitly selected code-only enforcement because a Cloud cap cannot be set. The application budgets its own writes, with final500MB headroom; provider internal growth and another writer remain outside its control. Do not claim a provider-enforced hard cap.
 
 Before acceptance, measure compact rows/indexes, cache and route/trip splitting against representative ingestion and project30-day usage. A budget guard alone does not prove full30-day coverage. Verify weighted metrics, duplicates, late data, failed/retried transaction semantics, bounded paused state, stable revisions, measurement failure and threshold crossing. Run Go/Postgres/Cockroach checks, generated contract/TS/browser checks, and independent quasar-alpha/xhigh final review. Main owns all implementation, tests, fixes, deployment and acceptance.
+
+The independent storage review's code blockers are fixed: guarded initialization precedes DDL; missing migrations/backfills are sized or rejected; bounded pruning runs every five minutes; persistent writes serialize through completion; cache/history reservations share one measurement; unchanged cache parts remain untouched. Main's tests verify migration rejection, retained startup reservation, cache shrink/overwrite and the measurement-boundary case. Deployment evidence is recorded in VALIDATION.md.
