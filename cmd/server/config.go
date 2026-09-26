@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"lisboapublica/internal/app"
 	"strconv"
@@ -17,4 +18,8 @@ func configureHistory(store *app.Store) error {
 		return fmt.Errorf("invalid HISTORY_INTERVAL_SECONDS")
 	}
 	return store.ConfigureHistory(days, time.Duration(seconds)*time.Second, env("STORAGE_GUARD", "false") == "true")
+}
+
+func openConfiguredStore(ctx context.Context, database string) (*app.Store, error) {
+	return app.OpenStoreWithStorageGuard(ctx, database, env("STORAGE_GUARD", "false") == "true")
 }

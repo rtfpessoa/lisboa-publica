@@ -43,6 +43,7 @@ type Store struct {
 	DB              *pgxpool.Pool
 	RetentionDays   int
 	HistoryInterval time.Duration
+	writeMu         sync.Mutex
 	historyMu       sync.Mutex
 	collector       *historyCollector
 	budget          *storageBudget
@@ -51,29 +52,52 @@ type Store struct {
 
 // OpenStore opens a database pool and applies compatible Postgres/Cockroach migrations.
 func OpenStore(ctx context.Context, url string) (*Store, error) {
+	return OpenStoreWithStorageGuard(ctx, url, false)
+}
+
+// OpenStoreWithStorageGuard budgets migrations before applying any schema writes.
+func OpenStoreWithStorageGuard(ctx context.Context, url string, guard bool) (*Store, error) {
+	pool, err := openDatabasePool(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+	value := &Store{DB: pool}
+	if err = value.initialize(ctx, guard); err != nil {
+		pool.Close()
+		return nil, err
+	}
+	return value, nil
+}
+
+func openDatabasePool(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
 		return nil, err
 	}
 	cfg.MaxConns = databaseMaxConnections
 	cfg.ConnConfig.RuntimeParams["application_name"] = "lisboapublica"
-	pool, err := pgxpool.NewWithConfig(ctx, cfg)
-	if err != nil {
-		return nil, err
+	return pgxpool.NewWithConfig(ctx, cfg)
+}
+
+func (s *Store) initialize(ctx context.Context, guard bool) error {
+	if err := s.DB.Ping(ctx); err != nil {
+		return err
 	}
-	if err = pool.Ping(ctx); err != nil {
-		pool.Close()
-		return nil, err
-	}
-	value := &Store{DB: pool}
-	for _, q := range splitStatements(schema) {
-		if _, err = pool.Exec(ctx, q); err != nil {
-			pool.Close()
-			return nil, err
+	if guard {
+		s.budget = &storageBudget{measure: s.databaseBytes, now: time.Now, state: "unavailable"}
+		if err := s.reserveMigrations(ctx); err != nil {
+			return err
 		}
 	}
-	return value, nil
+	var err error
+	for _, q := range splitStatements(schema) {
+		if _, err = s.DB.Exec(ctx, q); err != nil {
+			break
+		}
+	}
+	return err
 }
+
 func splitStatements(s string) []string {
 	var out []string
 	start := 0
@@ -158,7 +182,8 @@ func (s *Store) loadCache(ctx context.Context, p, kind string, dst any) (bool, e
 	return err == nil, err
 }
 func writeCache(ctx context.Context, tx pgx.Tx, p, kind string, blob []byte) error {
-	if _, e := tx.Exec(ctx, "DELETE FROM cache_parts WHERE operator_id=$1 AND kind=$2", p, kind); e != nil {
+	parts := (len(blob) + cachePartBytes - 1) / cachePartBytes
+	if _, e := tx.Exec(ctx, "DELETE FROM cache_parts WHERE operator_id=$1 AND kind=$2 AND part >= $3", p, kind, parts); e != nil {
 		return e
 	}
 	for part, offset := 0, 0; offset < len(blob); part, offset = part+1, offset+cachePartBytes {
@@ -166,7 +191,7 @@ func writeCache(ctx context.Context, tx pgx.Tx, p, kind string, blob []byte) err
 		if end > len(blob) {
 			end = len(blob)
 		}
-		if _, e := tx.Exec(ctx, "INSERT INTO cache_parts(operator_id,kind,part,data) VALUES($1,$2,$3,$4)", p, kind, part, blob[offset:end]); e != nil {
+		if _, e := tx.Exec(ctx, "INSERT INTO cache_parts(operator_id,kind,part,data) VALUES($1,$2,$3,$4) ON CONFLICT(operator_id,kind,part) DO UPDATE SET data=excluded.data WHERE cache_parts.data IS DISTINCT FROM excluded.data", p, kind, part, blob[offset:end]); e != nil {
 			return e
 		}
 	}
@@ -197,6 +222,8 @@ func (s *Store) Save(ctx context.Context, id string, static *StaticData, live *L
 	if err != nil {
 		return err
 	}
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	s.historyMu.Lock()
 	defer s.historyMu.Unlock()
 	records, next := s.prepareHistory(id, live, distances)
@@ -212,6 +239,8 @@ func (s *Store) Save(ctx context.Context, id string, static *StaticData, live *L
 }
 
 func (s *Store) prune(ctx context.Context) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	if err := s.reserveStorage(ctx, cleanupReservation, maximumDatabaseBytes); err != nil {
 		return err
 	}

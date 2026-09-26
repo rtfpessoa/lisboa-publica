@@ -91,18 +91,6 @@ func prepareCacheUpdate(static *StaticData, live *LiveData, op api.Operator) (ca
 	return update, err
 }
 
-func (s *Store) guardUpdate(ctx context.Context, update cacheUpdate, records []historicalRecord) ([]historicalRecord, error) {
-	operations := int64(len(update.Static)+len(update.Live)+len(update.Health))*storageWriteOverhead + historyRecordOverhead
-	if err := s.reserveStorage(ctx, operations, operationalDatabaseBytes); err != nil {
-		return nil, err
-	}
-	historyBytes := recordBytes(records)
-	if operations+historyBytes > maximumWriteBytes || s.reserveStorage(ctx, historyBytes, historyDatabaseBytes) != nil {
-		records = nil
-	}
-	return records, nil
-}
-
 func (s *Store) persistUpdate(ctx context.Context, id string, update cacheUpdate, records []historicalRecord) error {
 	return s.transaction(ctx, func(tx pgx.Tx) error {
 		var generation int64

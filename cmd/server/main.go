@@ -30,7 +30,7 @@ func main() {
 	if database == "" {
 		log.Fatal("DATABASE_URL is required")
 	}
-	store, err := app.OpenStore(ctx, database)
+	store, err := openConfiguredStore(ctx, database)
 	if err != nil {
 		log.Fatal("database initialization failed", zap.Error(err))
 	}

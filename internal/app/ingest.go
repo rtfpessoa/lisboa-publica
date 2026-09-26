@@ -117,7 +117,7 @@ func (f *Fetcher) Run(ctx context.Context) {
 		defer wg.Done()
 		ticker := time.NewTicker(providerRefreshInterval)
 		defer ticker.Stop()
-		prune := time.NewTicker(time.Hour)
+		prune := time.NewTicker(staticRefreshInterval)
 		defer prune.Stop()
 		f.refreshLive(ctx)
 		for {
