@@ -40,7 +40,7 @@ func TestOfficialShapeCacheFootprint(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	combined := &StaticData{Updated: time.Now().UTC()}
+	combined := &StaticData{Updated: time.Now().UTC(), Models: map[string]Metadata{}}
 	for _, feed := range feeds {
 		archive, err := os.ReadFile(feed.File)
 		if err != nil {
@@ -53,12 +53,15 @@ func TestOfficialShapeCacheFootprint(t *testing.T) {
 		p, _ := providerByID(id)
 		var data *StaticData
 		if id == "cm" {
-			shapes, err := readCMShapes(archive, &hubPlan{ID: feed.Plan, Agency: feed.Agency}, p, hubBase, time.Now().UTC())
+			network, err := readCMNetwork(archive, &hubPlan{ID: feed.Plan, Agency: feed.Agency}, p, hubBase, time.Now().UTC())
 			if err != nil {
 				t.Fatal(err)
 			}
-			data = &StaticData{Shapes: shapes}
-			combined.Shapes = append(combined.Shapes, shapes...)
+			data = network
+			combined.Shapes = append(combined.Shapes, network.Shapes...)
+			for id, metadata := range network.Models {
+				combined.Models[id] = metadata
+			}
 		} else {
 			data, err = readGTFS(archive, p, feed.Plan, fmt.Sprint(feed.From), fmt.Sprint(feed.Until), hubBase, time.Now().UTC())
 			if err != nil {
@@ -73,7 +76,7 @@ func TestOfficialShapeCacheFootprint(t *testing.T) {
 		for _, shape := range data.Shapes {
 			points += len(shape.Geometry)
 		}
-		t.Logf("%s variants=%d retained_points=%d gzip_bytes=%d reservation_bytes=%d", feed.Operator, len(data.Shapes), points, len(encoded), int64(len(encoded))*storageWriteOverhead)
+		t.Logf("%s variants=%d retained_points=%d metadata=%d gzip_bytes=%d reservation_bytes=%d", feed.Operator, len(data.Shapes), points, len(data.Models), len(encoded), int64(len(encoded))*storageWriteOverhead)
 		if len(data.Shapes) == 0 || !geometryCacheFits(data, api.Operator{}) {
 			t.Fatal("geometry cache exceeds admission limits")
 		}

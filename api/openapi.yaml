@@ -1328,6 +1328,86 @@
         ],
         "x-public-read": true
       }
+    },
+    "/api/v1/operator-coverage": {
+      "get": {
+        "operationId": "listOperatorCoverage",
+        "summary": "Committed per-operator historical coverage",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorCoveragePage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-required-scopes": [
+          "read:history"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/offset"
+          },
+          {
+            "$ref": "#/components/parameters/revision"
+          },
+          {
+            "$ref": "#/components/parameters/operators"
+          },
+          {
+            "$ref": "#/components/parameters/route_id"
+          },
+          {
+            "$ref": "#/components/parameters/from"
+          },
+          {
+            "$ref": "#/components/parameters/to"
+          },
+          {
+            "$ref": "#/components/parameters/hour_start"
+          },
+          {
+            "$ref": "#/components/parameters/hour_end"
+          },
+          {
+            "$ref": "#/components/parameters/weekdays_only"
+          }
+        ],
+        "x-public-read": true
+      }
     }
   },
   "components": {
@@ -1560,6 +1640,11 @@
               "paused",
               "unavailable"
             ]
+          },
+          "live_refresh_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Local live collection cadence, not a source freshness guarantee."
           }
         },
         "required": [
@@ -1569,7 +1654,8 @@
           "history_retention_days",
           "history_resolution_seconds",
           "history_storage_limit_bytes",
-          "history_collection_status"
+          "history_collection_status",
+          "live_refresh_seconds"
         ]
       },
       "Health": {
@@ -1980,6 +2066,16 @@
             "type": "string",
             "nullable": true,
             "description": "Observed source trip plan, retained independently of the active static plan."
+          },
+          "typology": {
+            "type": "string",
+            "nullable": true,
+            "description": "Published source code or string; code schemes differ by provider/feed version. Metadata recorded with the observation, not a depot assignment."
+          },
+          "propulsion": {
+            "type": "string",
+            "nullable": true,
+            "description": "Published source code or string; code schemes differ by provider/feed version. Metadata recorded with the observation, not a depot assignment."
           }
         },
         "required": [
@@ -2000,7 +2096,9 @@
           "model",
           "license_plate",
           "stale",
-          "plan_id"
+          "plan_id",
+          "typology",
+          "propulsion"
         ]
       },
       "Trip": {
@@ -2251,6 +2349,16 @@
             "items": {
               "type": "string"
             }
+          },
+          "typology": {
+            "type": "string",
+            "nullable": true,
+            "description": "Published source code or string; code schemes differ by provider/feed version. Metadata recorded with the observation, not a depot assignment."
+          },
+          "propulsion": {
+            "type": "string",
+            "nullable": true,
+            "description": "Published source code or string; code schemes differ by provider/feed version. Metadata recorded with the observation, not a depot assignment."
           }
         },
         "required": [
@@ -2264,7 +2372,9 @@
           "last_seen",
           "distance_km",
           "detected_trips",
-          "route_ids"
+          "route_ids",
+          "typology",
+          "propulsion"
         ]
       },
       "TrafficPoint": {
@@ -2815,6 +2925,73 @@
             }
           }
         }
+      },
+      "OperatorCoverage": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Committed historical coverage within the requested time/hour/weekday window. Zero is an observed empty result, not a complete inventory. Speed samples exclude estimated positions.",
+        "properties": {
+          "operator_id": {
+            "type": "string"
+          },
+          "vehicles": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reported_vehicles": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "estimated_vehicles": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "speed_samples": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "model_vehicles": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "plate_vehicles": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "typology_vehicles": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "operator_id",
+          "vehicles",
+          "reported_vehicles",
+          "estimated_vehicles",
+          "speed_samples",
+          "model_vehicles",
+          "plate_vehicles",
+          "typology_vehicles"
+        ]
+      },
+      "OperatorCoveragePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OperatorCoverage"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
       }
     }
   }

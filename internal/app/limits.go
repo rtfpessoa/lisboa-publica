@@ -7,7 +7,8 @@ const (
 	historyRetentionDays      = 30
 	maxRequestBytes           = 32 << 10
 	upstreamRequestsPerMinute = 900
-	providerRefreshInterval   = 30 * time.Second
+	providerRefreshInterval   = 5 * time.Second
+	livePersistenceInterval   = 30 * time.Second
 	sourceFreshness           = 90 * time.Second
 	staticRefreshInterval     = 5 * time.Minute
 	staticCacheLifetime       = 6 * time.Hour
@@ -21,7 +22,7 @@ const (
 	metroRefreshTimeout       = 20 * time.Second
 	metroStationTolerance     = 0.005
 
-	maxCachedVersions          = 24
+	maxCachedVersions          = 256
 	maxConditionalBodies       = 20
 	maxConditionalBodyBytes    = 1 << 20
 	maxGeometryPoints          = 2_500_000

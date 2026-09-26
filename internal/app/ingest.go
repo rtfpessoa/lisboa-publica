@@ -18,19 +18,20 @@ import (
 
 // Fetcher fetches official provider feeds and publishes normalized snapshots.
 type Fetcher struct {
-	Client  *http.Client
-	Store   *Store
-	Cache   *Cache
-	Log     *zap.Logger
-	Hub, CM string
-	mu      sync.Mutex
-	etag    map[string]string
-	blobs   map[string][]byte
+	Client      *http.Client
+	Store       *Store
+	Cache       *Cache
+	Log         *zap.Logger
+	Hub, CM     string
+	mu          sync.Mutex
+	etag        map[string]string
+	blobs       map[string][]byte
+	lastPersist map[string]time.Time
 }
 
 // NewFetcher creates a provider fetcher with bounded HTTP requests.
 func NewFetcher(s *Store, c *Cache, log *zap.Logger) *Fetcher {
-	return &Fetcher{Client: &http.Client{Timeout: upstreamTimeout}, Store: s, Cache: c, Log: log, Hub: hubBase, CM: cmBase, etag: map[string]string{}, blobs: map[string][]byte{}}
+	return &Fetcher{Client: &http.Client{Timeout: upstreamTimeout}, Store: s, Cache: c, Log: log, Hub: hubBase, CM: cmBase, etag: map[string]string{}, blobs: map[string][]byte{}, lastPersist: map[string]time.Time{}}
 }
 func (f *Fetcher) fetch(ctx context.Context, u string, max int64) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
@@ -156,9 +157,7 @@ func (f *Fetcher) markError(ctx context.Context, p provider, static bool, err er
 		op.Status = api.OperatorStatusError
 		op.Error = ptr(message)
 	}
-	if e := f.Store.Save(ctx, p.ID, nil, nil, op, nil); e == nil {
-		f.Cache.update(p.ID, nil, nil, op)
-	}
+	f.publishProvider(ctx, p.ID, nil, op, nil)
 	f.Log.Warn("provider refresh failed", zap.String("operator", p.ID), zap.Bool("static", static), zap.String("reason", message))
 }
 func (f *Fetcher) refreshStatic(ctx context.Context) {
@@ -204,47 +203,22 @@ func (f *Fetcher) refreshStatic(ctx context.Context) {
 
 // The hub explicitly publishes the numeric-agency to raw-vehicle crosswalk.
 func (f *Fetcher) refreshMetadata(ctx context.Context) {
-	var rows []struct {
-		ID     string `json:"vehicle_id"`
-		Agency string `json:"agency_id"`
-		Make   string `json:"make"`
-		Model  string `json:"model"`
-		Plate  string `json:"license_plate"`
-	}
+	var rows []publishedMetadata
 	if e := f.fetchJSON(ctx, f.Hub+"/vehicles/metadata", &rows); e != nil {
 		f.Log.Warn("fleet metadata unavailable", zap.Error(e))
 		return
 	}
-	codes := map[string]string{"LA77N": "41", "BNA17": "42", "YA15B": "43", "A2L1N": "44", "HF16N": "21"}
 	state, _ := f.Cache.state("")
 	for _, id := range []string{"mobi", "cm"} {
 		d := state.Static[id]
 		if d == nil {
 			continue
 		}
-		copyData := *d
-		copyData.Models = map[string]Metadata{}
-		for k, v := range d.Models {
-			copyData.Models[k] = v
-		}
-		for _, row := range rows {
-			code, known := codes[row.Agency]
-			if !known || !strings.HasPrefix(row.ID, code+"-") {
-				continue
-			}
-			if (id == "mobi") != (row.Agency == "HF16N") {
-				continue
-			}
-			key := strings.TrimPrefix(row.ID, code+"-")
-			if id == "cm" {
-				key = "[" + row.Agency + "]" + key
-			}
-			copyData.Models[key] = Metadata{strings.TrimSpace(row.Make + " " + row.Model), row.Plate}
-		}
+		copyData := mergePublishedMetadata(d, id, rows)
 		f.Store.PublishMu.Lock()
 		op := f.Cache.operator(id)
-		if e := f.Store.Save(ctx, id, &copyData, nil, op, nil); e == nil {
-			f.Cache.update(id, &copyData, nil, op)
+		if e := f.Store.Save(ctx, id, copyData, nil, op, nil); e == nil {
+			f.Cache.update(id, copyData, nil, op)
 		}
 		f.Store.PublishMu.Unlock()
 	}
@@ -354,11 +328,7 @@ func (f *Fetcher) saveLive(ctx context.Context, p provider, vehicles []api.Vehic
 		}
 	}
 	live := &LiveData{Vehicles: vehicles, Collected: now}
-	if e := f.Store.Save(ctx, p.ID, nil, live, op, dist); e != nil {
-		f.Log.Error("live persistence failed", zap.String("operator", p.ID), zap.Error(e))
-		return
-	}
-	f.Cache.update(p.ID, nil, live, op)
+	f.publishProvider(ctx, p.ID, live, op, dist)
 }
 func (f *Fetcher) cmStatic(ctx context.Context, p provider) (*StaticData, error) {
 	var lines []struct {
@@ -436,7 +406,7 @@ func (f *Fetcher) cmLive(ctx context.Context, p provider, now time.Time) ([]api.
 			continue
 		}
 		at := time.UnixMilli(r.At).UTC()
-		if at.After(now.Add(providerRefreshInterval)) {
+		if at.After(now.Add(providerClockSkew)) {
 			return nil, fmt.Errorf("future CM observation")
 		}
 		v := api.Vehicle{Id: qualify(p.ID, r.ID), SourceId: r.ID, OperatorId: p.ID, RouteName: r.Line, Lat: r.Lat, Lon: r.Lon, ObservedAt: at, CollectedAt: now, PositionKind: api.VehiclePositionKindReported, SourceUrl: f.CM + "/vehicles", Bearing: r.Bearing, Model: r.Model, LicensePlate: r.Plate, Stale: now.Sub(at) > 180*time.Second}
@@ -489,7 +459,7 @@ func (f *Fetcher) hubVehicles(p provider, positions []hubPosition, now time.Time
 			continue
 		}
 		at := time.UnixMilli(raw.At).UTC()
-		if at.After(now.Add(providerRefreshInterval)) {
+		if at.After(now.Add(providerClockSkew)) {
 			invalid = true
 			continue
 		}
@@ -553,6 +523,8 @@ func enrichVehicle(v *api.Vehicle, data *StaticData) {
 			if v.LicensePlate == nil {
 				v.LicensePlate = optional(m.Plate)
 			}
+			v.Typology = optional(m.Typology)
+			v.Propulsion = optional(m.Propulsion)
 		}
 	}
 }

@@ -17,8 +17,8 @@ func (f *Fetcher) fetchHubArchive(ctx context.Context, plan *hubPlan) ([]byte, e
 	return f.fetch(ctx, plan.URL, maxGTFSCompressedBytes)
 }
 
-func (f *Fetcher) cmShapes(ctx context.Context, plans []hubPlan, today int) ([]api.RouteShape, error) {
-	shapes := []api.RouteShape{}
+func (f *Fetcher) cmShapes(ctx context.Context, plans []hubPlan, today int) (*StaticData, error) {
+	network := &StaticData{Models: map[string]Metadata{}}
 	p, _ := providerByID("cm")
 	for _, agency := range []string{"LA77N", "BNA17", "YA15B", "A2L1N"} {
 		plan := activeHubPlan(plans, agency, today)
@@ -29,26 +29,32 @@ func (f *Fetcher) cmShapes(ctx context.Context, plans []hubPlan, today int) ([]a
 		if err != nil {
 			return nil, err
 		}
-		variants, err := readCMShapes(blob, plan, p, f.Hub+"/plans", time.Now().UTC())
+		data, err := readCMNetwork(blob, plan, p, f.Hub+"/plans", time.Now().UTC())
 		if err != nil {
 			return nil, err
 		}
-		shapes = append(shapes, variants...)
+		network.Shapes = append(network.Shapes, data.Shapes...)
+		for id, metadata := range data.Models {
+			network.Models[id] = metadata
+		}
 	}
-	return shapes, nil
+	return network, nil
 }
 
 func (f *Fetcher) updateCMShapes(ctx context.Context, data *StaticData, plans []hubPlan, planErr error, today int) {
-	shapes, err := []api.RouteShape(nil), planErr
+	network, err := (*StaticData)(nil), planErr
 	if err == nil {
-		shapes, err = f.cmShapes(ctx, plans, today)
+		network, err = f.cmShapes(ctx, plans, today)
 	}
 	if err == nil {
 		colors := map[string]string{}
 		for _, r := range data.Routes {
 			colors[r.Id] = r.Color
 		}
-		for _, shape := range shapes {
+		for id, metadata := range network.Models {
+			data.Models[id] = mergeMetadata(data.Models[id], metadata)
+		}
+		for _, shape := range network.Shapes {
 			if color, ok := colors[shape.RouteId]; ok {
 				shape.Color = color
 				data.Shapes = append(data.Shapes, shape)
@@ -108,6 +114,12 @@ func (f *Fetcher) refreshCMStatic(ctx context.Context, p provider, plans []hubPl
 	if err != nil {
 		f.markError(ctx, p, true, err)
 		return
+	}
+	state, _ := f.Cache.state("")
+	if old := state.Static[p.ID]; old != nil {
+		for id, metadata := range old.Models {
+			data.Models[id] = metadata
+		}
 	}
 	f.updateCMShapes(ctx, data, plans, planErr, today)
 	f.saveStatic(ctx, p, data)

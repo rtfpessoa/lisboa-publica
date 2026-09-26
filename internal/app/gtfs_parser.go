@@ -185,7 +185,7 @@ func (g *gtfsReader) vehicle(m map[string]string) error {
 		if g.provider.ID == "mobi" {
 			id = strings.TrimPrefix(id, g.provider.Code+"-")
 		}
-		g.data.Models[id] = Metadata{strings.TrimSpace(m["make"] + " " + m["model"]), m["license_plate"]}
+		g.data.Models[id] = metadataRow(m)
 	}
 	return nil
 }

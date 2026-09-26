@@ -29,6 +29,7 @@ func shapeArchive(t *testing.T, cm bool) []byte {
 		row = "1001_0,1001,Centro,1001"
 	}
 	files := map[string]string{
+		"vehicles.txt":   "vehicle_id,make,model,license_plate,typology,propulsion\n123,IVECO,BUS,AB12CD,3.3,8\n",
 		"routes.txt":     header + "\n" + row + "\n",
 		"stops.txt":      "stop_id,stop_name,stop_lat,stop_lon\nS,Centro,38.72,-9.15\n",
 		"trips.txt":      "route_id,service_id,trip_id,trip_headsign,shape_id,direction_id\n" + route + ",daily,A,Centro,one,0\n" + route + ",daily,B,Terminal,two,1\n" + route + ",daily,C,Centro,one,0\n",

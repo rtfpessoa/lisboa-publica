@@ -62,6 +62,7 @@ type MetroClient struct {
 	tokenValue                       string
 	expires                          time.Time
 	lastAttempt                      time.Time
+	lastPersist                      time.Time
 	data                             *MetroData
 }
 
@@ -159,6 +160,13 @@ func (m *MetroClient) Refresh(ctx context.Context) *MetroData {
 		previous = state.Metro
 	}
 	data := m.fetchData(ctx, previous, now)
+	m.publish(ctx, data, now)
+	m.data = data
+	return data
+}
+
+// publish updates live health immediately and limits durable writes independently.
+func (m *MetroClient) publish(ctx context.Context, data *MetroData, now time.Time) {
 	m.Store.PublishMu.Lock()
 	defer m.Store.PublishMu.Unlock()
 	op := m.Cache.operator("metro")
@@ -168,11 +176,11 @@ func (m *MetroClient) Refresh(ctx context.Context) *MetroData {
 	if data.Status.Status == "error" {
 		op.DirectError = ptr(data.Status.Message)
 	}
-	if err := m.Store.SaveMetro(ctx, data, op); err == nil {
-		m.Cache.updateMetro(data, op)
+	if now.Sub(m.lastPersist) >= livePersistenceInterval {
+		m.lastPersist = now
+		_ = m.Store.SaveMetro(ctx, data, op)
 	}
-	m.data = data
-	return data
+	m.Cache.updateMetro(data, op)
 }
 
 // Run refreshes provider data until its context is cancelled.

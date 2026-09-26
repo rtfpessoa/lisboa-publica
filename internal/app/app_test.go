@@ -233,6 +233,8 @@ func TestIntegration(t *testing.T) {
 	expectStatus(t, status, 200, body)
 	status, body = req(t, http.DefaultClient, "GET", ts.URL+"/api/v1/vehicles", nil, keyHeaders)
 	expectStatus(t, status, 200, body)
+	status, body = req(t, http.DefaultClient, "GET", ts.URL+"/api/v1/operator-coverage", nil, keyHeaders)
+	expectStatus(t, status, 403, body)
 	status, body = req(t, http.DefaultClient, "GET", ts.URL+"/api/v1/history", nil, keyHeaders)
 	expectStatus(t, status, 403, body)
 	status, body = req(t, http.DefaultClient, "GET", ts.URL+"/api/v1/keys", nil, keyHeaders)
@@ -519,7 +521,7 @@ func TestSpecScopePolicy(t *testing.T) {
 		}
 	}
 	sort.Strings(ids)
-	if len(ids) != 23 {
+	if len(ids) != 24 {
 		t.Fatalf("unexpected operation count%d", len(ids))
 	}
 }

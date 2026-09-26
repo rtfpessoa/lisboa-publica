@@ -36,13 +36,21 @@ func (g *gtfsReader) routeShapes(agency string) ([]api.RouteShape, error) {
 	return out, nil
 }
 
-// readCMShapes reads only the three geometry tables, leaving the existing line catalog authoritative.
 func readCMShapes(blob []byte, plan *hubPlan, p provider, source string, now time.Time) ([]api.RouteShape, error) {
+	data, err := readCMNetwork(blob, plan, p, source, now)
+	if err != nil {
+		return nil, err
+	}
+	return data.Shapes, nil
+}
+
+// readCMNetwork reads geometry and optional fleet metadata; the CM line catalog remains authoritative.
+func readCMNetwork(blob []byte, plan *hubPlan, p provider, source string, now time.Time) (*StaticData, error) {
 	archive, err := openGTFS(blob)
 	if err != nil {
 		return nil, err
 	}
-	reader := &gtfsReader{provider: p, data: &StaticData{PlanID: plan.ID, Source: source, Updated: now}, routes: map[string]*api.RouteDetail{}, trips: map[string]*ScheduledTrip{}, shapes: map[string][]shapePoint{}, directions: map[string]*int{}}
+	reader := &gtfsReader{provider: p, data: &StaticData{PlanID: plan.ID, Source: source, Updated: now, Models: map[string]Metadata{}}, routes: map[string]*api.RouteDetail{}, trips: map[string]*ScheduledTrip{}, shapes: map[string][]shapePoint{}, directions: map[string]*int{}}
 	tables := []struct {
 		name  string
 		visit func(map[string]string) error
@@ -58,6 +66,12 @@ func readCMShapes(blob []byte, plan *hubPlan, p provider, source string, now tim
 			return nil
 		}},
 		{"trips.txt", reader.trip}, {"shapes.txt", reader.shape},
+		{"vehicles.txt", func(row map[string]string) error {
+			if id := row["vehicle_id"]; id != "" {
+				reader.data.Models["["+plan.Agency+"]"+id] = metadataRow(row)
+			}
+			return nil
+		}},
 	}
 	for _, table := range tables {
 		if err := archive.read(table.name, table.visit); err != nil {
@@ -68,7 +82,8 @@ func readCMShapes(blob []byte, plan *hubPlan, p provider, source string, now tim
 	if err == nil && len(variants) == 0 {
 		err = fmt.Errorf("CM plan contains no published geometry variants")
 	}
-	return variants, err
+	reader.data.Shapes = variants
+	return reader.data, err
 }
 
 func (g *gtfsReader) shapeVariant(id, agency string) api.RouteShape {

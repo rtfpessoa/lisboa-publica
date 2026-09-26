@@ -88,7 +88,11 @@ type StaticData struct {
 }
 
 // Metadata contains published vehicle model and registration fields.
-type Metadata struct{ Model, Plate string }
+type Metadata struct {
+	Model, Plate string
+	Typology     string `json:",omitempty"`
+	Propulsion   string `json:",omitempty"`
+}
 
 // LiveData holds provider positions and their collection time.
 type LiveData struct {

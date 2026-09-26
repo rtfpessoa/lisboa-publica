@@ -452,7 +452,10 @@ type Config struct {
 	HistoryResolutionSeconds int                           `json:"history_resolution_seconds"`
 	HistoryRetentionDays     int                           `json:"history_retention_days"`
 	HistoryStorageLimitBytes *int64                        `json:"history_storage_limit_bytes"`
-	LoginNonce               string                        `json:"login_nonce"`
+
+	// LiveRefreshSeconds Local live collection cadence, not a source freshness guarantee.
+	LiveRefreshSeconds int    `json:"live_refresh_seconds"`
+	LoginNonce         string `json:"login_nonce"`
 }
 
 // ConfigHistoryCollectionStatus defines model for Config.HistoryCollectionStatus.
@@ -489,8 +492,14 @@ type FleetVehicle struct {
 	Model         *string                  `json:"model"`
 	OperatorId    string                   `json:"operator_id"`
 	PositionKind  FleetVehiclePositionKind `json:"position_kind"`
-	RouteIds      []string                 `json:"route_ids"`
-	SourceId      string                   `json:"source_id"`
+
+	// Propulsion Published source code or string; code schemes differ by provider/feed version. Metadata recorded with the observation, not a depot assignment.
+	Propulsion *string  `json:"propulsion"`
+	RouteIds   []string `json:"route_ids"`
+	SourceId   string   `json:"source_id"`
+
+	// Typology Published source code or string; code schemes differ by provider/feed version. Metadata recorded with the observation, not a depot assignment.
+	Typology *string `json:"typology"`
 }
 
 // FleetVehiclePositionKind defines model for FleetVehicle.PositionKind.
@@ -615,6 +624,24 @@ type OperatorStaticStatus string
 
 // OperatorStatus defines model for Operator.Status.
 type OperatorStatus string
+
+// OperatorCoverage Committed historical coverage within the requested time/hour/weekday window. Zero is an observed empty result, not a complete inventory. Speed samples exclude estimated positions.
+type OperatorCoverage struct {
+	EstimatedVehicles int    `json:"estimated_vehicles"`
+	ModelVehicles     int    `json:"model_vehicles"`
+	OperatorId        string `json:"operator_id"`
+	PlateVehicles     int    `json:"plate_vehicles"`
+	ReportedVehicles  int    `json:"reported_vehicles"`
+	SpeedSamples      int    `json:"speed_samples"`
+	TypologyVehicles  int    `json:"typology_vehicles"`
+	Vehicles          int    `json:"vehicles"`
+}
+
+// OperatorCoveragePage defines model for OperatorCoveragePage.
+type OperatorCoveragePage struct {
+	Data []OperatorCoverage `json:"data"`
+	Page Page               `json:"page"`
+}
 
 // OperatorPage defines model for OperatorPage.
 type OperatorPage struct {
@@ -783,13 +810,19 @@ type Vehicle struct {
 	// PlanId Observed source trip plan, retained independently of the active static plan.
 	PlanId       *string             `json:"plan_id"`
 	PositionKind VehiclePositionKind `json:"position_kind"`
-	RouteId      *string             `json:"route_id"`
-	RouteName    string              `json:"route_name"`
-	SourceId     string              `json:"source_id"`
-	SourceUrl    string              `json:"source_url"`
-	SpeedKmh     *float64            `json:"speed_kmh"`
-	Stale        bool                `json:"stale"`
-	TripId       *string             `json:"trip_id"`
+
+	// Propulsion Published source code or string; code schemes differ by provider/feed version. Metadata recorded with the observation, not a depot assignment.
+	Propulsion *string  `json:"propulsion"`
+	RouteId    *string  `json:"route_id"`
+	RouteName  string   `json:"route_name"`
+	SourceId   string   `json:"source_id"`
+	SourceUrl  string   `json:"source_url"`
+	SpeedKmh   *float64 `json:"speed_kmh"`
+	Stale      bool     `json:"stale"`
+	TripId     *string  `json:"trip_id"`
+
+	// Typology Published source code or string; code schemes differ by provider/feed version. Metadata recorded with the observation, not a depot assignment.
+	Typology *string `json:"typology"`
 }
 
 // VehiclePositionKind defines model for Vehicle.PositionKind.
@@ -900,6 +933,22 @@ type GetMetricsParams struct {
 
 	// Revision Opaque collection revision from page.revision; reuse on later pages. Schedule revisions also freeze their time window and prediction eligibility. Expired revisions return410.
 	Revision *Revision `form:"revision,omitempty" json:"revision,omitempty"`
+}
+
+// ListOperatorCoverageParams defines parameters for ListOperatorCoverage.
+type ListOperatorCoverageParams struct {
+	Limit  *Limit  `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Revision Opaque collection revision from page.revision; reuse on later pages. Schedule revisions also freeze their time window and prediction eligibility. Expired revisions return410.
+	Revision     *Revision     `form:"revision,omitempty" json:"revision,omitempty"`
+	Operators    *Operators    `form:"operators,omitempty" json:"operators,omitempty"`
+	RouteId      *RouteId      `form:"route_id,omitempty" json:"route_id,omitempty"`
+	From         *From         `form:"from,omitempty" json:"from,omitempty"`
+	To           *To           `form:"to,omitempty" json:"to,omitempty"`
+	HourStart    *HourStart    `form:"hour_start,omitempty" json:"hour_start,omitempty"`
+	HourEnd      *HourEnd      `form:"hour_end,omitempty" json:"hour_end,omitempty"`
+	WeekdaysOnly *WeekdaysOnly `form:"weekdays_only,omitempty" json:"weekdays_only,omitempty"`
 }
 
 // ListOperatorsParams defines parameters for ListOperators.
@@ -1055,6 +1104,9 @@ type ServerInterface interface {
 	// GetMetroStatus Verified direct Metro service status (server-side consumer credentials)
 	// (GET /api/v1/metro/status)
 	GetMetroStatus(w http.ResponseWriter, r *http.Request)
+	// ListOperatorCoverage Committed per-operator historical coverage
+	// (GET /api/v1/operator-coverage)
+	ListOperatorCoverage(w http.ResponseWriter, r *http.Request, params ListOperatorCoverageParams)
 	// ListOperators listOperators
 	// (GET /api/v1/operators)
 	ListOperators(w http.ResponseWriter, r *http.Request, params ListOperatorsParams)
@@ -1725,6 +1777,156 @@ func (siw *ServerInterfaceWrapper) GetMetroStatus(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetMetroStatus(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListOperatorCoverage operation middleware
+func (siw *ServerInterfaceWrapper) ListOperatorCoverage(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListOperatorCoverageParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "revision" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "revision", r.URL.Query(), &params.Revision, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "revision"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "revision", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "operators" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "operators", r.URL.Query(), &params.Operators, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "operators"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "operators", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "route_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "route_id", r.URL.Query(), &params.RouteId, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "route_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "route_id", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "hour_start" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "hour_start", r.URL.Query(), &params.HourStart, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "hour_start"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hour_start", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "hour_end" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "hour_end", r.URL.Query(), &params.HourEnd, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "hour_end"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "hour_end", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "weekdays_only" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "weekdays_only", r.URL.Query(), &params.WeekdaysOnly, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "weekdays_only"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "weekdays_only", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListOperatorCoverage(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2691,6 +2893,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/api/v1/keys/{key_id}", wrapper.RevokeKey)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/metrics", wrapper.GetMetrics)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/metro/status", wrapper.GetMetroStatus)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/operator-coverage", wrapper.ListOperatorCoverage)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/operators", wrapper.ListOperators)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/rankings", wrapper.ListRankings)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/route-shapes", wrapper.ListRouteShapes)
@@ -3337,6 +3540,53 @@ func (response GetMetroStatusdefaultJSONResponse) VisitGetMetroStatusResponse(w 
 	return err
 }
 
+type ListOperatorCoverageRequestObject struct {
+	Params ListOperatorCoverageParams
+}
+
+type ListOperatorCoverageResponseObject interface {
+	VisitListOperatorCoverageResponse(w http.ResponseWriter) error
+}
+
+type ListOperatorCoverage200JSONResponse OperatorCoveragePage
+
+func (response ListOperatorCoverage200JSONResponse) VisitListOperatorCoverageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListOperatorCoveragedefaultResponseHeaders struct {
+	RetryAfter *string
+}
+
+type ListOperatorCoveragedefaultJSONResponse struct {
+	Body       Error
+	Headers    ListOperatorCoveragedefaultResponseHeaders
+	StatusCode int
+}
+
+func (response ListOperatorCoveragedefaultJSONResponse) VisitListOperatorCoverageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListOperatorsRequestObject struct {
 	Params ListOperatorsParams
 }
@@ -3804,6 +4054,9 @@ type StrictServerInterface interface {
 	// GetMetroStatus Verified direct Metro service status (server-side consumer credentials)
 	// (GET /api/v1/metro/status)
 	GetMetroStatus(ctx context.Context, request GetMetroStatusRequestObject) (GetMetroStatusResponseObject, error)
+	// ListOperatorCoverage Committed per-operator historical coverage
+	// (GET /api/v1/operator-coverage)
+	ListOperatorCoverage(ctx context.Context, request ListOperatorCoverageRequestObject) (ListOperatorCoverageResponseObject, error)
 	// ListOperators listOperators
 	// (GET /api/v1/operators)
 	ListOperators(ctx context.Context, request ListOperatorsRequestObject) (ListOperatorsResponseObject, error)
@@ -4241,6 +4494,32 @@ func (sh *strictHandler) GetMetroStatus(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+// ListOperatorCoverage operation middleware
+func (sh *strictHandler) ListOperatorCoverage(w http.ResponseWriter, r *http.Request, params ListOperatorCoverageParams) {
+	var request ListOperatorCoverageRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListOperatorCoverage(ctx, request.(ListOperatorCoverageRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListOperatorCoverage")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListOperatorCoverageResponseObject); ok {
+		if err := validResponse.VisitListOperatorCoverageResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListOperators operation middleware
 func (sh *strictHandler) ListOperators(w http.ResponseWriter, r *http.Request, params ListOperatorsParams) {
 	var request ListOperatorsRequestObject
@@ -4480,72 +4759,78 @@ func (sh *strictHandler) ListVehicles(w http.ResponseWriter, r *http.Request, pa
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

@@ -265,7 +265,7 @@ func (s *Server) GetConfig(ctx context.Context, _ api.GetConfigRequestObject) (a
 		return nil, e
 	}
 	s.cookie(writer(ctx), "lp_login", nonce, time.Now().Add(loginNonceLifetime), http.SameSiteStrictMode)
-	return api.GetConfig200JSONResponse{GoogleClientId: optional(s.Options.GoogleClientID), DevAuth: s.Options.DevAuth, LoginNonce: nonce, HistoryRetentionDays: s.Store.retentionDays(), HistoryResolutionSeconds: s.Store.historyResolution(), HistoryStorageLimitBytes: s.Store.storageLimit(), HistoryCollectionStatus: s.Store.historyCollectionStatus()}, nil
+	return api.GetConfig200JSONResponse{GoogleClientId: optional(s.Options.GoogleClientID), DevAuth: s.Options.DevAuth, LoginNonce: nonce, LiveRefreshSeconds: int(providerRefreshInterval.Seconds()), HistoryRetentionDays: s.Store.retentionDays(), HistoryResolutionSeconds: s.Store.historyResolution(), HistoryStorageLimitBytes: s.Store.storageLimit(), HistoryCollectionStatus: s.Store.historyCollectionStatus()}, nil
 }
 
 type Filter struct {

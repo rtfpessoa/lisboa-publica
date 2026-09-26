@@ -139,7 +139,7 @@ func (s *Server) ListFleet(ctx context.Context, _ api.ListFleetRequestObject) (a
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.Store.DB.Query(ctx, `SELECT vehicle_id,operator_id,max(payload->>'source_id'),max(payload->>'model'),max(payload->>'license_plate'),max(position_kind),min(COALESCE(first_observed_at,observed_at)),max(observed_at),sum(distance_km),NULLIF(count(DISTINCT trip_id) FILTER (WHERE position_kind='reported' AND trip_id IS NOT NULL),0),array_agg(DISTINCT route_id) FILTER (WHERE route_id IS NOT NULL)`+snapshotWhere+` GROUP BY operator_id,vehicle_id ORDER BY vehicle_id`, args(filter, generation)...)
+	rows, err := s.Store.DB.Query(ctx, `SELECT vehicle_id,operator_id,max(payload->>'source_id'),max(payload->>'model'),max(payload->>'license_plate'),max(payload->>'typology'),max(payload->>'propulsion'),max(position_kind),min(COALESCE(first_observed_at,observed_at)),max(observed_at),sum(distance_km),NULLIF(count(DISTINCT trip_id) FILTER (WHERE position_kind='reported' AND trip_id IS NOT NULL),0),array_agg(DISTINCT route_id) FILTER (WHERE route_id IS NOT NULL)`+snapshotWhere+` GROUP BY operator_id,vehicle_id ORDER BY vehicle_id`, args(filter, generation)...)
 	if err != nil {
 		return nil, err
 	}
@@ -147,21 +147,11 @@ func (s *Server) ListFleet(ctx context.Context, _ api.ListFleetRequestObject) (a
 	out := []api.FleetVehicle{}
 	for rows.Next() {
 		var v api.FleetVehicle
-		if err = rows.Scan(&v.Id, &v.OperatorId, &v.SourceId, &v.Model, &v.LicensePlate, &v.PositionKind, &v.FirstSeen, &v.LastSeen, &v.DistanceKm, &v.DetectedTrips, &v.RouteIds); err != nil {
+		if err = rows.Scan(&v.Id, &v.OperatorId, &v.SourceId, &v.Model, &v.LicensePlate, &v.Typology, &v.Propulsion, &v.PositionKind, &v.FirstSeen, &v.LastSeen, &v.DistanceKm, &v.DetectedTrips, &v.RouteIds); err != nil {
 			return nil, err
 		}
-		if v.RouteIds == nil {
-			v.RouteIds = []string{}
-		}
-		sort.Strings(v.RouteIds)
-		text := v.SourceId
-		if v.Model != nil {
-			text += " " + *v.Model
-		}
-		if v.LicensePlate != nil {
-			text += " " + *v.LicensePlate
-		}
-		if filter.Q != "" && !strings.Contains(strings.ToLower(text), filter.Q) {
+		v = normalizeFleetVehicle(v)
+		if !fleetMatches(v, filter.Q) {
 			continue
 		}
 		out = append(out, v)
@@ -323,4 +313,26 @@ func stringValue(value *string) string {
 		return ""
 	}
 	return *value
+}
+
+func normalizeFleetVehicle(v api.FleetVehicle) api.FleetVehicle {
+	if v.RouteIds == nil {
+		v.RouteIds = []string{}
+	}
+	sort.Strings(v.RouteIds)
+	if v.Model != nil {
+		v.Model = optional(publishedModel("", *v.Model))
+	}
+	return v
+}
+
+func fleetMatches(v api.FleetVehicle, query string) bool {
+	text := v.SourceId
+	if v.Model != nil {
+		text += " " + *v.Model
+	}
+	if v.LicensePlate != nil {
+		text += " " + *v.LicensePlate
+	}
+	return query == "" || strings.Contains(strings.ToLower(text), query)
 }

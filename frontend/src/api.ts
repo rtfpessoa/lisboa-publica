@@ -30,6 +30,8 @@ export type Config = {
     history_resolution_seconds: number;
     history_storage_limit_bytes: number | null;
     history_collection_status: "collecting" | "paused" | "unavailable";
+    /** Local live collection cadence, not a source freshness guarantee. */
+    live_refresh_seconds: number;
 };
 export type GoogleLogin = {
     credential: string;
@@ -130,6 +132,10 @@ export type Vehicle = {
     stale: boolean;
     /** Observed source trip plan, retained independently of the active static plan. */
     plan_id: string | null;
+    /** Published source code or string; code schemes differ by provider/feed version. Metadata recorded with the observation, not a depot assignment. */
+    typology: string | null;
+    /** Published source code or string; code schemes differ by provider/feed version. Metadata recorded with the observation, not a depot assignment. */
+    propulsion: string | null;
 };
 export type VehiclePage = {
     data: Vehicle[];
@@ -200,6 +206,10 @@ export type FleetVehicle = {
     distance_km: number | null;
     detected_trips: number | null;
     route_ids: string[];
+    /** Published source code or string; code schemes differ by provider/feed version. Metadata recorded with the observation, not a depot assignment. */
+    typology: string | null;
+    /** Published source code or string; code schemes differ by provider/feed version. Metadata recorded with the observation, not a depot assignment. */
+    propulsion: string | null;
 };
 export type FleetVehiclePage = {
     data: FleetVehicle[];
@@ -286,6 +296,20 @@ export type RouteShapePage = {
     data: RouteShape[];
     page: Page;
     coverage: GeometryCoverage[];
+};
+export type OperatorCoverage = {
+    operator_id: string;
+    vehicles: number;
+    reported_vehicles: number;
+    estimated_vehicles: number;
+    speed_samples: number;
+    model_vehicles: number;
+    plate_vehicles: number;
+    typology_vehicles: number;
+};
+export type OperatorCoveragePage = {
+    data: OperatorCoverage[];
+    page: Page;
 };
 /**
  * getHealth
@@ -797,6 +821,42 @@ export function listRouteShapes({ limit, offset, revision, operators, routeId }:
         revision,
         operators,
         route_id: routeId
+    }))}`, {
+        ...opts
+    }));
+}
+/**
+ * Committed per-operator historical coverage
+ */
+export function listOperatorCoverage({ limit, offset, revision, operators, routeId, $from, to, hourStart, hourEnd, weekdaysOnly }: {
+    limit?: number;
+    offset?: number;
+    revision?: string;
+    operators?: string;
+    routeId?: string;
+    $from?: string;
+    to?: string;
+    hourStart?: number;
+    hourEnd?: number;
+    weekdaysOnly?: boolean;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: OperatorCoveragePage;
+    } | {
+        status: number;
+        data: Error;
+    }>(`/api/v1/operator-coverage${QS.query(QS.explode({
+        limit,
+        offset,
+        revision,
+        operators,
+        route_id: routeId,
+        "from": $from,
+        to,
+        hour_start: hourStart,
+        hour_end: hourEnd,
+        weekdays_only: weekdaysOnly
     }))}`, {
         ...opts
     }));

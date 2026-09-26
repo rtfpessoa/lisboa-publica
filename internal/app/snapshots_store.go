@@ -10,9 +10,11 @@ import (
 )
 
 type snapshotMetadata struct {
-	SourceID string  `json:"source_id"`
-	Model    *string `json:"model"`
-	Plate    *string `json:"license_plate"`
+	SourceID   string  `json:"source_id"`
+	Model      *string `json:"model"`
+	Plate      *string `json:"license_plate"`
+	Typology   *string `json:"typology,omitempty"`
+	Propulsion *string `json:"propulsion,omitempty"`
 }
 
 func (s *Store) prepareHistory(operator string, live *LiveData, distances map[string]*float64) ([]historicalRecord, *historyCollector) {
@@ -37,7 +39,7 @@ func recordBytes(records []historicalRecord) int64 {
 	bytes := int64(0)
 	for _, record := range records {
 		vehicle := record.Vehicle
-		fields := len(vehicle.Id) + len(vehicle.SourceId) + len(vehicle.OperatorId) + len(stringValue(vehicle.RouteId)) + len(stringValue(vehicle.TripId)) + len(stringValue(vehicle.Model)) + len(stringValue(vehicle.LicensePlate))
+		fields := len(vehicle.Id) + len(vehicle.SourceId) + len(vehicle.OperatorId) + len(stringValue(vehicle.RouteId)) + len(stringValue(vehicle.TripId)) + len(stringValue(vehicle.Model)) + len(stringValue(vehicle.LicensePlate)) + len(stringValue(vehicle.Typology)) + len(stringValue(vehicle.Propulsion))
 		bytes += int64(fields)*storageWriteOverhead + historyRecordOverhead
 	}
 	return bytes
@@ -50,7 +52,7 @@ func insertHistory(ctx context.Context, tx pgx.Tx, operator string, generation i
 	batch := &pgx.Batch{}
 	for _, record := range records {
 		vehicle := record.Vehicle
-		blob, err := json.Marshal(snapshotMetadata{vehicle.SourceId, vehicle.Model, vehicle.LicensePlate})
+		blob, err := json.Marshal(snapshotMetadata{SourceID: vehicle.SourceId, Model: vehicle.Model, Plate: vehicle.LicensePlate, Typology: vehicle.Typology, Propulsion: vehicle.Propulsion})
 		if err != nil {
 			return err
 		}
