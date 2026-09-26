@@ -18,7 +18,10 @@ ENV CGO_ENABLED=0 GOMAXPROCS=2 GOMEMLIMIT=512MiB
 RUN go build -p=2 -trimpath -ldflags='-s -w' -o /server ./cmd/server
 
 FROM alpine:3.23
-RUN apk add --no-cache ca-certificates tzdata && adduser -D -u 10001 dashboard
+COPY deploy/certs/sectigo-public-server-authentication-ca-ov-r36.crt /usr/local/share/ca-certificates/
+RUN apk add --no-cache ca-certificates tzdata && apk add --no-cache --virtual .certificate-validation openssl \
+    && openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt /usr/local/share/ca-certificates/sectigo-public-server-authentication-ca-ov-r36.crt \
+    && update-ca-certificates && apk del .certificate-validation && adduser -D -u 10001 dashboard
 WORKDIR /app
 COPY --from=backend /server /app/server
 COPY --from=backend /frontend-dist /app/frontend/dist
