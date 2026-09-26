@@ -16,3 +16,5 @@ Out of scope: new providers, authentication requirement, complete fleet inventor
 Pre-fix browser evidence: all three targeted regressions fail (fresh live speed vs null historical mean; refresh clears count; two valid speed points separated by null render zero markers). Single-point series alone already worked.
 
 Independent plan review: existing real quasar-alpha/xhigh reviewer recommended acceptance, no blockers. CM IDs/join verified directly; bounded parsing/cache fallback retained. Explicit conditional response cache limited to1MiB per body so four added archives do not accumulate in memory between six-hour static refreshes.
+
+Completed and deployed: executable adfa4c6 and Caddy compression f1071e3. The separate existing real quasar-alpha/xhigh final reviewer recommends final acceptance with no code or deployment blockers; main confirms completion. Actual production charts, CP observations, paginated official overlays, mobile layout and full eight-source warm refresh were verified. Test results, resource measurements and screenshots are recorded in [validation evidence](VALIDATION.md#final-correction-checks-and-production-evidence).
