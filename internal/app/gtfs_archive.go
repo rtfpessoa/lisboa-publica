@@ -18,28 +18,46 @@ func openGTFS(blob []byte) (gtfsArchive, error) {
 	if err != nil {
 		return nil, err
 	}
+	files, err := indexGTFS(archive.File)
+	if err != nil {
+		return nil, err
+	}
+	return files, files.validateRequired()
+}
+
+func indexGTFS(entries []*zip.File) (gtfsArchive, error) {
+	if len(entries) > maxGTFSEntries {
+		return nil, fmt.Errorf("GTFS entry limit")
+	}
 	files := map[string]*zip.File{}
 	var size uint64
-	for _, f := range archive.File {
-		size += f.UncompressedSize64
-		if size > maxGTFSExpandedBytes {
+	for _, f := range entries {
+		if f.UncompressedSize64 > maxGTFSExpandedBytes-size {
 			return nil, fmt.Errorf("GTFS expanded archive exceeds512MiB")
 		}
+		size += f.UncompressedSize64
 		n := strings.TrimPrefix(f.Name, "./")
 		if strings.Contains(n, "/") {
 			continue
 		}
+		if files[n] != nil {
+			return nil, fmt.Errorf("duplicate GTFS entry %s", n)
+		}
 		files[n] = f
 	}
+	return gtfsArchive(files), nil
+}
+
+func (files gtfsArchive) validateRequired() error {
 	for _, name := range []string{"routes.txt", "stops.txt", "trips.txt", "stop_times.txt"} {
 		if files[name] == nil {
-			return nil, fmt.Errorf("missing %s", name)
+			return fmt.Errorf("missing %s", name)
 		}
 	}
 	if files["calendar.txt"] == nil && files["calendar_dates.txt"] == nil {
-		return nil, fmt.Errorf("missing GTFS service calendars")
+		return fmt.Errorf("missing GTFS service calendars")
 	}
-	return gtfsArchive(files), nil
+	return nil
 }
 func (files gtfsArchive) read(name string, visit func(map[string]string) error) error {
 	f := files[name]

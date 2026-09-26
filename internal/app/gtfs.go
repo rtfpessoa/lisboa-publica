@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -105,22 +106,40 @@ func (s *Schedule) active(id string, date time.Time) bool {
 	c, ok := s.Calendars[id]
 	return ok && key >= c.Start && key <= c.End && c.Days[int(date.In(lisbon).Weekday())]
 }
-func scheduled(d *StaticData, p string, from, to time.Time, route, stop string) ([]api.Trip, []api.Arrival) {
-	out := []api.Trip{}
-	arrivals := []api.Arrival{}
-	if d == nil || d.Schedule == nil {
-		return out, arrivals
+func (q scheduleQuery) run() ([]api.Trip, []api.Arrival, error) {
+	if err := q.ctx.Err(); err != nil {
+		return nil, nil, err
 	}
+	if q.data == nil || q.data.Schedule == nil {
+		return []api.Trip{}, []api.Arrival{}, nil
+	}
+	return q.rangeResults()
+}
+
+func (q scheduleQuery) rangeResults() ([]api.Trip, []api.Arrival, error) {
+	out, arrivals := []api.Trip{}, []api.Arrival{}
+	from, to := q.filter.From, q.filter.To
 	day := time.Date(from.In(lisbon).Year(), from.In(lisbon).Month(), from.In(lisbon).Day(), serviceDayNoonHour, 0, 0, 0, lisbon).AddDate(0, 0, -3)
 	for ; !day.After(to.In(lisbon).Add(serviceDayNoonHour * time.Hour)); day = day.AddDate(0, 0, 1) {
 		date := day.Format("20060102")
-		if date < d.ValidFrom || date > d.ValidUntil {
+		if date < q.data.ValidFrom || date > q.data.ValidUntil {
 			continue
 		}
-		trips, visits := (scheduleQuery{d, p, Filter{From: from, To: to, Route: route, Stop: stop}}).day(day)
+		trips, visits, err := q.day(day)
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(out)+len(trips)+len(arrivals)+len(visits) > maxReadResults {
+			return nil, nil, readResultLimit()
+		}
 		out = append(out, trips...)
 		arrivals = append(arrivals, visits...)
 	}
+	sortScheduled(out, arrivals)
+	return out, arrivals, q.ctx.Err()
+}
+
+func sortScheduled(out []api.Trip, arrivals []api.Arrival) {
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].PlannedDeparture.Equal(out[j].PlannedDeparture) {
 			return out[i].Id < out[j].Id
@@ -133,46 +152,63 @@ func scheduled(d *StaticData, p string, from, to time.Time, route, stop string) 
 		}
 		return arrivals[i].ScheduledAt.Before(*arrivals[j].ScheduledAt)
 	})
-	return out, arrivals
 }
 
 type scheduleQuery struct {
+	ctx      context.Context
 	data     *StaticData
 	operator string
 	filter   Filter
 }
 
-func (q scheduleQuery) day(day time.Time) ([]api.Trip, []api.Arrival) {
-	d, p, from, to, route := q.data, q.operator, q.filter.From, q.filter.To, q.filter.Route
-	out := []api.Trip{}
-	arrivals := []api.Arrival{}
-	date := day.Format("20060102")
-	base := serviceStart(day)
-	for _, t := range d.Schedule.Trips {
-		rid := qualify(p, t.Route)
-		if route != "" && route != rid {
+func (q scheduleQuery) day(day time.Time) ([]api.Trip, []api.Arrival, error) {
+	out, arrivals := []api.Trip{}, []api.Arrival{}
+	var resultErr error
+	for _, t := range q.data.Schedule.Trips {
+		if err := q.ctx.Err(); err != nil {
+			return nil, nil, err
+		}
+		if !q.includesTrip(t, day) {
 			continue
 		}
-		if !d.Schedule.active(t.Service, day) || len(t.Times) == 0 {
-			continue
+		trip := q.trip(t, day)
+		visits, err := q.stopVisits(t, trip, serviceStart(day))
+		if err != nil {
+			return nil, nil, err
 		}
-		id := qualify(p, date+":"+t.ID)
-		depart := base.Add(time.Duration(t.Times[0].Departure) * time.Second)
-		end := base.Add(time.Duration(t.Times[len(t.Times)-1].Arrival) * time.Second)
-		if !depart.Before(from) && depart.Before(to) {
-			out = append(out, api.Trip{Id: id, OperatorId: p, RouteId: rid, Headsign: t.Headsign, PlannedDeparture: depart, PlannedEnd: end, Kind: api.TripKindScheduled})
+		if q.filter.Stop == "" && !trip.PlannedDeparture.Before(q.filter.From) && trip.PlannedDeparture.Before(q.filter.To) {
+			out = append(out, trip)
 		}
-		arrivals = append(arrivals, q.stopVisits(t, api.Trip{Id: id, RouteId: rid}, base)...)
+		if len(out)+len(arrivals)+len(visits) > maxReadResults {
+			resultErr = readResultLimit()
+			break
+		}
+		arrivals = append(arrivals, visits...)
 	}
-	return out, arrivals
+	if resultErr == nil {
+		resultErr = q.ctx.Err()
+	}
+	return out, arrivals, resultErr
 }
 
-func (q scheduleQuery) stopVisits(t ScheduledTrip, trip api.Trip, base time.Time) []api.Arrival {
+func (q scheduleQuery) includesTrip(t ScheduledTrip, day time.Time) bool {
+	return (q.filter.Route == "" || q.filter.Route == qualify(q.operator, t.Route)) && q.data.Schedule.active(t.Service, day) && len(t.Times) > 0
+}
+
+func (q scheduleQuery) trip(t ScheduledTrip, day time.Time) api.Trip {
+	base := serviceStart(day)
+	return api.Trip{Id: qualify(q.operator, day.Format("20060102")+":"+t.ID), OperatorId: q.operator, RouteId: qualify(q.operator, t.Route), Headsign: t.Headsign, PlannedDeparture: base.Add(time.Duration(t.Times[0].Departure) * time.Second), PlannedEnd: base.Add(time.Duration(t.Times[len(t.Times)-1].Arrival) * time.Second), Kind: api.TripKindScheduled}
+}
+
+func (q scheduleQuery) stopVisits(t ScheduledTrip, trip api.Trip, base time.Time) ([]api.Arrival, error) {
 	d, p, from, to, stop, id, rid := q.data, q.operator, q.filter.From, q.filter.To, q.filter.Stop, trip.Id, trip.RouteId
 	arrivals := []api.Arrival{}
 
 	if stop != "" {
 		for _, v := range t.Times {
+			if err := q.ctx.Err(); err != nil {
+				return nil, err
+			}
 			sid := qualify(p, v.Stop)
 			if stop != sid && stop != qualify(p, d.Schedule.Parents[v.Stop]) {
 				continue
@@ -181,8 +217,11 @@ func (q scheduleQuery) stopVisits(t ScheduledTrip, trip api.Trip, base time.Time
 			if at.Before(from) || !at.Before(to) {
 				continue
 			}
+			if len(arrivals) >= maxReadResults {
+				return nil, readResultLimit()
+			}
 			arrivals = append(arrivals, api.Arrival{Id: id + ":" + v.Stop + ":" + strconv.Itoa(v.Sequence), OperatorId: p, StopId: sid, RouteId: rid, TripId: id, Headsign: t.Headsign, ScheduledAt: &at, SourceUrl: d.Source, Kind: api.ArrivalKindScheduled})
 		}
 	}
-	return arrivals
+	return arrivals, q.ctx.Err()
 }

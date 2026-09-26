@@ -135,15 +135,27 @@ func (s *Store) storageLimit() *int64 {
 	return ptr(maximumDatabaseBytes)
 }
 
-// exec bounds authentication allocations and revocation/deletion tombstones too.
+// exec bounds credential issuance within the operational budget.
 func (s *Store) exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error) {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
+	return s.execLocked(ctx, operationalDatabaseBytes, query, args...)
+}
+
+// execCleanup reserves existing cleanup headroom for credential invalidation only.
+func (s *Store) execCleanup(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	return s.execLocked(ctx, maximumDatabaseBytes, query, args...)
+}
+
+// execLocked requires writeMu, allowing quota checks and issuance to share the lock.
+func (s *Store) execLocked(ctx context.Context, ceiling int64, query string, args ...any) (pgconn.CommandTag, error) {
 	bytes := int64(len(query))
 	for _, arg := range args {
 		bytes += int64(len(fmt.Sprint(arg)))
 	}
-	if err := s.reserveStorage(ctx, bytes*storageWriteOverhead+historyRecordOverhead, operationalDatabaseBytes); err != nil {
+	if err := s.reserveStorage(ctx, bytes*storageWriteOverhead+historyRecordOverhead, ceiling); err != nil {
 		return pgconn.CommandTag{}, err
 	}
 	return s.DB.Exec(ctx, query, args...)

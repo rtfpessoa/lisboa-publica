@@ -173,13 +173,13 @@ func (s *Server) GetMe(ctx context.Context, _ api.GetMeRequestObject) (api.GetMe
 
 // Logout revokes the browser session and clears its cookie.
 func (s *Server) Logout(ctx context.Context, _ api.LogoutRequestObject) (api.LogoutResponseObject, error) {
+	s.clearCookie(writer(ctx), "lp_session", http.SameSiteLaxMode)
 	cookie, _ := request(ctx).Cookie("lp_session")
 	if cookie != nil {
-		if _, e := s.Store.exec(ctx, "DELETE FROM sessions WHERE token_hash=$1", tokenHash(cookie.Value)); e != nil {
+		if _, e := s.Store.execCleanup(ctx, "DELETE FROM sessions WHERE token_hash=$1", tokenHash(cookie.Value)); e != nil {
 			return nil, e
 		}
 	}
-	s.clearCookie(writer(ctx), "lp_session", http.SameSiteLaxMode)
 	return api.Logout204Response{}, nil
 }
 
@@ -220,38 +220,63 @@ func (s *Server) CreateKey(ctx context.Context, r api.CreateKeyRequestObject) (a
 	if err != nil {
 		return nil, err
 	}
-	var count int
-	if e := s.Store.DB.QueryRow(ctx, "SELECT count(*) FROM api_keys WHERE owner_email=$1 AND NOT revoked AND expires_at>$2", principal(ctx).Email, time.Now()).Scan(&count); e != nil {
-		return nil, e
-	}
-	if count >= maxPersonalKeys {
-		return nil, fail(http.StatusBadRequest, "key_limit", "Limite de20 chaves ativas.")
-	}
-	secret, err := randomSecret()
+	key, secret, err := newPersonalKey(r.Body.Name, scopes)
 	if err != nil {
 		return nil, err
 	}
-	id, err := randomSecret()
-	if err != nil {
-		return nil, err
-	}
-	secret = "lp_" + secret
-	now := time.Now().UTC()
-	key := api.ApiKey{Id: id, Name: r.Body.Name, CreatedAt: now, ExpiresAt: now.AddDate(0, 0, 30), Scopes: []api.ApiKeyScopes{}}
-	for _, v := range scopes {
-		key.Scopes = append(key.Scopes, api.ApiKeyScopes(v))
-	}
-	_, err = s.Store.exec(ctx, "INSERT INTO api_keys(id,owner_email,name,token_hash,scopes,created_at,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7)", id, principal(ctx).Email, key.Name, tokenHash(secret), scopes, key.CreatedAt, key.ExpiresAt)
-	if err != nil {
+	if err = s.Store.insertPersonalKey(ctx, principal(ctx).Email, key, secret); err != nil {
 		return nil, err
 	}
 	writer(ctx).Header().Set("Cache-Control", "no-store")
 	return api.CreateKey201JSONResponse{Key: key, Secret: secret}, nil
 }
 
+func newPersonalKey(name string, scopes []string) (api.ApiKey, string, error) {
+	secret, err := randomSecret()
+	if err != nil {
+		return api.ApiKey{}, "", err
+	}
+	id, err := randomSecret()
+	if err != nil {
+		return api.ApiKey{}, "", err
+	}
+	now := time.Now().UTC()
+	key := api.ApiKey{Id: id, Name: name, CreatedAt: now, ExpiresAt: now.AddDate(0, 0, 30), Scopes: []api.ApiKeyScopes{}}
+	for _, scope := range scopes {
+		key.Scopes = append(key.Scopes, api.ApiKeyScopes(scope))
+	}
+	return key, "lp_" + secret, nil
+}
+
+// insertPersonalKey keeps quota verification and the reserved write under one process lock.
+func (s *Store) insertPersonalKey(ctx context.Context, owner string, key api.ApiKey, secret string) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	if err := s.checkPersonalKeyQuota(ctx, owner); err != nil {
+		return err
+	}
+	scopes := make([]string, 0, len(key.Scopes))
+	for _, scope := range key.Scopes {
+		scopes = append(scopes, string(scope))
+	}
+	_, err := s.execLocked(ctx, operationalDatabaseBytes, "INSERT INTO api_keys(id,owner_email,name,token_hash,scopes,created_at,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7)", key.Id, owner, key.Name, tokenHash(secret), scopes, key.CreatedAt, key.ExpiresAt)
+	return err
+}
+
+func (s *Store) checkPersonalKeyQuota(ctx context.Context, owner string) error {
+	var count int
+	if err := s.DB.QueryRow(ctx, "SELECT count(*) FROM api_keys WHERE owner_email=$1 AND NOT revoked AND expires_at>$2", owner, time.Now()).Scan(&count); err != nil {
+		return err
+	}
+	if count >= maxPersonalKeys {
+		return fail(http.StatusBadRequest, "key_limit", "Limite de20 chaves ativas.")
+	}
+	return nil
+}
+
 // RevokeKey revokes a key belonging to the current browser user.
 func (s *Server) RevokeKey(ctx context.Context, r api.RevokeKeyRequestObject) (api.RevokeKeyResponseObject, error) {
-	result, e := s.Store.exec(ctx, "UPDATE api_keys SET revoked=TRUE WHERE id=$1 AND owner_email=$2", r.KeyId, principal(ctx).Email)
+	result, e := s.Store.execCleanup(ctx, "UPDATE api_keys SET revoked=TRUE WHERE id=$1 AND owner_email=$2", r.KeyId, principal(ctx).Email)
 	if e != nil {
 		return nil, e
 	}

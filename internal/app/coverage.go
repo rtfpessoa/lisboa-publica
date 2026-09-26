@@ -31,8 +31,13 @@ func (s *Server) coverageWindow(ctx context.Context) (Filter, int64, string, err
 }
 
 func (s *Store) operatorCoverage(ctx context.Context, filter Filter, generation int64) ([]api.OperatorCoverage, error) {
+	tx, err := s.readTransaction(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
 	left := append(args(filter, generation), filter.HourStart, filter.HourEnd, filter.Weekdays)
-	rows, err := s.DB.Query(ctx, `SELECT operator_id,count(DISTINCT vehicle_id),count(DISTINCT vehicle_id) FILTER(WHERE position_kind='reported'),count(DISTINCT vehicle_id) FILTER(WHERE position_kind='estimated'),COALESCE(sum(speed_sample_count) FILTER(WHERE position_kind='reported' AND speed_kmh IS NOT NULL),0),count(DISTINCT vehicle_id) FILTER(WHERE NULLIF(payload->>'model','') IS NOT NULL),count(DISTINCT vehicle_id) FILTER(WHERE NULLIF(payload->>'license_plate','') IS NOT NULL),count(DISTINCT vehicle_id) FILTER(WHERE NULLIF(payload->>'typology','') IS NOT NULL)`+snapshotWhere+` AND extract(hour from observed_at AT TIME ZONE 'Europe/Lisbon') >= $6 AND extract(hour from observed_at AT TIME ZONE 'Europe/Lisbon') < $7 AND (NOT $8 OR extract(isodow from observed_at AT TIME ZONE 'Europe/Lisbon')<=5) GROUP BY operator_id`, left...)
+	rows, err := tx.Query(ctx, `SELECT operator_id,count(DISTINCT vehicle_id),count(DISTINCT vehicle_id) FILTER(WHERE position_kind='reported'),count(DISTINCT vehicle_id) FILTER(WHERE position_kind='estimated'),COALESCE(sum(speed_sample_count) FILTER(WHERE position_kind='reported' AND speed_kmh IS NOT NULL),0),count(DISTINCT vehicle_id) FILTER(WHERE NULLIF(payload->>'model','') IS NOT NULL),count(DISTINCT vehicle_id) FILTER(WHERE NULLIF(payload->>'license_plate','') IS NOT NULL),count(DISTINCT vehicle_id) FILTER(WHERE NULLIF(payload->>'typology','') IS NOT NULL)`+snapshotWhere+` AND extract(hour from observed_at AT TIME ZONE 'Europe/Lisbon') >= $6 AND extract(hour from observed_at AT TIME ZONE 'Europe/Lisbon') < $7 AND (NOT $8 OR extract(isodow from observed_at AT TIME ZONE 'Europe/Lisbon')<=5) GROUP BY operator_id`, left...)
 	if err != nil {
 		return nil, err
 	}

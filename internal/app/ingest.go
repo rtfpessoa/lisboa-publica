@@ -31,7 +31,7 @@ type Fetcher struct {
 
 // NewFetcher creates a provider fetcher with bounded HTTP requests.
 func NewFetcher(s *Store, c *Cache, log *zap.Logger) *Fetcher {
-	return &Fetcher{Client: &http.Client{Timeout: upstreamTimeout}, Store: s, Cache: c, Log: log, Hub: hubBase, CM: cmBase, etag: map[string]string{}, blobs: map[string][]byte{}, lastPersist: map[string]time.Time{}}
+	return &Fetcher{Client: &http.Client{Timeout: upstreamTimeout, CheckRedirect: CheckUpstreamRedirect}, Store: s, Cache: c, Log: log, Hub: hubBase, CM: cmBase, etag: map[string]string{}, blobs: map[string][]byte{}, lastPersist: map[string]time.Time{}}
 }
 func (f *Fetcher) fetch(ctx context.Context, u string, max int64) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)

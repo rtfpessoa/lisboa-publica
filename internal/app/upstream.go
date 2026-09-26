@@ -3,7 +3,9 @@ package app
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -124,4 +126,22 @@ func (t *BudgetTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	response, err := t.Base.RoundTrip(r)
 	t.response(host, response, err)
 	return response, err
+}
+
+// CheckUpstreamRedirect retains the initial TLS origin, including Metro's fixed port 8243.
+func CheckUpstreamRedirect(req *http.Request, via []*http.Request) error {
+	if len(via) == 0 || len(via) >= 3 {
+		return http.ErrUseLastResponse
+	}
+	initial := via[0].URL
+	effectivePort := func(u *url.URL) string {
+		if p := u.Port(); p != "" {
+			return p
+		}
+		return "443"
+	}
+	if initial.Scheme != "https" || req.URL.Scheme != "https" || initial.User != nil || req.URL.User != nil || !strings.EqualFold(req.URL.Hostname(), initial.Hostname()) || effectivePort(req.URL) != effectivePort(initial) {
+		return http.ErrUseLastResponse
+	}
+	return nil
 }

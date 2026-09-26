@@ -19,6 +19,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/getkin/kin-openapi/routers"
 	"github.com/getkin/kin-openapi/routers/legacy"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 	"google.golang.org/api/idtoken"
 	"lisboapublica/internal/api"
@@ -40,6 +41,7 @@ type Server struct {
 	Options        Options
 	Log            *zap.Logger
 	VerifyGoogle   func(context.Context, string, string) (*idtoken.Payload, error)
+	expensiveReads chan struct{}
 	rate           *limiter
 	trustedProxies []netip.Prefix
 }
@@ -53,24 +55,38 @@ func fail(status int, code, message string) error { return &apiError{status, cod
 
 // NewServer validates configuration and constructs an API server.
 func NewServer(store *Store, cache *Cache, options Options, log *zap.Logger) (*Server, error) {
+	options, err := validateServerOptions(options)
+	if err != nil {
+		return nil, err
+	}
+	s := &Server{expensiveReads: make(chan struct{}, maxExpensiveReads), Store: store, Cache: cache, Options: options, Log: log, VerifyGoogle: idtoken.Validate, rate: &limiter{entries: map[string]rateEntry{}, limit: options.RateLimit}}
+	s.trustedProxies, err = proxyPrefixes(options.TrustedProxyCIDRs)
+	return s, err
+}
+
+func validateServerOptions(options Options) (Options, error) {
 	u, e := url.Parse(options.Origin)
 	if e != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") || u.Path != "" {
-		return nil, fmt.Errorf("PUBLIC_ORIGIN must be an origin without a path")
+		return options, fmt.Errorf("PUBLIC_ORIGIN must be an origin without a path")
 	}
 	if options.Environment == "" {
 		options.Environment = "production"
 	}
 	if options.DevAuth && options.Environment != "development" {
-		return nil, fmt.Errorf("DEV_AUTH requires ENVIRONMENT=development")
+		return options, fmt.Errorf("DEV_AUTH requires ENVIRONMENT=development")
 	}
 	if options.Environment == "production" && u.Scheme != "https" {
-		return nil, fmt.Errorf("production PUBLIC_ORIGIN requires HTTPS")
+		return options, fmt.Errorf("production PUBLIC_ORIGIN requires HTTPS")
 	}
 	if options.RateLimit <= 0 {
 		options.RateLimit = defaultReadRate
 	}
-	s := &Server{Store: store, Cache: cache, Options: options, Log: log, VerifyGoogle: idtoken.Validate, rate: &limiter{entries: map[string]rateEntry{}, limit: options.RateLimit}}
-	for _, cidr := range strings.Split(options.TrustedProxyCIDRs, ",") {
+	return options, nil
+}
+
+func proxyPrefixes(value string) ([]netip.Prefix, error) {
+	prefixes := []netip.Prefix{}
+	for _, cidr := range strings.Split(value, ",") {
 		if strings.TrimSpace(cidr) == "" {
 			continue
 		}
@@ -78,11 +94,16 @@ func NewServer(store *Store, cache *Cache, options Options, log *zap.Logger) (*S
 		if err != nil {
 			return nil, fmt.Errorf("invalid TRUSTED_PROXY_CIDRS: %w", err)
 		}
-		s.trustedProxies = append(s.trustedProxies, prefix)
+		prefixes = append(prefixes, prefix)
 	}
-	return s, nil
+	return prefixes, nil
 }
+
 func (s *Server) error(w http.ResponseWriter, r *http.Request, err error) {
+	var pg *pgconn.PgError
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) || errors.As(err, &pg) && pg.Code == "57014" {
+		err = fail(http.StatusServiceUnavailable, "request_timeout", "Pedido interrompido; reduza o intervalo e tente novamente.")
+	}
 	var ae *apiError
 	if !errors.As(err, &ae) {
 		s.Log.Error("API operation failed", zap.String("path", r.URL.Path), zap.Error(err))
@@ -117,30 +138,21 @@ func (s *Server) Handler() (http.Handler, error) {
 	generated := api.HandlerWithOptions(strict, api.StdHTTPServerOptions{ErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, e error) {
 		s.error(w, r, fail(http.StatusBadRequest, "request", e.Error()))
 	}})
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
-		if !strings.HasPrefix(r.URL.Path, "/api/") {
-			s.serveUI(w, r)
-			return
-		}
-		started := time.Now()
-		defer func() {
-			s.Log.Debug("API request", zap.String("method", r.Method), zap.String("path", r.URL.Path), zap.Duration("duration", time.Since(started)))
-		}()
-		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBytes)
-		actor, err := s.validateAPI(w, r, router)
-		if err != nil {
-			s.error(w, r, err)
-			return
-		}
-		ctx := context.WithValue(r.Context(), requestKey, r)
-		ctx = context.WithValue(ctx, writerKey, w)
-		ctx = context.WithValue(ctx, identityKey, actor)
-		w.Header().Set("Cache-Control", "no-store")
-		generated.ServeHTTP(w, r.WithContext(ctx))
-	}), nil
+	return s.middleware(generated, router), nil
 }
+
+func expensiveRead(path string) bool {
+	switch path {
+	case "/api/v1/trips", "/api/v1/arrivals", "/api/v1/metrics", "/api/v1/history", "/api/v1/fleet", "/api/v1/traffic", "/api/v1/rankings", "/api/v1/operator-coverage":
+		return true
+	}
+	return false
+}
+
+func readResultLimit() error {
+	return fail(http.StatusBadRequest, "result_limit", "Demasiados resultados; selecione um operador, carreira ou intervalo menor.")
+}
+
 func (s *Server) validateAPI(w http.ResponseWriter, r *http.Request, router routers.Router) (*identity, error) {
 	route, params, err := router.FindRoute(r)
 	if err != nil {
@@ -463,78 +475,6 @@ func (s *Server) ListVehicles(ctx context.Context, _ api.ListVehiclesRequestObje
 	sortVehicles(out)
 	page, data := paginate(out, filter, state.Revision)
 	return api.ListVehicles200JSONResponse{Data: data, Page: page}, nil
-}
-
-// ListTrips lists calendar-aware planned trips with stable schedule pagination.
-func (s *Server) ListTrips(ctx context.Context, _ api.ListTripsRequestObject) (api.ListTripsResponseObject, error) {
-	filter, err := s.filter(ctx, false)
-	if err != nil {
-		return nil, err
-	}
-	state, revision, err := s.scheduleState(ctx, &filter)
-	if err != nil {
-		return nil, err
-	}
-	out := []api.Trip{}
-	for p, d := range state.Static {
-		if !filter.selected(p) {
-			continue
-		}
-		t, _ := scheduled(d, p, filter.From, filter.To, filter.Route, "")
-		out = append(out, t...)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].PlannedDeparture.Equal(out[j].PlannedDeparture) {
-			return out[i].Id < out[j].Id
-		}
-		return out[i].PlannedDeparture.Before(out[j].PlannedDeparture)
-	})
-	page, data := paginate(out, filter, revision)
-	return api.ListTrips200JSONResponse{Data: data, Page: page}, nil
-}
-
-// ListArrivals merges labeled planned and predicted arrivals with stable pagination.
-func (s *Server) ListArrivals(ctx context.Context, _ api.ListArrivalsRequestObject) (api.ListArrivalsResponseObject, error) {
-	filter, err := s.filter(ctx, false)
-	if err != nil {
-		return nil, err
-	}
-	if filter.Stop == "" {
-		return nil, fail(http.StatusBadRequest, "stop_required", "Selecione uma paragem.")
-	}
-	if filter.Revision == "" && strings.HasPrefix(filter.Stop, "metro:") && s.Metro != nil {
-		s.Metro.Refresh(ctx)
-	}
-	state, revision, err := s.scheduleState(ctx, &filter)
-	if err != nil {
-		return nil, err
-	}
-	out := []api.Arrival{}
-	if filter.selected("metro") && strings.HasPrefix(filter.Stop, "metro:") {
-		out = append(out, predictedArrivals(state, filter.From, filter.To, filter.Route, filter.Stop)...)
-	}
-	for p, d := range state.Static {
-		if !filter.selected(p) {
-			continue
-		}
-		_, a := scheduled(d, p, filter.From, filter.To, filter.Route, filter.Stop)
-		out = append(out, a...)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		ai, aj := out[i].ScheduledAt, out[j].ScheduledAt
-		if ai == nil {
-			ai = out[i].ExpectedAt
-		}
-		if aj == nil {
-			aj = out[j].ExpectedAt
-		}
-		if ai.Equal(*aj) {
-			return out[i].Id < out[j].Id
-		}
-		return ai.Before(*aj)
-	})
-	page, data := paginate(out, filter, revision)
-	return api.ListArrivals200JSONResponse{Data: data, Page: page}, nil
 }
 
 func (s *Server) scheduleState(ctx context.Context, f *Filter) (*State, string, error) {

@@ -198,12 +198,25 @@ func (m *MetroClient) Run(ctx context.Context) {
 	}
 }
 
-// GetMetroStatus returns authenticated direct Metro service availability.
+// GetMetroStatus returns cached direct Metro availability without waiting on collection.
 func (s *Server) GetMetroStatus(ctx context.Context, _ api.GetMetroStatusRequestObject) (api.GetMetroStatusResponseObject, error) {
-	if s.Metro == nil {
+	if s.Metro == nil || s.Metro.ClientID == "" || s.Metro.Secret == "" {
 		return api.GetMetroStatus200JSONResponse{Status: api.MetroStatusStatusUnconfigured, Message: "API direta do Metro sem credenciais; utilize horários planeados.", SourceUrl: metroBase, Lines: []api.MetroLine{}}, nil
 	}
-	return api.GetMetroStatus200JSONResponse(s.Metro.Refresh(ctx).Status), nil
+	state, err := s.Cache.state("")
+	if err != nil {
+		return nil, err
+	}
+	if state.Metro == nil {
+		return api.GetMetroStatus200JSONResponse{Status: api.MetroStatusStatusError, Message: "A aguardar dados da API direta do Metro; utilize horários planeados.", SourceUrl: metroBase, Lines: []api.MetroLine{}}, nil
+	}
+	status := state.Metro.Status
+	if status.Status == api.MetroStatusStatusOk && (status.CheckedAt == nil || time.Since(*status.CheckedAt) > sourceFreshness) {
+		status.Status = api.MetroStatusStatusError
+		status.Message = "Dados da API direta do Metro desatualizados; serviço por confirmar."
+		status.Lines = []api.MetroLine{}
+	}
+	return api.GetMetroStatus200JSONResponse(status), nil
 }
 func (c *Cache) updateMetro(d *MetroData, op api.Operator) {
 	c.mu.Lock()

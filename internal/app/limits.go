@@ -14,6 +14,10 @@ const (
 	staticCacheLifetime       = 6 * time.Hour
 	maxGTFSCompressedBytes    = 64 << 20
 	maxGTFSExpandedBytes      = 512 << 20
+	maxGTFSEntries            = 256
+	maxExpensiveReads         = 2
+	maxReadResults            = 100_000
+	expensiveReadTimeout      = 15 * time.Second
 	maxGTFSRows               = 5_000_000
 	numericBitSize            = 64
 	cachePartBytes            = 512 << 10

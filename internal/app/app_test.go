@@ -333,7 +333,14 @@ func TestGTFSCalendarAndMidnight(t *testing.T) {
 		t.Fatal("addition exception ignored")
 	}
 	start := serviceStart(date).Add(25 * time.Hour)
-	trips, arrivals := scheduled(d, "carris", start, start.Add(time.Hour), "", "carris:S")
+	trips, _, err := (scheduleQuery{ctx: context.Background(), data: d, operator: "carris", filter: Filter{From: start, To: start.Add(time.Hour)}}).run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, arrivals, err := (scheduleQuery{ctx: context.Background(), data: d, operator: "carris", filter: Filter{From: start, To: start.Add(time.Hour), Stop: "carris:S"}}).run()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(trips) != 1 || len(arrivals) != 2 || trips[0].PlannedDeparture.In(lisbon).Hour() != 1 {
 		t.Fatalf("midnight/DST parent arrival failure %+v %+v", trips, arrivals)
 	}
@@ -601,6 +608,7 @@ func TestScheduleRevisionAndLegacyCache(t *testing.T) {
 func TestRevisionRestoresOmittedBoundsBeforeValidation(t *testing.T) {
 	store := testStore(t)
 	cache := NewCache()
+	cache.update("metro", &StaticData{Stops: []api.Stop{{Id: "metro:RM", OperatorId: "metro"}}}, nil, cache.operator("metro"))
 	server, e := NewServer(store, cache, Options{Origin: "http://localhost", Environment: "development", PublicReads: true, RateLimit: 1000}, zap.NewNop())
 	if e != nil {
 		t.Fatal(e)

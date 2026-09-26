@@ -47,15 +47,7 @@ func main() {
 	if err != nil {
 		log.Fatal("server configuration failed", zap.Error(err))
 	}
-	outgoing := &http.Client{Timeout: 45 * time.Second, Transport: app.NewBudgetTransport(900), CheckRedirect: func(req *http.Request, via []*http.Request) error {
-		if len(via) >= 3 {
-			return http.ErrUseLastResponse
-		}
-		if req.URL.Scheme != "https" {
-			return http.ErrUseLastResponse
-		}
-		return nil
-	}}
+	outgoing := &http.Client{Timeout: 45 * time.Second, Transport: app.NewBudgetTransport(900), CheckRedirect: app.CheckUpstreamRedirect}
 	server.Metro = app.NewMetroClient(outgoing, store, cache, os.Getenv("METRO_CLIENT_ID"), os.Getenv("METRO_CLIENT_SECRET"))
 	if os.Getenv("METRO_CLIENT_ID") != "" && os.Getenv("METRO_CLIENT_SECRET") != "" {
 		go server.Metro.Run(ctx)

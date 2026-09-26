@@ -11,7 +11,7 @@ import (
 
 func (f *Fetcher) fetchHubArchive(ctx context.Context, plan *hubPlan) ([]byte, error) {
 	parsed, err := url.Parse(plan.URL)
-	if err != nil || parsed.Scheme != "https" || parsed.Hostname() != "objectstorage.eu-frankfurt-1.oraclecloud.com" {
+	if err != nil || parsed.Scheme != "https" || parsed.Hostname() != "objectstorage.eu-frankfurt-1.oraclecloud.com" || parsed.User != nil || parsed.Port() != "" && parsed.Port() != "443" {
 		return nil, fmt.Errorf("URL GTFS fora do armazenamento oficial autorizado")
 	}
 	return f.fetch(ctx, plan.URL, maxGTFSCompressedBytes)

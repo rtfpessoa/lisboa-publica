@@ -3,7 +3,7 @@
   "info": {
     "title": "Lisboa P\u00fablica API",
     "version": "1.0.0",
-    "description": "Provider-backed Lisbon transit. apiKey scopes use x-required-scopes; all data lists are paginated. Live revisions expire with410; snapshot revisions freeze committed ingestion membership. Scheduled and estimated data are explicitly classified. Dashboard reads are public for now and rate-limited; supplied API keys still enforce x-required-scopes. Key management requires a Google session."
+    "description": "Provider-backed Lisbon transit. apiKey scopes use x-required-scopes; all data lists are paginated. Live revisions expire with410; snapshot revisions freeze committed ingestion membership. Scheduled and estimated data are explicitly classified. Dashboard reads are public for now and rate-limited; supplied API keys still enforce x-required-scopes. Key management requires a Google session. Expensive reads share two fail-fast slots and a 15-second operation deadline (503 busy/timeout). Schedule and historical grouped lists reject over 100000 results with 400 result_limit instead of truncation; narrow operators, route or time window. Busy503 responses include Retry-After."
   },
   "servers": [
     {
@@ -27,7 +27,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -63,7 +63,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -99,7 +99,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -145,7 +145,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -191,7 +191,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -225,7 +225,7 @@
             "description": "Success"
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -266,7 +266,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -325,7 +325,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -390,7 +390,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -450,7 +450,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -518,7 +518,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -583,7 +583,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -654,7 +654,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -728,7 +728,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -793,7 +793,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -864,7 +864,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -941,7 +941,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -1021,7 +1021,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -1095,7 +1095,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -1142,7 +1142,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -1186,7 +1186,7 @@
             "description": "Success"
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -1252,7 +1252,7 @@
             }
           },
           "default": {
-            "description": "Error",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1280,7 +1280,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -1345,7 +1345,7 @@
             }
           },
           "default": {
-            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
             "headers": {
               "Retry-After": {
                 "schema": {
