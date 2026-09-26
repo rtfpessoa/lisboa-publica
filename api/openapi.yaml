@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Lisboa Pública API",
+    "title": "Lisboa P\u00fablica API",
     "version": "1.0.0",
     "description": "Provider-backed Lisbon transit. apiKey scopes use x-required-scopes; all data lists are paginated. Live revisions expire with410; snapshot revisions freeze committed ingestion membership. Scheduled and estimated data are explicitly classified. Dashboard reads are public for now and rate-limited; supplied API keys still enforce x-required-scopes. Key management requires a Google session. Expensive reads share two fail-fast slots and a 15-second operation deadline (503 busy/timeout). Schedule and historical grouped lists reject over 100000 results with 400 result_limit instead of truncation; narrow operators, route or time window. Busy503 responses include Retry-After."
   },
@@ -2102,6 +2102,38 @@
             "format": "date-time",
             "nullable": true,
             "description": "Position display deadline, one hour after original observation, including current rows so disconnected clients can expire cached data. Clients must remove expired positions even from pinned pages."
+          },
+          "current_status": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "STOPPED_AT",
+              "INCOMING_AT",
+              "IN_TRANSIT_TO"
+            ],
+            "description": "Published progress relative to a stop, not measured movement; estimated positions imply estimated status."
+          },
+          "source_stop_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Original stop reference; does not establish the current vehicle location."
+          },
+          "stop_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Exact verified retained application stop reference."
+          },
+          "stop_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "operational_date": {
+            "type": "string",
+            "nullable": true,
+            "description": "Validated explicit source service date, YYYY-MM-DD; never inferred from collection time."
+          },
+          "scheduled_service": {
+            "$ref": "#/components/schemas/ScheduledEndpoints"
           }
         },
         "required": [
@@ -2148,17 +2180,22 @@
           },
           "planned_departure": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Scheduled departure at the first retained stop in the Lisbon area; not necessarily the full journey origin."
           },
           "planned_end": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Scheduled arrival at the last retained stop in the Lisbon area; not necessarily the full journey destination."
           },
           "kind": {
             "type": "string",
             "enum": [
               "scheduled"
             ]
+          },
+          "scheduled_service": {
+            "$ref": "#/components/schemas/ScheduledEndpoints"
           }
         },
         "required": [
@@ -3038,6 +3075,40 @@
         "required": [
           "data",
           "page"
+        ]
+      },
+      "ScheduledEndpoints": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Published full journey endpoints, scheduled only; source IDs can lie outside the retained Lisbon stop network.",
+        "properties": {
+          "origin_source_stop_id": {
+            "type": "string"
+          },
+          "origin_name": {
+            "type": "string"
+          },
+          "destination_source_stop_id": {
+            "type": "string"
+          },
+          "destination_name": {
+            "type": "string"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "service_date": {
+            "type": "string",
+            "description": "Explicit validated GTFS service date, YYYY-MM-DD."
+          }
+        },
+        "required": [
+          "origin_source_stop_id",
+          "origin_name",
+          "destination_source_stop_id",
+          "destination_name",
+          "source_url",
+          "service_date"
         ]
       }
     }

@@ -1,0 +1,46 @@
+=== RUN   TestProviderContinuityResourceEnvelope
+    continuity_resource_test.go:32: churn_retained_versions=64 history_pending=20000
+    continuity_resource_test.go:41: static_providers=8 retained_versions=64 history_pending=20000 heap_bytes=826029288 sys_bytes=989594088
+    continuity_resource_test.go:44: carris source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:44: cm source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:44: tcb source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:44: mobi source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:44: metro source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:44: cp source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:44: ttsl source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:44: fertagus source=1000 retained=500 ledger=2000
+--- PASS: TestProviderContinuityResourceEnvelope (70.69s)
+=== RUN   TestOfficialShapeCacheFootprint
+    geometry_measure_test.go:38: cp variants=57 retained_points=36348 metadata=0 gzip_bytes=698688 reservation_bytes=2794752 covered_routes=36/44 status=partial
+    geometry_measure_test.go:38: ttsl variants=17 retained_points=224 metadata=0 gzip_bytes=14096 reservation_bytes=56384 covered_routes=5/5 status=available
+    geometry_measure_test.go:38: fertagus variants=4 retained_points=1137 metadata=18 gzip_bytes=31709 reservation_bytes=126836 covered_routes=2/2 status=available
+    geometry_measure_test.go:38: carris variants=323 retained_points=40861 metadata=841 gzip_bytes=21289118 reservation_bytes=85156472 covered_routes=174/174 status=available
+    geometry_measure_test.go:38: tcb variants=76 retained_points=14756 metadata=0 gzip_bytes=829098 reservation_bytes=3316392 covered_routes=76/76 status=available
+    geometry_measure_test.go:38: mobi variants=144 retained_points=34097 metadata=164 gzip_bytes=1085830 reservation_bytes=4343320 covered_routes=99/99 status=available
+    geometry_measure_test.go:38: metro variants=19 retained_points=1401 metadata=113 gzip_bytes=344356 reservation_bytes=1377424 covered_routes=5/5 status=available
+    geometry_measure_test.go:38: cm-LA77N variants=474 retained_points=132406 metadata=414 gzip_bytes=492126 reservation_bytes=1968504 covered_routes=180/0 status=stale
+    geometry_measure_test.go:38: cm-BNA17 variants=558 retained_points=224514 metadata=545 gzip_bytes=938672 reservation_bytes=3754688 covered_routes=262/0 status=stale
+    geometry_measure_test.go:38: cm-YA15B variants=298 retained_points=66465 metadata=356 gzip_bytes=369774 reservation_bytes=1479096 covered_routes=134/0 status=stale
+    geometry_measure_test.go:38: cm-A2L1N variants=291 retained_points=55400 metadata=302 gzip_bytes=212785 reservation_bytes=851140 covered_routes=133/0 status=stale
+    geometry_measure_test.go:49: combined_CM variants=1621 gzip_bytes=2012168 reservation_bytes=8048672
+--- PASS: TestOfficialShapeCacheFootprint (13.33s)
+PASS
+ok  	lisboapublica/internal/app	84.983s
+       88.75 real       213.54 user         6.75 sys
+           984121344  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              106284  page reclaims
+               10681  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   8  messages sent
+                 110  messages received
+               51571  signals received
+               20402  voluntary context switches
+              754138  involuntary context switches
+          6198213150  instructions retired
+          3601607168  cycles elapsed
+            36176472  peak memory footprint

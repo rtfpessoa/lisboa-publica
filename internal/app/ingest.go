@@ -81,16 +81,19 @@ func (f *Fetcher) fetchJSON(ctx context.Context, u string, dst any) error {
 }
 
 type hubPosition struct {
-	Agency    string   `json:"agency_id"`
-	ID        string   `json:"vehicle_id"`
-	Route     string   `json:"route_id"`
-	RouteName string   `json:"route_short_name"`
-	Trip      string   `json:"trip_id"`
-	Lat       float64  `json:"latitude"`
-	Lon       float64  `json:"longitude"`
-	At        int64    `json:"created_at"`
-	Bearing   *float64 `json:"bearing"`
-	Plate     *string  `json:"license_plate"`
+	Status          *string  `json:"current_status"`
+	Stop            *string  `json:"stop_id"`
+	OperationalDate int      `json:"operational_date"`
+	Agency          string   `json:"agency_id"`
+	ID              string   `json:"vehicle_id"`
+	Route           string   `json:"route_id"`
+	RouteName       string   `json:"route_short_name"`
+	Trip            string   `json:"trip_id"`
+	Lat             float64  `json:"latitude"`
+	Lon             float64  `json:"longitude"`
+	At              int64    `json:"created_at"`
+	Bearing         *float64 `json:"bearing"`
+	Plate           *string  `json:"license_plate"`
 }
 type hubPlan struct {
 	ID     string `json:"_id"`
@@ -367,18 +370,23 @@ func (f *Fetcher) cmStatic(ctx context.Context, p provider) (*StaticData, error)
 	sort.Slice(data.Stops, func(i, j int) bool { return data.Stops[i].Id < data.Stops[j].Id })
 	return data, nil
 }
+
+type cmPosition struct {
+	Status  *string  `json:"current_status"`
+	Stop    *string  `json:"stop_id"`
+	ID      string   `json:"id"`
+	Line    string   `json:"line_id"`
+	Trip    string   `json:"trip_id"`
+	Lat     float64  `json:"lat"`
+	Lon     float64  `json:"lon"`
+	At      int64    `json:"timestamp"`
+	Bearing *float64 `json:"bearing"`
+	Model   *string  `json:"model"`
+	Plate   *string  `json:"license_plate"`
+}
+
 func (f *Fetcher) cmLive(ctx context.Context, p provider, now time.Time) ([]api.Vehicle, error) {
-	var raw []struct {
-		ID      string   `json:"id"`
-		Line    string   `json:"line_id"`
-		Trip    string   `json:"trip_id"`
-		Lat     float64  `json:"lat"`
-		Lon     float64  `json:"lon"`
-		At      int64    `json:"timestamp"`
-		Bearing *float64 `json:"bearing"`
-		Model   *string  `json:"model"`
-		Plate   *string  `json:"license_plate"`
-	}
+	var raw []cmPosition
 	if e := f.fetchJSON(ctx, f.CM+"/vehicles", &raw); e != nil {
 		return nil, e
 	}
@@ -397,16 +405,24 @@ func (f *Fetcher) cmLive(ctx context.Context, p provider, now time.Time) ([]api.
 		if at.After(now.Add(providerClockSkew)) {
 			return nil, fmt.Errorf("future CM observation")
 		}
-		v := api.Vehicle{Id: qualify(p.ID, r.ID), SourceId: r.ID, OperatorId: p.ID, RouteName: r.Line, Lat: r.Lat, Lon: r.Lon, ObservedAt: at, CollectedAt: now, PositionKind: api.VehiclePositionKindReported, SourceUrl: f.CM + "/vehicles", Bearing: r.Bearing, Model: r.Model, LicensePlate: r.Plate, Stale: now.Sub(at) > 180*time.Second}
-		if r.Line != "" {
-			v.RouteId = ptr(qualify(p.ID, r.Line))
-		}
-		if r.Trip != "" {
-			v.TripId = ptr(qualify(p.ID, r.Trip))
-		}
+		v := f.cmVehicle(p, r, at, now)
 		out = append(out, v)
 	}
 	return out, nil
+}
+
+func (f *Fetcher) cmVehicle(p provider, r cmPosition, at, now time.Time) api.Vehicle {
+	v := api.Vehicle{Id: qualify(p.ID, r.ID), SourceId: r.ID, OperatorId: p.ID, RouteName: r.Line, Lat: r.Lat, Lon: r.Lon, ObservedAt: at, CollectedAt: now, PositionKind: api.VehiclePositionKindReported, SourceUrl: f.CM + "/vehicles", Bearing: r.Bearing, Model: r.Model, LicensePlate: r.Plate, Stale: now.Sub(at) > 180*time.Second}
+	if r.Line != "" {
+		v.RouteId = ptr(qualify(p.ID, r.Line))
+	}
+	if r.Trip != "" {
+		v.TripId = ptr(qualify(p.ID, r.Trip))
+	}
+	v.CurrentStatus = publishedStopStatus(r.Status)
+	v.SourceStopId = boundedStopReference(r.Stop)
+	enrichStopReference(&v, f.currentStatic(p.ID), true)
+	return v
 }
 
 func activeHubPlan(plans []hubPlan, agency string, today int) *hubPlan {
@@ -479,6 +495,7 @@ func (f *Fetcher) hubVehicle(p provider, raw hubPosition, at, now time.Time) api
 	if trip != "" {
 		item.TripId = ptr(qualify(p.ID, trip))
 	}
+	f.captureHubService(&item, raw, trip)
 	return item
 }
 

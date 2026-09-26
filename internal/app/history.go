@@ -314,5 +314,15 @@ func fleetMatches(v api.FleetVehicle, query string) bool {
 	if v.LicensePlate != nil {
 		text += " " + *v.LicensePlate
 	}
-	return query == "" || strings.Contains(strings.ToLower(text), query)
+	normalized := compactPlate(query)
+	return query == "" || strings.Contains(strings.ToLower(text), query) || (normalized != "" && v.LicensePlate != nil && strings.Contains(compactPlate(*v.LicensePlate), normalized))
+}
+
+func compactPlate(value string) string {
+	return strings.Map(func(r rune) rune {
+		if r == '-' || r == ' ' || r == '\t' || r == '\n' || r == '\r' {
+			return -1
+		}
+		return r
+	}, strings.ToLower(value))
 }

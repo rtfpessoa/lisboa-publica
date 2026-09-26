@@ -50,6 +50,6 @@ test('route overlays start enabled, follow operators and have independent contro
  await bus.check();await expect.poll(()=>operators.at(-1)).toBe('carris');await page.waitForTimeout(500);const after=await canvasShot();expect(after.equals(before)).toBe(false);await bus.uncheck();await page.waitForTimeout(500);expect((await canvasShot()).equals(before)).toBe(true);await bus.check();
  await metro.check();await expect(metro).toBeChecked();await expect(bus).toBeChecked();
  await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click();await expect(page.getByRole('button',{name:'Metro de Lisboa',exact:true})).toHaveAttribute('aria-pressed','true'); // Geometry may already be present from the initial selection in the query cache.
- await bus.uncheck();await expect(bus).not.toBeChecked();await expect(metro).toBeChecked(); // Reuse Metro geometry already present in the query cache.
+ await expect(page.locator('.layer-panel')).toHaveCount(0);await page.getByRole('button',{name:'Camadas do mapa'}).click();await bus.uncheck();await expect(bus).not.toBeChecked();await expect(metro).toBeChecked(); // Reuse Metro geometry already present in the query cache.
  await metro.uncheck();await expect(bus).not.toBeChecked();
 });

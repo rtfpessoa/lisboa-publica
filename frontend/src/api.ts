@@ -116,6 +116,15 @@ export type StopPage = {
     data: Stop[];
     page: Page;
 };
+export type ScheduledEndpoints = {
+    origin_source_stop_id: string;
+    origin_name: string;
+    destination_source_stop_id: string;
+    destination_name: string;
+    source_url: string;
+    /** Explicit validated GTFS service date, YYYY-MM-DD. */
+    service_date: string;
+};
 export type Vehicle = {
     id: string;
     source_id: string;
@@ -146,6 +155,16 @@ export type Vehicle = {
     inactive_at: string;
     /** Position display deadline, one hour after original observation, including current rows so disconnected clients can expire cached data. Clients must remove expired positions even from pinned pages. */
     last_known_expires_at: string | null;
+    /** Published progress relative to a stop, not measured movement; estimated positions imply estimated status. */
+    current_status?: ("STOPPED_AT" | "INCOMING_AT" | "IN_TRANSIT_TO") | null;
+    /** Original stop reference; does not establish the current vehicle location. */
+    source_stop_id?: string | null;
+    /** Exact verified retained application stop reference. */
+    stop_id?: string | null;
+    stop_name?: string | null;
+    /** Validated explicit source service date, YYYY-MM-DD; never inferred from collection time. */
+    operational_date?: string | null;
+    scheduled_service?: ScheduledEndpoints;
 };
 export type VehiclePage = {
     data: Vehicle[];
@@ -156,9 +175,12 @@ export type Trip = {
     operator_id: string;
     route_id: string;
     headsign: string;
+    /** Scheduled departure at the first retained stop in the Lisbon area; not necessarily the full journey origin. */
     planned_departure: string;
+    /** Scheduled arrival at the last retained stop in the Lisbon area; not necessarily the full journey destination. */
     planned_end: string;
     kind: "scheduled";
+    scheduled_service?: ScheduledEndpoints;
 };
 export type TripPage = {
     data: Trip[];

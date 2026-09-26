@@ -73,19 +73,20 @@ func optional(s string) *string {
 
 // StaticData contains one operator’s normalized published routes, stops and schedule.
 type StaticData struct {
-	Routes          []api.RouteDetail   `json:"routes"`
-	Stops           []api.Stop          `json:"stops"`
-	Schedule        *Schedule           `json:"schedule,omitempty"`
-	Models          map[string]Metadata `json:"models,omitempty"`
-	PlanID          string              `json:"plan_id"`
-	ValidFrom       string              `json:"valid_from"`
-	ValidUntil      string              `json:"valid_until"`
-	Source          string              `json:"source"`
-	Updated         time.Time           `json:"updated"`
-	Shapes          []api.RouteShape    `json:"shapes,omitempty"`
-	GeometryUpdated *time.Time          `json:"geometry_updated,omitempty"`
-	GeometryError   *string             `json:"geometry_error,omitempty"`
-	GeometryPartial bool                `json:"geometry_partial,omitempty"`
+	Routes             []api.RouteDetail   `json:"routes"`
+	Stops              []api.Stop          `json:"stops"`
+	Schedule           *Schedule           `json:"schedule,omitempty"`
+	Models             map[string]Metadata `json:"models,omitempty"`
+	PlanID             string              `json:"plan_id"`
+	ValidFrom          string              `json:"valid_from"`
+	ValidUntil         string              `json:"valid_until"`
+	Source             string              `json:"source"`
+	Updated            time.Time           `json:"updated"`
+	Shapes             []api.RouteShape    `json:"shapes,omitempty"`
+	GeometryUpdated    *time.Time          `json:"geometry_updated,omitempty"`
+	GeometryError      *string             `json:"geometry_error,omitempty"`
+	CPJourneyEndpoints bool                `json:"cp_journey_endpoints,omitempty"`
+	GeometryPartial    bool                `json:"geometry_partial,omitempty"`
 }
 
 // Metadata contains published vehicle model and registration fields.

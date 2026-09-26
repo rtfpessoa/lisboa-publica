@@ -27,6 +27,7 @@ type gtfsReader struct {
 	badShapes      map[string]bool
 	geometryFailed bool
 	routeStops     map[string]map[string]bool
+	endpointNames  map[string]string
 }
 
 func readGTFS(blob []byte, p provider, planID, from, until, source string, now time.Time) (*StaticData, error) {
@@ -34,8 +35,8 @@ func readGTFS(blob []byte, p provider, planID, from, until, source string, now t
 	if err != nil {
 		return nil, err
 	}
-	data := &StaticData{Models: map[string]Metadata{}, PlanID: planID, ValidFrom: from, ValidUntil: until, Source: source, Updated: now, Schedule: &Schedule{Calendars: map[string]Calendar{}, Exceptions: map[string]map[string]int{}, Parents: map[string]string{}}}
-	reader := &gtfsReader{provider: p, data: data, routes: map[string]*api.RouteDetail{}, stops: map[string]*api.Stop{}, shapes: map[string][]shapePoint{}, trips: map[string]*ScheduledTrip{}, shapeForRoute: map[string]string{}, directions: map[string]*int{}, routeStops: map[string]map[string]bool{}}
+	data := &StaticData{CPJourneyEndpoints: p.ID == "cp", Models: map[string]Metadata{}, PlanID: planID, ValidFrom: from, ValidUntil: until, Source: source, Updated: now, Schedule: &Schedule{Calendars: map[string]Calendar{}, Exceptions: map[string]map[string]int{}, Parents: map[string]string{}}}
+	reader := &gtfsReader{provider: p, data: data, routes: map[string]*api.RouteDetail{}, stops: map[string]*api.Stop{}, shapes: map[string][]shapePoint{}, trips: map[string]*ScheduledTrip{}, shapeForRoute: map[string]string{}, directions: map[string]*int{}, routeStops: map[string]map[string]bool{}, endpointNames: map[string]string{}}
 	tables := []struct {
 		name  string
 		visit func(map[string]string) error
@@ -78,14 +79,29 @@ func (g *gtfsReader) route(m map[string]string) error {
 }
 
 func (g *gtfsReader) stop(m map[string]string) error {
+	if err := g.rememberStop(m); err != nil {
+		return err
+	}
+	lat, lon, err := gtfsStopCoordinates(m)
+	if err != nil {
+		return err
+	}
+	return g.addLocalStop(m, lat, lon)
+}
+
+func gtfsStopCoordinates(m map[string]string) (float64, float64, error) {
 	lat, e := strconv.ParseFloat(m["stop_lat"], numericBitSize)
 	if e != nil {
-		return fmt.Errorf("invalid GTFS stop latitude")
+		return 0, 0, fmt.Errorf("invalid GTFS stop latitude")
 	}
 	lon, e := strconv.ParseFloat(m["stop_lon"], numericBitSize)
 	if e != nil {
-		return fmt.Errorf("invalid GTFS stop longitude")
+		return 0, 0, fmt.Errorf("invalid GTFS stop longitude")
 	}
+	return lat, lon, nil
+}
+
+func (g *gtfsReader) addLocalStop(m map[string]string, lat, lon float64) error {
 	if !validPosition(lat, lon) {
 		return nil
 	}
@@ -146,6 +162,11 @@ func (g *gtfsReader) stopTime(m map[string]string) error {
 	if t == nil {
 		return fmt.Errorf("stop_time has unknown trip")
 	}
+	seq, e := strconv.Atoi(m["stop_sequence"])
+	if e != nil || seq < 0 {
+		return fmt.Errorf("invalid stop sequence")
+	}
+	g.rememberEndpoint(t, m["stop_id"], seq)
 	if g.stops[m["stop_id"]] == nil {
 		return nil
 	}
@@ -154,10 +175,6 @@ func (g *gtfsReader) stopTime(m map[string]string) error {
 		return e
 	}
 	dep, e := parseClock(m["departure_time"])
-	if e != nil {
-		return e
-	}
-	seq, e := strconv.Atoi(m["stop_sequence"])
 	if e != nil {
 		return e
 	}

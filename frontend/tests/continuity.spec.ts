@@ -27,14 +27,14 @@ async function continuityFixture(page:Page){
  return {epoch,operator,setPhase:(value:typeof phase,at=epoch)=>{phase=value;collected=at}};
 }
 
-test('selected CP retains one dimmed marker, truthful counts and inactive detail through gaps',async({page})=>{
+test('selected CP retains one dimmed marker, truthful counts and no-update detail through gaps',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));const fixture=await continuityFixture(page);await page.clock.install({time:new Date(fixture.epoch)});
  await page.goto('/');await page.getByRole('button',{name:'CP',exact:true}).click();await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click();
  const count=()=>page.evaluate(()=>(window as unknown as {vehicleFeatures:unknown[]}).vehicleFeatures.length);
  await expect.poll(count).toBe(1);await expect(page.locator('.live-metrics .metric').first()).toContainText('1');
  fixture.setPhase('missing');await page.clock.fastForward(6000);await expect(page.locator('.live-metrics')).toContainText('posições anteriores');await expect(page.locator('.live-metrics .metric').first()).toContainText('0');await expect.poll(count).toBe(1);
  const map=page.locator('.map canvas');await expect(map).toBeVisible();const box=await map.boundingBox();await page.mouse.click(box!.x+box!.width/2,box!.y+box!.height/2);await expect(page.locator('.detail-panel')).toContainText('Última posição reportada');await expect(page.locator('.detail-panel')).toContainText('Publicado');
- fixture.setPhase('error');await page.clock.fastForward(300000);await expect(page.locator('.detail-panel')).toContainText('Inativo / sem atualização');await expect(page.locator('.live-metrics .metric').first()).toContainText('—');await expect(page.getByRole('button',{name:'CP',exact:true})).toHaveAttribute('aria-pressed','true');
+ fixture.setPhase('error');await page.clock.fastForward(300000);await expect(page.locator('.detail-panel')).toContainText('Sem atualização');await expect(page.locator('.live-metrics .metric').first()).toContainText('—');await expect(page.getByRole('button',{name:'CP',exact:true})).toHaveAttribute('aria-pressed','true');
  await page.clock.fastForward(3300000);await expect.poll(count).toBe(0);await expect(page.locator('.detail-panel')).toContainText('Posição anterior expirada');
  fixture.setPhase('recovery',fixture.epoch+3610000);await page.clock.fastForward(10000);await expect.poll(count).toBe(1);await expect(page.locator('.detail-panel')).not.toContainText('expirada');expect(errors).toEqual([]);
 });

@@ -78,7 +78,9 @@ func (d *StaticData) attachRepresentativeGeometry() {
 func reusableStaticCache(p provider, state *State) bool {
 	op := state.Operators[p.ID]
 	fresh := op.StaticStatus == "ok" && op.StaticUpdatedAt != nil && time.Since(*op.StaticUpdatedAt) < staticCacheLifetime
-	return fresh && !legacyRailFerryGeometry(p, state.Static[p.ID])
+	data := state.Static[p.ID]
+	legacyEndpoints := p.ID == "cp" && data != nil && !data.CPJourneyEndpoints
+	return fresh && !legacyEndpoints && !legacyRailFerryGeometry(p, data)
 }
 
 func legacyRailFerryGeometry(p provider, d *StaticData) bool {

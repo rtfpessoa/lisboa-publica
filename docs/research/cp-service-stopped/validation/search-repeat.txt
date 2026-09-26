@@ -1,0 +1,27 @@
+npm notice run lisboa-publica@1.0.0 test
+npm notice run playwright test tests/availability.spec.ts -g search rows remain readable --repeat-each=5
+
+Running 10 tests using 1 worker
+
+(node:20730) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/availability.spec.ts:54:72 › search rows remain readable and clickable at 1280x720 (2.8s)
+  ✓   2 tests/availability.spec.ts:54:72 › search rows remain readable and clickable at 390x667 (1.8s)
+(node:20860) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   3 tests/availability.spec.ts:54:72 › search rows remain readable and clickable at 1280x720 (2.0s)
+  ✓   4 tests/availability.spec.ts:54:72 › search rows remain readable and clickable at 390x667 (1.9s)
+(node:20957) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   5 tests/availability.spec.ts:54:72 › search rows remain readable and clickable at 1280x720 (2.0s)
+  ✓   6 tests/availability.spec.ts:54:72 › search rows remain readable and clickable at 390x667 (1.8s)
+(node:21067) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   7 tests/availability.spec.ts:54:72 › search rows remain readable and clickable at 1280x720 (2.1s)
+  ✓   8 tests/availability.spec.ts:54:72 › search rows remain readable and clickable at 390x667 (2.0s)
+(node:21192) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   9 tests/availability.spec.ts:54:72 › search rows remain readable and clickable at 1280x720 (2.1s)
+  ✓  10 tests/availability.spec.ts:54:72 › search rows remain readable and clickable at 390x667 (1.7s)
+
+  10 passed (23.9s)

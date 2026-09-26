@@ -51,6 +51,7 @@ func (s *StopTime) UnmarshalJSON(b []byte) error {
 type ScheduledTrip struct {
 	ID, Route, Service, Headsign, Shape string
 	Times                               []StopTime
+	Endpoints                           *tripEndpoints `json:"endpoints,omitempty"`
 }
 
 // Schedule combines planned trips, service calendars and station relationships.
@@ -197,7 +198,7 @@ func (q scheduleQuery) includesTrip(t ScheduledTrip, day time.Time) bool {
 
 func (q scheduleQuery) trip(t ScheduledTrip, day time.Time) api.Trip {
 	base := serviceStart(day)
-	return api.Trip{Id: qualify(q.operator, day.Format("20060102")+":"+t.ID), OperatorId: q.operator, RouteId: qualify(q.operator, t.Route), Headsign: t.Headsign, PlannedDeparture: base.Add(time.Duration(t.Times[0].Departure) * time.Second), PlannedEnd: base.Add(time.Duration(t.Times[len(t.Times)-1].Arrival) * time.Second), Kind: api.TripKindScheduled}
+	return api.Trip{Id: qualify(q.operator, day.Format("20060102")+":"+t.ID), OperatorId: q.operator, RouteId: qualify(q.operator, t.Route), Headsign: t.Headsign, PlannedDeparture: base.Add(time.Duration(t.Times[0].Departure) * time.Second), PlannedEnd: base.Add(time.Duration(t.Times[len(t.Times)-1].Arrival) * time.Second), Kind: api.TripKindScheduled, ScheduledService: t.scheduledEndpoints(q.data.Source, day)}
 }
 
 func (q scheduleQuery) stopVisits(t ScheduledTrip, trip api.Trip, base time.Time) ([]api.Arrival, error) {

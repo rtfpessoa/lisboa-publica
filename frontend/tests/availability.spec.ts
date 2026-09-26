@@ -9,6 +9,8 @@ async function fixture(page:Page){
   const u=new URL(r.request().url()),path=u.pathname;let data:unknown=paged([]);
   if(path.endsWith('/config'))data={dev_auth:false,history_retention_days:30,history_resolution_seconds:300,history_collection_status:'collecting',live_refresh_seconds:5};
   if(path.endsWith('/health'))data={status:'ok'};
+  if(path.endsWith('/metro/status'))data={available:false,message:'Fonte indisponível',lines:[]};
+  if(path.endsWith('/me'))return r.fulfill({status:401,json:{message:'Sessão necessária'}});
   if(path.endsWith('/operators'))data=paged(operators);
   if(path.endsWith('/operator-coverage'))data=paged(rows);
   if(path.endsWith('/metrics'))data={speed_kmh:null,first_snapshot:now};
@@ -99,7 +101,7 @@ test('busy reads honor Retry-After and recover without losing fleet data',async(
  await page.goto('/');await page.getByRole('button',{name:'Frota',exact:true}).click();await page.getByRole('button',{name:'Veículos',exact:true}).click();
  await expect.poll(()=>calls.length).toBe(1);await page.clock.fastForward(1500);expect(calls).toHaveLength(1);
  await page.clock.fastForward(1100);await expect.poll(()=>calls.length).toBe(2);
- await page.clock.fastForward(2600);await expect(page.locator('.page-panel table')).toContainText('AB12CD');expect(calls).toHaveLength(3);
+ await page.clock.fastForward(2600);await expect(page.locator('.page-panel table')).toContainText('AB-12-CD');expect(calls).toHaveLength(3);
  await expect(page.locator('.page-panel')).not.toContainText('Frota indisponível devido a erro.');
 });
 
@@ -109,5 +111,78 @@ test('persistent busy reads stop after bounded retries and expose an error',asyn
  await page.goto('/');await page.getByRole('button',{name:'Frota',exact:true}).click();await page.getByRole('button',{name:'Veículos',exact:true}).click();
  await expect.poll(()=>calls).toBe(1);
  for(const delay of [1600,2600,4600,8600]){const before=calls;await page.clock.fastForward(delay);await expect.poll(async()=>{await page.clock.fastForward(100);return calls}).toBe(before+1)}
- await expect(page.locator('.page-panel')).toContainText('Frota indisponível devido a erro.');await page.clock.fastForward(10000);expect(calls).toBe(5); // The separate 30-second polling cycle can start a new bounded read.
+ // Receiving the fifth HTTP response can precede React Query's scheduled notification; flush the paused clock while waiting for the actual UI state.
+ await expect.poll(async()=>{await page.clock.fastForward(1);return page.locator('.page-panel').textContent()}).toContain('Frota indisponível devido a erro.');await page.clock.fastForward(10000);expect(calls).toBe(5); // The separate 30-second polling cycle can start a new bounded read.
+});
+
+for(const width of [1280,390])test(`popups close by button, outside click and Escape at width ${width}`,async({page})=>{
+ await fixture(page);await page.setViewportSize({width,height:800});await page.goto('/');
+ if(width<760)await page.getByRole('button',{name:'Abrir operadores'}).click();
+ for(const [open,label,close] of [
+  ['Fontes e disponibilidade','Fontes e disponibilidade','Fechar fontes'],
+  ['Conta e chaves API','Conta e chaves API','Fechar conta'],
+  ['Velocidade amostral','Gráfico expandido','Fechar gráfico'],
+ ] as const){
+  const launch=()=>page.getByRole('button',{name:open,exact:true}).click();
+  await launch();const dialog=page.getByRole('dialog',{name:label});await expect(dialog).toBeVisible();
+  await dialog.getByRole('heading').first().click();await expect(dialog).toBeVisible();
+  await page.getByRole('button',{name:close,exact:true}).click();await expect(dialog).toHaveCount(0);
+  await launch();await page.locator('.modal-shade').click({position:{x:5,y:5}});await expect(dialog).toHaveCount(0);
+  await launch();await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);
+ }
+});
+
+for(const width of [1280,390])test(`search and detail popups dismiss without losing operator selection at width ${width}`,async({page})=>{
+ await fixture(page);
+ await page.route('**/api/v1/stops?**',r=>r.fulfill({json:{data:[{id:'metro:roma',source_id:'roma',operator_id:'metro',name:'Roma',lat:38.75,lon:-9.14,route_ids:[]}],page:{limit:500,offset:0,total:1,has_more:false,revision:'test'}}}));
+ await page.setViewportSize({width,height:800});await page.goto('/');
+ if(width<760)await page.getByRole('button',{name:'Abrir pesquisa'}).click();
+ const input=page.getByLabel('Pesquisar carreira ou paragem');
+ await input.fill('Roma');await expect(page.locator('.search-results button').first()).toBeVisible();
+ await input.click();await expect(page.locator('.search-popup')).toBeVisible();
+ await page.getByRole('button',{name:'Fechar resultados da pesquisa'}).click();await expect(page.locator('.search-popup')).toHaveCount(0);await expect(input).toHaveValue('');
+ await input.fill('Roma');await expect(page.locator('.search-results button').first()).toBeVisible();await page.locator('.map canvas').click({position:{x:width-10,y:400}});await expect(page.locator('.search-popup')).toHaveCount(0);
+ if(width<760){await expect(page.locator('.sidebar')).not.toHaveClass(/visible/);await page.getByRole('button',{name:'Abrir pesquisa'}).click()}
+ await input.fill('Roma');await expect(page.locator('.search-results button').first()).toBeVisible();await page.keyboard.press('Escape');await expect(page.locator('.search-popup')).toHaveCount(0);
+ await input.fill('Roma');await page.locator('.search-results button').first().click();const detail=page.locator('.detail-panel');await expect(detail).toContainText('Roma');
+ await detail.getByRole('heading').first().click();await expect(detail).toBeVisible();await page.getByRole('button',{name:'Fechar detalhes'}).click();await expect(detail).toHaveCount(0);
+ if(width<760)await page.getByRole('button',{name:'Abrir pesquisa'}).click();await input.fill('Roma');await page.locator('.search-results button').first().click();await expect(detail).toBeVisible();
+ await page.locator('.map canvas').click({position:{x:width-10,y:250}});await expect(detail).toHaveCount(0);
+ if(width<760)await page.getByRole('button',{name:'Abrir pesquisa'}).click();await input.fill('Roma');await page.locator('.search-results button').first().click();await expect(detail).toBeVisible();await page.keyboard.press('Escape');await expect(detail).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Metro de Lisboa',exact:true})).toHaveAttribute('aria-pressed','true');
+});
+
+for(const width of [1280,390])test(`map layers close without resetting toggles at width ${width}`,async({page})=>{
+ await fixture(page);await page.setViewportSize({width,height:800});await page.goto('/');const launch=page.getByRole('button',{name:'Camadas do mapa'}),panel=page.locator('.layer-panel');
+ await launch.click();await page.getByRole('checkbox',{name:'Linhas de comboio'}).uncheck();await expect(panel).toBeVisible();
+ await page.getByRole('button',{name:'Fechar camadas'}).click();await expect(panel).toHaveCount(0);await expect(launch).toBeFocused();
+ await launch.click();await expect(page.getByRole('checkbox',{name:'Linhas de comboio'})).not.toBeChecked();await panel.getByRole('heading').click();await expect(panel).toBeVisible();
+ await page.locator('.map canvas').click({position:{x:width-10,y:250}});await expect(panel).toHaveCount(0);
+ await launch.click();await page.keyboard.press('Escape');await expect(panel).toHaveCount(0);await expect(launch).toBeFocused();
+ await launch.click();await expect(page.getByRole('checkbox',{name:'Linhas de comboio'})).not.toBeChecked();await expect(page.getByRole('checkbox',{name:'Linhas de metro'})).toBeChecked();
+});
+
+for(const width of [1280,390])test(`closing route details preserves an explicit removable filter at width ${width}`,async({page})=>{
+ await fixture(page);await page.setViewportSize({width,height:800});
+ await page.route('**/api/v1/routes?**',r=>r.fulfill({json:{data:[{id:'metro:1',operator_id:'metro',short_name:'Azul',long_name:'Linha Azul',color:'#00a',stop_ids:[]}],page:{limit:8,offset:0,total:1,has_more:false,revision:'test'}}}));
+ await page.route('**/api/v1/routes/*',r=>r.fulfill({json:{id:'metro:1',operator_id:'metro',short_name:'Azul',long_name:'Linha Azul',color:'#00a',stops:[]}}));
+ await page.goto('/');if(width<760)await page.getByRole('button',{name:'Abrir pesquisa'}).click();await page.getByLabel('Pesquisar carreira ou paragem').fill('Azul');await page.locator('.search-results button').first().click();
+ const detail=page.locator('.detail-panel');await expect(detail).toBeVisible();await page.locator('.map canvas').click({position:{x:width-10,y:250}});await expect(detail).toHaveCount(0);
+ if(width<760)await page.getByRole('button',{name:'Abrir pesquisa'}).click();await expect(page.locator('.route-filter')).toContainText('Azul');await page.getByRole('button',{name:'Abrir detalhes da carreira selecionada'}).click();await expect(detail).toBeVisible();await detail.getByRole('heading').click();if(width<760)await expect(page.locator('.sidebar')).not.toHaveClass(/visible/);
+ await page.getByRole('button',{name:'Fechar detalhes'}).click();await expect(detail).toHaveCount(0);await expect(page.locator('.route-filter')).toContainText('Azul');
+ if(width<760)await page.getByRole('button',{name:'Abrir pesquisa'}).click();await page.getByRole('button',{name:'Abrir detalhes da carreira selecionada'}).click();await page.keyboard.press('Escape');await expect(detail).toHaveCount(0);await expect(page.locator('.route-filter')).toContainText('Azul');
+ if(width<760)await page.getByRole('button',{name:'Abrir pesquisa'}).click();await page.getByRole('button',{name:'Remover filtro de carreira'}).click();await expect(page.locator('.route-filter')).toHaveCount(0);await expect(page.getByRole('button',{name:'Metro de Lisboa',exact:true})).toHaveAttribute('aria-pressed','true');
+});
+
+for(const width of [1280,390])test(`historical ranked route opens live detail at width ${width}`,async({page})=>{
+ await fixture(page);await page.setViewportSize({width,height:800});
+ await page.route('**/api/v1/rankings?**',r=>r.fulfill({json:{data:[{id:'metro:1',route_id:'metro:1',route_name:'Azul',operator_id:'metro',reported_vehicles:0,estimated_vehicles:2}],page:{limit:500,offset:0,total:1,has_more:false,revision:'test'}}}));
+ await page.route('**/api/v1/routes/*',r=>r.fulfill({json:{id:'metro:1',operator_id:'metro',short_name:'Azul',long_name:'Linha Azul',color:'#00a',stops:[]}}));
+ if(width<760)await page.route('**/api/v1/stops?**',r=>r.fulfill({json:{data:[{id:'metro:roma',source_id:'roma',operator_id:'metro',name:'Roma',lat:38.75,lon:-9.14,route_ids:[]}],page:{limit:500,offset:0,total:1,has_more:false,revision:'test'}}}));
+ await page.goto('/');
+ if(width<760){await page.getByRole('button',{name:'Abrir pesquisa'}).click();await page.getByLabel('Pesquisar carreira ou paragem').fill('Roma');await page.locator('.search-results button').first().click();await expect(page.locator('.detail-panel')).toContainText('Roma');const history=page.locator('.compact-nav').getByRole('button',{name:'Histórico',exact:true});await history.focus();await page.keyboard.press('Enter')}
+ else await page.getByRole('button',{name:'Histórico',exact:true}).click();
+ await page.getByRole('button',{name:'Viagens detetadas',exact:true}).click();await page.getByRole('button',{name:'Azul',exact:true}).click();
+ await expect(page.locator('.detail-panel')).toContainText('Linha Azul');await expect(page.locator('.detail-panel')).not.toContainText('Roma');await page.locator('.detail-panel').getByRole('heading').click();if(width<760)await expect(page.locator('.sidebar')).not.toHaveClass(/visible/);
+ await expect(page.getByRole('button',{name:'Metro de Lisboa',exact:true})).toHaveAttribute('aria-pressed','true');
 });

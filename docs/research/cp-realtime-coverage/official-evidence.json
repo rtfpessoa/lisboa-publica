@@ -1,0 +1,256 @@
+{
+  "checked_at_utc": "2026-09-26T18:33\u201318:44Z",
+  "observations": [
+    {
+      "sample": "hub-positions",
+      "url": "https://go.tmlmobilidade.pt/hub/api/v1/vehicles/positions",
+      "generated_at_ms": 1790447580260,
+      "total_rows": 771,
+      "cp_rows": 0,
+      "cp_rows_in_oriente_box": 0,
+      "cp_example": []
+    },
+    {
+      "sample": "hub-current-positions",
+      "url": "https://go.tmlmobilidade.pt/hub/api/v1/realtime/vehicles/positions",
+      "generated_at_ms": 1790448102357,
+      "total_rows": 798,
+      "cp_rows": 15,
+      "cp_rows_in_oriente_box": 0,
+      "cp_example": [
+        {
+          "_id": "27e244333dfdae57f7d19f133b178920f76570f522a211f250d2f22c1ae4d931",
+          "agency_id": "N18KL",
+          "bearing": 276,
+          "bearing_method": "inferred",
+          "calendar_date": "2026-09-26",
+          "created_at": 1790448056000,
+          "current_status": "STOPPED_AT",
+          "direction_id": "0",
+          "geohash": "eyckdxt",
+          "latitude": 38.8023,
+          "license_plate": null,
+          "longitude": -9.3747,
+          "operational_date": 20260926,
+          "pattern_id": "[N18KL]SINTRA_4_0",
+          "received_at": 1790448057732,
+          "ride_id": "76XA2-3-20260926-18871_20251214",
+          "route_id": "[N18KL]SINTRA_4",
+          "route_short_name": "Sintra",
+          "shape_id": "[76XA2][N18KL]SINTRA_4_0",
+          "speed": null,
+          "stop_id": null,
+          "trip_id": "[76XA2][N18KL]18871_20251214",
+          "vehicle_id": "[N18KL]18871"
+        }
+      ]
+    },
+    {
+      "sample": "hub-legacy-paired",
+      "url": "https://go.tmlmobilidade.pt/hub/api/v1/vehicles/positions",
+      "generated_at_ms": 1790448135079,
+      "total_rows": 782,
+      "cp_rows": 6,
+      "cp_rows_in_oriente_box": 0,
+      "cp_example": [
+        {
+          "_id": "27e244333dfdae57f7d19f133b178920f76570f522a211f250d2f22c1ae4d931",
+          "agency_id": "N18KL",
+          "bearing": 276,
+          "bearing_method": "inferred",
+          "calendar_date": "2026-09-26",
+          "created_at": 1790448056000,
+          "current_status": "STOPPED_AT",
+          "direction_id": "0",
+          "geohash": "eyckdxt",
+          "latitude": 38.8023,
+          "license_plate": null,
+          "longitude": -9.3747,
+          "operational_date": 20260926,
+          "pattern_id": "[N18KL]SINTRA_4_0",
+          "received_at": 1790448057732,
+          "ride_id": "76XA2-3-20260926-18871_20251214",
+          "route_id": "[N18KL]SINTRA_4",
+          "route_short_name": "Sintra",
+          "shape_id": "[76XA2][N18KL]SINTRA_4_0",
+          "speed": null,
+          "stop_id": null,
+          "trip_id": "[76XA2][N18KL]18871_20251214",
+          "vehicle_id": "[N18KL]18871"
+        }
+      ]
+    },
+    {
+      "sample": "hub-current-paired",
+      "url": "https://go.tmlmobilidade.pt/hub/api/v1/realtime/vehicles/positions",
+      "generated_at_ms": 1790448135079,
+      "total_rows": 782,
+      "cp_rows": 6,
+      "cp_rows_in_oriente_box": 0,
+      "cp_example": [
+        {
+          "_id": "27e244333dfdae57f7d19f133b178920f76570f522a211f250d2f22c1ae4d931",
+          "agency_id": "N18KL",
+          "bearing": 276,
+          "bearing_method": "inferred",
+          "calendar_date": "2026-09-26",
+          "created_at": 1790448056000,
+          "current_status": "STOPPED_AT",
+          "direction_id": "0",
+          "geohash": "eyckdxt",
+          "latitude": 38.8023,
+          "license_plate": null,
+          "longitude": -9.3747,
+          "operational_date": 20260926,
+          "pattern_id": "[N18KL]SINTRA_4_0",
+          "received_at": 1790448057732,
+          "ride_id": "76XA2-3-20260926-18871_20251214",
+          "route_id": "[N18KL]SINTRA_4",
+          "route_short_name": "Sintra",
+          "shape_id": "[76XA2][N18KL]SINTRA_4_0",
+          "speed": null,
+          "stop_id": null,
+          "trip_id": "[76XA2][N18KL]18871_20251214",
+          "vehicle_id": "[N18KL]18871"
+        }
+      ]
+    },
+    {
+      "captured_at_utc": "2026-09-26T18:37:30.640Z",
+      "url": "https://api-gateway.cp.pt/cp/services/travel-api/trains",
+      "status": 200,
+      "rows": 2148,
+      "fields": [
+        "trainNumber",
+        "trainService",
+        "trainOrigin",
+        "trainDestination"
+      ],
+      "example": [
+        {
+          "trainNumber": 574,
+          "trainService": {
+            "code": "2",
+            "designation": "Intercidades"
+          },
+          "trainOrigin": {
+            "code": "94-31039",
+            "designation": "Lisboa Oriente"
+          },
+          "trainDestination": {
+            "code": "94-73007",
+            "designation": "Faro"
+          }
+        }
+      ]
+    },
+    {
+      "captured_at_utc": "2026-09-26T18:37:30.640Z",
+      "url": "https://api-gateway.cp.pt/cp/services/travel-api/stations/94-31039/timetable/2026-09-26",
+      "status": 200,
+      "rows": 32,
+      "published_delay_rows": 8,
+      "example": [
+        {
+          "trainNumber": 4432,
+          "trainService": {
+            "code": "R",
+            "designation": "Regional"
+          },
+          "trainOrigin": {
+            "code": "94-40154",
+            "designation": "Tomar"
+          },
+          "trainDestination": {
+            "code": "94-30007",
+            "designation": "Lisboa Santa Apolonia"
+          },
+          "arrivalTime": "20:12",
+          "departureTime": "20:13",
+          "platform": "8",
+          "delay": 2,
+          "occupancy": null,
+          "supression": null,
+          "ETA": "20:14",
+          "ETD": "20:15"
+        }
+      ]
+    },
+    {
+      "captured_at_utc": "2026-09-26T18:44:01.453Z",
+      "url": "https://api-gateway.cp.pt/cp/services/travel-api/trains/574/timetable/2026-09-26",
+      "status": 200,
+      "example": {
+        "trainNumber": 574,
+        "serviceCode": {
+          "code": "IC",
+          "designation": "Intercidades"
+        },
+        "lastStationCode": "94-31039",
+        "delay": 72,
+        "latitude": null,
+        "longitude": null,
+        "status": "AT_ORIGIN",
+        "hasDisruptions": false
+      },
+      "stop_example": [
+        {
+          "station": {
+            "code": "94-31039",
+            "designation": "Lisboa Oriente"
+          },
+          "arrival": null,
+          "departure": "18:32",
+          "platform": "7",
+          "latitude": "38.767757415771484",
+          "longitude": "-9.09909439086914",
+          "delay": 72,
+          "supression": null,
+          "ETA": null,
+          "ETD": null
+        }
+      ]
+    }
+  ],
+  "tml_predictions": {
+    "url": "https://go.tmlmobilidade.pt/hub/api/v1/realtime/eta",
+    "total_rows": 16249,
+    "cp_rows": 129,
+    "oriente_example": [
+      {
+        "trip_id": "[76XA2][N18KL]16038_20251214",
+        "vehicle_id": "16038",
+        "stop_sequence": 13,
+        "stop_id": "253542",
+        "stop_name": "Lisboa Oriente",
+        "eta_seconds": 138,
+        "eta_at": 1790448240000
+      }
+    ],
+    "warning": "eta_at is predicted time; no observation timestamp in these rows. Negative eta_seconds rows also occur."
+  },
+  "app_sample": {
+    "url": "https://lisboapublica.rtfpessoa.xyz/api/v1/vehicles?operators=cp&limit=500",
+    "total": 21,
+    "last_known": 21,
+    "current": 0
+  },
+  "access": {
+    "travel_api_anonymous_stations_status": 401,
+    "public_cp_site_requests_status": 200,
+    "website_header_names": [
+      "X-Api-Key",
+      "x-cp-connect-id",
+      "x-cp-connect-secret"
+    ],
+    "credential_values_recorded": false,
+    "own_access_and_quota_verified": false,
+    "travel_source_observation_timestamp_present_in_inspected_payloads": false
+  },
+  "oriente_box": {
+    "center_lat": 38.7677574,
+    "center_lon": -9.0990944,
+    "strict_absolute_delta_degrees": 0.008,
+    "warning": "Axis-aligned comparison box, not a distance radius or station platform boundary."
+  }
+}
