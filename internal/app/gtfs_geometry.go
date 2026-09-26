@@ -1,6 +1,9 @@
 package app
 
-import "lisboapublica/internal/api"
+import (
+	"lisboapublica/internal/api"
+	"time"
+)
 
 func stripGeometry(d *StaticData) {
 	d.Shapes = nil
@@ -68,4 +71,19 @@ func (d *StaticData) attachRepresentativeGeometry() {
 			}
 		}
 	}
+}
+
+// Pre-overlay caches have never attempted geometry. Refresh those once through
+// the existing collector; recorded absence/errors still use the normal TTL.
+func reusableStaticCache(p provider, state *State) bool {
+	op := state.Operators[p.ID]
+	fresh := op.StaticStatus == "ok" && op.StaticUpdatedAt != nil && time.Since(*op.StaticUpdatedAt) < staticCacheLifetime
+	return fresh && !legacyRailFerryGeometry(p, state.Static[p.ID])
+}
+
+func legacyRailFerryGeometry(p provider, d *StaticData) bool {
+	if p.Mode != "train" && p.Mode != "ferry" {
+		return false
+	}
+	return d != nil && len(d.Shapes) == 0 && d.GeometryUpdated == nil && d.GeometryError == nil
 }

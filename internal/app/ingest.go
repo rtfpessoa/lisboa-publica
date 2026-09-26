@@ -171,9 +171,9 @@ func (f *Fetcher) refreshStatic(ctx context.Context) {
 		err = fmt.Errorf("hub plans returned error")
 	}
 	today, _ := strconv.Atoi(time.Now().In(lisbon).Format("20060102"))
+	state, _ := f.Cache.state("")
 	for _, p := range providers {
-		existing := f.Cache.operator(p.ID)
-		if existing.StaticStatus == "ok" && existing.StaticUpdatedAt != nil && time.Since(*existing.StaticUpdatedAt) < staticCacheLifetime {
+		if reusableStaticCache(p, state) {
 			continue
 		}
 		if ctx.Err() != nil {
