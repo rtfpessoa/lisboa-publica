@@ -31,3 +31,10 @@ Out of scope: new upstream endpoints/integrations, depot inference, planned-freq
 [CM API v2](https://github.com/carrismetropolitana/api/blob/v2/README.md) documents /metrics/service/all and observed arrivals, while the current application imports positions/schedules and does not validate or collect those metrics. Prior statements that every provider inherently lacks operational metrics were too broad. This round makes current application support explicit. [TML Metro adapter](https://github.com/tmlmobilidade/go/blob/prd/modules/tracker/apps/pt-tml-ml-api-fetch/src/index.ts) infers positions and publishes null speed. Existing fleet evidence establishes no verified vehicle-to-depot join in the integrated data.
 
 Plan review initially requested effective route/entity capability checks. Main added mixed-operator Metro-route and estimated-vehicle detail regressions; the existing real quasar-alpha/xhigh plan reviewer then recommended acceptance. Before changes, eight regression cases reproduced the defects; the single-point graph check was corrected to assert a visible dot rather than an empty line group. Targeted13browserchecks passed20.2s; final local suite/deployment review follow.
+
+
+## Delivered verification
+
+Executable72c8a63 is deployed through the existing Compose/shared Caddy/external Cockroach setup. Full local browser21pass34.6s; affected final depot503case1pass4.3s; latest TS/Vite production build passes. Public dashboard suite3pass/1intentionaldev-authskip49.8s and separate real-data short-height search/support-state proof pass with zero page errors. Search list128px inner height in both short viewports, result click and mobile overflow verified. Twelve API checks200, all eight sourcesok, healthy0OOM/restarts and peak776.7MiB below1280MiB. Production evidence and capability limitations are recorded in VALIDATION.md.
+
+Independent final quasar-alpha/xhigh review recommends acceptance of deployed72c8a63 with no blockers; main confirms requirements. The CM service-metrics API remains a clearly documented future integration opportunity.
