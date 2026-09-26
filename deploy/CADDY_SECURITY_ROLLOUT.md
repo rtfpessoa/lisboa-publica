@@ -1,6 +1,8 @@
-# Shared Caddy TLS patch: prepared, not deployed
+# Shared Caddy TLS patch: rollout and rollback record
 
-F5 remains open in production. The audit's SSH permission was read-only. This runbook and Dockerfile are a reviewable replacement proposal, not authorization to build on or restart the shared production server. Application fixes likewise have not been committed, pushed or deployed in this task.
+## Original pre-rollout proposal (superseded by the authorized rollout below)
+
+At this original proposal stage, F5 remained open and the audit's SSH permission was read-only. The runbook and Dockerfile were a replacement proposal without production rollout authorization. Application fixes had not yet been committed, pushed or deployed. The later explicit authorization and completed rollout are recorded below.
 
 ## Candidate and evidence
 
@@ -42,3 +44,10 @@ Production F5 closes only after these exact artifact/container and all-site chec
 The user explicitly requested commit, push and deployment after accepting the local remediation. This supersedes the original read-only restriction above. The original candidate evidence remains historical; final image and rollout evidence belongs in docs/SECURITY_FIXES.md.
 
 The shared host has limited free RAM. Main compiles Linux/ARM64 off-host and uses `Dockerfile.caddy-security-runtime` with a context containing only the verified `caddy-security` binary. Verify its checksum before transfer and again after extraction from the final image, alongside Go/Caddy build info and standard modules. The source-build recipe remains `Dockerfile.caddy-security`; the runtime-only packaging preserves its pinned official runtime and binding capability. No Go or npm compiler runs on the production host. The app update similarly uses `Dockerfile.security-prebuilt` with the recorded existing runtime image, verified off-host server binary and matching compiled frontend assets. Do not use this runtime shortcut when runtime/CA dependencies change.
+
+
+## Completed authorized rollout
+
+The later authorized rollout is complete; see docs/SECURITY_FIXES.md for exact image/binary IDs, tests and production evidence. The original proposal above is historical. The persistent shared `/root/dev/server/docker-compose.override.yaml` uses the verified literal image ID, and the existing project requires `--env-file /etc/bufin/sandbox.env`. Future explicit `-f docker-compose.yaml` operations must also include `-f docker-compose.override.yaml`; default discovery was verified to include it. Use `--no-build --no-deps --pull never caddy` when recreating this validated local artifact.
+
+Protected pre-rollout configuration and old app/Caddy image IDs are retained in `/root/lisboa-security-rollout/`. A rollback should restore only the affected service's recorded image/version and configuration; preserve all certificate volumes. Restoring the old Caddy image reopens F5. Do not prune those artifacts until a separately authorized cleanup policy is agreed.

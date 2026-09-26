@@ -49,3 +49,10 @@ Recreate only the dashboard through the existing external-database Compose setup
 
 
 Browser validation exposed an adjacent client compatibility blocker: one retry could expire while both expensive-read slots remained occupied by normal parallel dashboard work, leaving fleet reads failed. Main adds only bounded retries for explicit 503 busy responses, honoring Retry-After with exponential delay/jitter; other error behavior remains unchanged. Focused browser tests verify recovery and the five-attempt ceiling. Retain the two-slot server control. Package the matching frontend build in the runtime-only app image.
+
+
+## Authorized rollout completion
+
+Main completed the reviewed Maat repairs, signed normal commits/push and service-specific deployment. Local Postgres/Cockroach full race suites, all eight cached feeds and23 browser checks pass; exact runtime artifacts and protected configuration parity are verified. Production dashboard and patched Caddy run the recorded immutable artifacts, with all hosted HTTPS checks, public data/headers, desktop/mobile browser checks and memory/OOM evidence passing. The original read-only limits/completion gates above describe the earlier audit/local phase; the later user authorization and rollout supersede them. Final independent production review is recorded in [security remediation evidence](SECURITY_FIXES.md).
+
+The independent real quasar-alpha/xhigh final reviewer recommends production acceptance with no blockers. Main confirms the authorized requirements and F1–F5 remediation within scope; residual advisories and deferred items remain documented. Final documentation publication leaves executable release dc419e4 unchanged.
