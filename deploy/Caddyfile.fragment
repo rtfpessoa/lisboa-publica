@@ -1,4 +1,5 @@
 lisboapublica.rtfpessoa.xyz {
+ encode zstd gzip
  reverse_proxy lisboa-publica:8080 {
   header_up X-Lisboa-Client-IP {remote_host}
  }
