@@ -47,7 +47,7 @@ See [plan](docs/PLAN.md), [source-to-feature evidence](docs/research/SOURCES.md)
 
 ## Data limits
 
-Metro map positions are estimated and excluded from sampled speed and distance. GTFS departures are planned; direct Metro predictions have separate labels and observation timestamps. Completed trips, exact commercial speed, operational headway, depots and permanent fleet allocations are unavailable. Distance is partial observed movement; detected trips establish presence, not completion. Traffic colors summarize observed transit speeds, not general road congestion. Fleet metadata uses verified agency/vehicle crosswalks and marks missing attributes unavailable. Historical views cover up to30 days of locally collected observations.
+Metro map positions are estimated and excluded from sampled speed and distance. GTFS departures are planned; direct Metro predictions have separate labels and observation timestamps. Completed trips, exact commercial speed, operational headway, depots and permanent fleet allocations are unavailable. Distance is partial observed movement; detected trips establish presence, not completion. Traffic colors summarize observed transit speeds, not general road congestion. Fleet metadata uses verified agency/vehicle crosswalks and marks missing attributes unavailable. Historical views cover the configured retention window, up to30 days of observations collected by this installation.
 
 External map tiles/styles/fonts are supplied by OpenFreeMap with displayed attribution. Provider availability can vary. There are no Mover Lisboa API dependencies.
 

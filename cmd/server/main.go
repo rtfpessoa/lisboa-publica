@@ -20,6 +20,7 @@ func env(name, fallback string) string {
 	}
 	return fallback
 }
+
 func main() {
 	log, _ := zap.NewProduction()
 	defer log.Sync()

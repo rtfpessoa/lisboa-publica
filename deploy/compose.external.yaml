@@ -1,0 +1,8 @@
+# Add this override when DATABASE_URL points to the external Cockroach cluster.
+services:
+  dashboard:
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set the external Cockroach URL with verified TLS}
+    depends_on: !reset {}
+  database:
+    profiles: [local-database]

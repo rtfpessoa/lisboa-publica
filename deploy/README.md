@@ -56,3 +56,16 @@ Maat absolute score improved47→68, but remains below its configured95 threshol
 Production cold ingestion loaded all eight providers with a kernel-measured823.8MiB peak under the1280MiB container limit, no OOM or restart. The direct Metro endpoint initially failed TLS on Linux because the provider sent only its leaf certificate. Its AIA names Sectigo Public Server Authentication CA OV R36. The issuer-distributed intermediate and Metro hostname certificate both verify against the host's public CA bundle; the image now installs that verified intermediate with TLS verification still enabled. Final refreshed-image/cutover checks follow.
 
 Metro's endpoint currently omits its intermediate certificate. The image includes the publicly issued Sectigo OV R36 intermediate from the certificate's AIA URL, http://crt.sectigo.com/SectigoPublicServerAuthenticationCAOVR36.crt. DER SHA-256: `6542d176bed50f193c0ce297ae44ecd8a0a86bec2ede682769344059b4e78530`. It verifies against the standard public CA bundle before installation during the image build. TLS chain and hostname verification remain enabled; this is not an insecure transport workaround.
+
+## External CockroachDB deployment
+
+The selected deployment now uses the `cockroach-lisboapublica` cluster and30-day retention. Keep its `DATABASE_URL` with `sslmode=verify-full` in protected `deploy/.cloud.env`; never commit it. Use both environment files and the external override:
+
+```sh
+docker compose --env-file deploy/.env --env-file deploy/.cloud.env -f deploy/compose.yaml -f deploy/compose.external.yaml config --quiet
+docker compose --env-file deploy/.env --env-file deploy/.cloud.env -f deploy/compose.yaml -f deploy/compose.external.yaml up -d --wait
+```
+
+Set `SNAPSHOT_RETENTION_DAYS=30` in deploy/.env. The override removes the local-database startup dependency; the local service is profile-gated and its existing volume is preserved. Stop the previous local database after verifying the cloud cutover. The server retains30 days of observations plus one hour of pruning grace; observed history starts when collection begins in this database.
+
+The initial observed storage rate projects approximately50GB for30 days, plus database overhead. Cloud storage and request-unit spending limits are managed in the Cockroach Cloud console; this deployment does not change account billing limits. Verify the configured allowance fits retention. Existing Basic plans and newer Continuum plans differ: https://www.cockroachlabs.com/cockroachdb/pricing/ and https://www.cockroachlabs.com/pricing/.
