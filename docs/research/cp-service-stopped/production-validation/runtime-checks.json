@@ -1,0 +1,27 @@
+{
+  "healthy": true,
+  "restarts": 0,
+  "oom_killed": false,
+  "memory_current_bytes": 761761792,
+  "memory_peak_bytes": 768921600,
+  "memory_events": {
+    "low": "0",
+    "high": "0",
+    "max": "0",
+    "oom": "0",
+    "oom_kill": "0",
+    "oom_group_kill": "0"
+  },
+  "log_levels_last1000": {
+    "info": 2
+  },
+  "refreshed_static_providers": [
+    {
+      "operator": "cp",
+      "routes": 44,
+      "stops": 94
+    }
+  ],
+  "app_image": "sha256:8079d1333084b925880937090eca098301304d3a05eaa0d934656e450a21fe06",
+  "runtime_version": "7d6e9a5ce586b7a4ec79c27899230eb091eaf846"
+}

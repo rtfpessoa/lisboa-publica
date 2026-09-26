@@ -1,0 +1,7 @@
+{
+  "secret_files_only_version_changed": true,
+  "secret_file_modes_600": true,
+  "network_aliases_unchanged": true,
+  "mounts_unchanged": true,
+  "external_database_tls_verify_full": true
+}

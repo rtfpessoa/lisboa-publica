@@ -1,0 +1,28 @@
+[
+  {
+    "width": 1280,
+    "default_metro_and_overlays": true,
+    "popup_close_button_outside_escape": true,
+    "cp_full_scheduled_endpoints_and_local_times": true,
+    "formatted_bus_fleet_plates": [
+      "63-HX-18",
+      "22-36-ZB",
+      "05-VZ-52"
+    ],
+    "horizontal_overflow": false,
+    "page_errors": []
+  },
+  {
+    "width": 390,
+    "default_metro_and_overlays": true,
+    "popup_close_button_outside_escape": true,
+    "cp_full_scheduled_endpoints_and_local_times": true,
+    "formatted_bus_fleet_plates": [
+      "63-HX-18",
+      "22-36-ZB",
+      "05-VZ-52"
+    ],
+    "horizontal_overflow": false,
+    "page_errors": []
+  }
+]
