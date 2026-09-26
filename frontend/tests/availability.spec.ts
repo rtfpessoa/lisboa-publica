@@ -48,3 +48,46 @@ test('cold source loading and failed searches are not shown as stale or empty',a
  await page.goto('/');await expect(page.getByRole('button',{name:'Metro de Lisboa',exact:true})).toContainText('A carregar fonte');
  await page.getByLabel('Pesquisar carreira ou paragem').fill('Roma');await expect(page.locator('.search-results [role="alert"]')).toContainText('Pesquisa indisponível');await expect(page.locator('.search-results')).not.toContainText('Sem resultados');
 });
+
+for(const viewport of [{width:1280,height:720},{width:390,height:667}])test(`search rows remain readable and clickable at ${viewport.width}x${viewport.height}`,async({page})=>{
+ await fixture(page);await page.setViewportSize(viewport);
+ await page.route('**/api/v1/stops?**',async r=>{if(!new URL(r.request().url()).searchParams.get('q'))return r.fallback();const data=Array.from({length:8},(_,i)=>({id:`metro:${i}`,source_id:String(i),operator_id:'metro',name:`Roma ${i+1}`,lat:38.74,lon:-9.14,route_ids:[]}));await r.fulfill({json:{data,page:{limit:8,offset:0,total:8,has_more:false,revision:'test'}}})});
+ await page.goto('/');if(viewport.width<760)await page.getByRole('button',{name:'Abrir pesquisa'}).click();await page.getByLabel('Pesquisar carreira ou paragem').fill('Roma');
+ const results=page.locator('.search-results'),last=results.getByRole('button',{name:/Roma 8/});await expect(last).toBeAttached();await expect.poll(()=>results.evaluate(e=>e.clientHeight)).toBeGreaterThan(100);
+ await last.scrollIntoViewIfNeeded();await expect.poll(()=>last.evaluate(e=>{const r=e.getBoundingClientRect();return !!document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('.search-results button')})).toBe(true);
+ await last.click();await expect(page.locator('.detail-panel')).toContainText('Roma 8');
+});
+
+test('search with no selected operators explains selection and sends no search calls',async({page})=>{
+ await fixture(page);const searches:string[]=[];page.on('request',r=>{const u=new URL(r.url());if(u.pathname.startsWith('/api/v1/')&&u.searchParams.has('q'))searches.push(u.href)});
+ await page.goto('/');await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click();await page.getByLabel('Pesquisar carreira ou paragem').fill('Roma');await expect(page.locator('.search-results')).toContainText('Selecione pelo menos um operador para pesquisar');expect(searches).toEqual([]);await expect(page.locator('.search-results')).not.toContainText('Sem resultados');
+});
+
+test('unsupported controls disclose application limits and depot explanation ignores pending fleet',async({page})=>{
+ await fixture(page);let release:()=>void=()=>{};const gate=new Promise<void>(r=>release=r);
+ await page.route('**/api/v1/fleet?**',async r=>{await gate;await r.fulfill({status:503,json:{message:'Frota indisponível'}})});
+ await page.goto('/');await page.getByRole('button',{name:'Histórico',exact:true}).click();await expect(page.getByRole('button',{name:'% Viagens',exact:true})).toContainText('Não suportado');await expect(page.getByRole('button',{name:'Frequência',exact:true})).toContainText('Não suportado');await expect(page.locator('.page-panel')).toContainText('Não suportadas nesta aplicação');
+ await page.getByRole('button',{name:'Frota',exact:true}).click();await page.getByRole('button',{name:'Estações de recolha',exact:true}).click();await expect(page.locator('.page-panel')).toContainText('Não suportadas nesta aplicação');await expect(page.locator('.page-panel')).toContainText('paragens de passageiros');release();await expect(page.locator('.page-panel')).toHaveAttribute('aria-busy','false');await expect(page.getByRole('alert').first()).toContainText('Frota indisponível');await expect(page.locator('.page-panel')).toContainText('Não suportadas nesta aplicação');
+});
+
+test('Metro speed is unsupported across views while reported operators retain temporary empty states',async({page})=>{
+ await fixture(page);const now=new Date().toISOString();await page.route('**/api/v1/history?**',r=>r.fulfill({json:{data:[{bucket:now,estimated_vehicles:2,reported_vehicles:0,speed_kmh:null}],page:{limit:500,offset:0,total:1,has_more:false}}}));
+ await page.goto('/');await expect(page.locator('.live-metrics')).toContainText('Não suportada para o Metro');await page.getByRole('button',{name:'Velocidade amostral',exact:true}).click();await expect(page.getByRole('dialog',{name:'Gráfico expandido'})).toContainText('Não suportada para o Metro');await expect(page.getByRole('dialog')).not.toContainText('Ainda sem pares');await page.getByRole('button',{name:'Fechar gráfico'}).click();
+ await page.getByRole('button',{name:'Histórico',exact:true}).click();await expect(page.locator('.history-layout')).toContainText('Não suportada para o Metro');await expect(page.getByRole('button',{name:'Velocidade',exact:true})).toBeDisabled();await page.getByRole('button',{name:'Trânsito',exact:true}).click();await expect(page.locator('.traffic-panel')).toContainText('Não suportada para o Metro');await expect(page.locator('.traffic-panel')).not.toContainText('Sem pares de observações');
+ await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click();await page.locator('.main-operator').first().click();await page.getByRole('button',{name:'Histórico',exact:true}).click();await expect(page.getByRole('button',{name:'Velocidade',exact:true})).toBeEnabled();await expect(page.locator('.history-layout')).toContainText('Ainda sem pares de observações válidos');await expect(page.locator('.history-layout')).not.toContainText('Não suportada para o Metro');
+});
+
+test('mixed selection charts valid reported speed and explains Metro exclusion',async({page})=>{
+ await fixture(page);const now=new Date().toISOString();await page.route('**/api/v1/history?**',r=>r.fulfill({json:{data:[{bucket:now,estimated_vehicles:2,reported_vehicles:1,speed_kmh:18}],page:{limit:500,offset:0,total:1,has_more:false}}}));
+ await page.goto('/');await page.locator('.main-operator').first().click();await page.getByRole('button',{name:'Histórico',exact:true}).click();await expect(page.locator('.history-layout .recharts-line-dots circle').first()).toBeVisible();await expect(page.locator('.history-layout')).toContainText('Metro excluído');await expect(page.locator('.history-layout')).not.toContainText('Não suportada para o Metro');
+});
+
+test('speed capability follows a Metro route filter within a mixed operator selection',async({page})=>{
+ await fixture(page);await page.route('**/api/v1/routes?**',r=>r.fulfill({json:{data:[{id:'metro:1',operator_id:'metro',short_name:'Azul',long_name:'Linha Azul',color:'#00a',stop_ids:[]}],page:{limit:8,offset:0,total:1,has_more:false}}}));await page.route('**/api/v1/routes/*',r=>r.fulfill({json:{id:'metro:1',operator_id:'metro',short_name:'Azul',long_name:'Linha Azul',color:'#00a',stops:[]}}));
+ await page.goto('/');await page.locator('.main-operator').first().click();await page.getByLabel('Pesquisar carreira ou paragem').fill('Azul');await page.locator('.search-results button').first().click();await expect(page.locator('.live-metrics')).toContainText('Não suportada para o Metro');await page.getByRole('button',{name:'Histórico',exact:true}).click();await expect(page.locator('.history-layout')).toContainText('Não suportada para o Metro');await expect(page.getByRole('button',{name:'Velocidade',exact:true})).toBeDisabled();
+});
+
+test('estimated Metro vehicle detail labels speed unsupported',async({page})=>{
+ await fixture(page);const now=new Date().toISOString();await page.route('**/api/v1/vehicles?**',r=>r.fulfill({json:{data:[{id:'metro:1',source_id:'1',operator_id:'metro',position_kind:'estimated',lat:38.731,lon:-9.145,observed_at:now,collected_at:now,source_url:'https://go.tmlmobilidade.pt',stale:false,speed_kmh:null}],page:{limit:500,offset:0,total:1,has_more:false}}}));
+ await page.goto('/');await expect(page.locator('.map')).toHaveAttribute('aria-busy','false');await page.waitForTimeout(300);const box=await page.locator('.map canvas').boundingBox();await page.mouse.click(box!.x+box!.width/2,box!.y+box!.height/2);await expect(page.locator('.detail-panel')).toContainText('Não suportada para o Metro');
+});
