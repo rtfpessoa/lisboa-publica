@@ -91,3 +91,23 @@ test('estimated Metro vehicle detail labels speed unsupported',async({page})=>{
  await fixture(page);const now=new Date().toISOString();await page.route('**/api/v1/vehicles?**',r=>r.fulfill({json:{data:[{id:'metro:1',source_id:'1',operator_id:'metro',position_kind:'estimated',lat:38.731,lon:-9.145,observed_at:now,collected_at:now,source_url:'https://go.tmlmobilidade.pt',stale:false,speed_kmh:null}],page:{limit:500,offset:0,total:1,has_more:false}}}));
  await page.goto('/');await expect(page.locator('.map')).toHaveAttribute('aria-busy','false');await page.waitForTimeout(300);const box=await page.locator('.map canvas').boundingBox();await page.mouse.click(box!.x+box!.width/2,box!.y+box!.height/2);await expect(page.locator('.detail-panel')).toContainText('Não suportada para o Metro');
 });
+
+
+test('busy reads honor Retry-After and recover without losing fleet data',async({page})=>{
+ await fixture(page);await page.clock.install();const calls:number[]=[];
+ await page.route('**/api/v1/fleet?**',async r=>{calls.push(Date.now());if(calls.length<3)await r.fulfill({status:503,headers:{'Retry-After':'2'},json:{code:'busy',message:'Pedidos em curso'}});else await r.fallback()});
+ await page.goto('/');await page.getByRole('button',{name:'Frota',exact:true}).click();await page.getByRole('button',{name:'Veículos',exact:true}).click();
+ await expect.poll(()=>calls.length).toBe(1);await page.clock.fastForward(1500);expect(calls).toHaveLength(1);
+ await page.clock.fastForward(1100);await expect.poll(()=>calls.length).toBe(2);
+ await page.clock.fastForward(2600);await expect(page.locator('.page-panel table')).toContainText('AB12CD');expect(calls).toHaveLength(3);
+ await expect(page.locator('.page-panel')).not.toContainText('Frota indisponível devido a erro.');
+});
+
+test('persistent busy reads stop after bounded retries and expose an error',async({page})=>{
+ await fixture(page);await page.clock.install();let calls=0;
+ await page.route('**/api/v1/fleet?**',r=>{calls++;return r.fulfill({status:503,headers:{'Retry-After':'1'},json:{code:'busy',message:'Pedidos em curso'}})});
+ await page.goto('/');await page.getByRole('button',{name:'Frota',exact:true}).click();await page.getByRole('button',{name:'Veículos',exact:true}).click();
+ await expect.poll(()=>calls).toBe(1);
+ for(const delay of [1600,2600,4600,8600]){const before=calls;await page.clock.fastForward(delay);await expect.poll(()=>calls).toBe(before+1)}
+ await expect(page.locator('.page-panel')).toContainText('Frota indisponível devido a erro.');await page.clock.fastForward(10000);expect(calls).toBe(5); // The separate 30-second polling cycle can start a new bounded read.
+});
