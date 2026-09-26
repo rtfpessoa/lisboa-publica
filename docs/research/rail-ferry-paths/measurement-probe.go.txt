@@ -1,0 +1,77 @@
+package app
+
+import (
+	"encoding/json"
+	"fmt"
+	"lisboapublica/internal/api"
+	"os"
+	"runtime"
+	"testing"
+	"time"
+)
+
+func TestPlanningRailFerryGeometry(t *testing.T) {
+	var feeds []struct {
+		Operator, Agency, Plan, File string
+		From, Until                  int
+	}
+	b, e := os.ReadFile(os.Getenv("OVERLAY_PLAN_FIXTURES"))
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = json.Unmarshal(b, &feeds); e != nil {
+		t.Fatal(e)
+	}
+	for _, feed := range feeds {
+		t.Run(feed.Operator, func(t *testing.T) {
+			archive, e := os.ReadFile(feed.File)
+			if e != nil {
+				t.Fatal(e)
+			}
+			p, _ := providerByID(feed.Operator)
+			baseline, e := readGTFS(archive, p, feed.Plan, fmt.Sprint(feed.From), fmt.Sprint(feed.Until), hubBase, time.Now().UTC())
+			if e != nil {
+				t.Fatal(e)
+			}
+			oldEncoded, _ := encodeCache(baseline)
+			// Research only: make the existing bus/Metro geometry branch run for these provider fixtures.
+			// This is not production code and does not assert that implementation is complete.
+			p.Mode = "bus"
+			runtime.GC()
+			var before, after runtime.MemStats
+			runtime.ReadMemStats(&before)
+			start := time.Now()
+			data, e := readGTFS(archive, p, feed.Plan, fmt.Sprint(feed.From), fmt.Sprint(feed.Until), hubBase, time.Now().UTC())
+			if e != nil {
+				t.Fatal(e)
+			}
+			runtime.ReadMemStats(&after)
+			encoded, e := encodeCache(data)
+			if e != nil {
+				t.Fatal(e)
+			}
+			points := 0
+			routes := map[string]bool{}
+			variants := map[string]bool{}
+			for _, s := range data.Shapes {
+				points += len(s.Geometry)
+				routes[s.RouteId] = true
+				variants[s.Id] = true
+			}
+			localVariants := map[string]bool{}
+			for _, trip := range data.Schedule.Trips {
+				localVariants[qualify(feed.Operator, trip.Route)+"|"+trip.Shape] = true
+			}
+			unreferenced := 0
+			for _, s := range data.Shapes {
+				if !localVariants[s.RouteId+"|"+s.ShapeId] {
+					unreferenced++
+				}
+			}
+			if !geometryCacheFits(data, api.Operator{}) {
+				t.Fatal("cache admission failed")
+			}
+			t.Logf("%s routes=%d covered_routes=%d variants=%d points=%d unreferenced_local_trip_variants=%d baseline_gzip_bytes=%d candidate_gzip_bytes=%d reservation_bytes=%d elapsed_ms=%d alloc_bytes=%d unique_variant_ids=%d", feed.Operator, len(data.Routes), len(routes), len(data.Shapes), points, unreferenced, len(oldEncoded), len(encoded), int64(len(encoded))*storageWriteOverhead, time.Since(start).Milliseconds(), after.TotalAlloc-before.TotalAlloc, len(variants))
+		})
+	}
+}

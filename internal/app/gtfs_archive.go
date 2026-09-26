@@ -4,12 +4,17 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/csv"
+	"errors"
 
 	"fmt"
 	"io"
 
 	"strings"
 )
+
+var errGTFSIntegrity = errors.New("GTFS archive integrity failure")
+
+var errGTFSResource = errors.New("GTFS resource limit")
 
 type gtfsArchive map[string]*zip.File
 
@@ -64,45 +69,81 @@ func (files gtfsArchive) read(name string, visit func(map[string]string) error) 
 	if f == nil {
 		return nil
 	}
-	rd, e := f.Open()
-	if e != nil {
-		return e
+	rd, err := f.Open()
+	if err == nil {
+		defer rd.Close()
+		err = readGTFSTable(io.LimitReader(rd, maxGTFSExpandedBytes), name, visit)
+		// Optional-table syntax failure must not hide a corrupt ZIP stream.
+		if err != nil {
+			if integrity := verifyGTFSStream(f); integrity != nil {
+				err = integrity
+			}
+		}
+	} else {
+		err = fmt.Errorf("%w: %w", errGTFSIntegrity, err)
 	}
-	defer rd.Close()
-	csvr := csv.NewReader(io.LimitReader(rd, maxGTFSExpandedBytes))
+	return err
+}
+
+func verifyGTFSStream(f *zip.File) error {
+	check, err := f.Open()
+	if err != nil {
+		return fmt.Errorf("%w: %w", errGTFSIntegrity, err)
+	}
+	defer check.Close()
+	n, err := io.Copy(io.Discard, io.LimitReader(check, maxGTFSExpandedBytes+1))
+	if err != nil {
+		err = fmt.Errorf("%w: %w", errGTFSIntegrity, err)
+	}
+	if n > maxGTFSExpandedBytes {
+		err = errGTFSResource
+	}
+	return err
+}
+
+func readGTFSTable(rd io.Reader, name string, visit func(map[string]string) error) error {
+	csvr := csv.NewReader(rd)
 	csvr.FieldsPerRecord = -1
 	csvr.ReuseRecord = true
-	headers, e := csvr.Read()
-	if e != nil {
-		return e
+	headers, err := csvr.Read()
+	if err != nil {
+		return err
 	}
 	headers = append([]string(nil), headers...)
 	for i := range headers {
 		headers[i] = strings.TrimPrefix(strings.TrimSpace(headers[i]), "\ufeff")
 	}
-	count := 0
+	return visitGTFSRows(csvr, headers, name, visit)
+}
+
+func visitGTFSRows(csvr *csv.Reader, headers []string, name string, visit func(map[string]string) error) error {
 	m := make(map[string]string, len(headers))
-	for {
-		row, e := csvr.Read()
-		if e == io.EOF {
-			break
+	for count := 1; ; count++ {
+		row, err := csvr.Read()
+		if err == io.EOF {
+			return nil
 		}
-		if e != nil {
-			return e
+		if err == nil {
+			err = validateGTFSRow(row, headers, name, count)
 		}
-		if len(row) != len(headers) {
-			return fmt.Errorf("malformed %s row", name)
+		if err == nil {
+			for i, k := range headers {
+				m[k] = row[i]
+			}
+			err = visit(m)
 		}
-		count++
-		if count > maxGTFSRows {
-			return fmt.Errorf("GTFS row limit")
+		if err != nil {
+			return err
 		}
-		for i, k := range headers {
-			m[k] = row[i]
-		}
-		if e = visit(m); e != nil {
-			return e
-		}
+	}
+}
+
+func validateGTFSRow(row, headers []string, name string, count int) error {
+	if len(row) != len(headers) {
+		return fmt.Errorf("malformed %s row", name)
+	}
+	if count > maxGTFSRows {
+		return fmt.Errorf("%w: GTFS row limit", errGTFSResource)
 	}
 	return nil
 }

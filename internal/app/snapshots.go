@@ -40,7 +40,7 @@ func newHistoryCollector() *historyCollector {
 // propose stages a bounded update; Save publishes it only after the transaction commits.
 func (c *historyCollector) propose(operator string, live *LiveData, distances map[string]*float64, interval time.Duration) (*historyCollector, []historicalRecord) {
 	next := &historyCollector{Pending: maps.Clone(c.Pending), Observed: maps.Clone(c.Observed)}
-	for _, vehicle := range live.Vehicles {
+	for _, vehicle := range live.historyVehicles() {
 		next.observe(vehicle, distances[vehicle.Id], live.Collected, interval)
 	}
 	records := next.close(operator, live.Collected, interval)
@@ -115,7 +115,7 @@ func (c *historyCollector) forget(collected time.Time, interval time.Duration) {
 
 func rawHistory(live *LiveData, distances map[string]*float64) []historicalRecord {
 	records := make([]historicalRecord, 0, len(live.Vehicles))
-	for _, vehicle := range live.Vehicles {
+	for _, vehicle := range live.historyVehicles() {
 		count := 0
 		if vehicle.SpeedKmh != nil {
 			count = 1

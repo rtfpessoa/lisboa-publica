@@ -1,7 +1,10 @@
 package app
 
 import (
+	"archive/zip"
+	"errors"
 	"fmt"
+	"io"
 
 	"sort"
 	"strconv"
@@ -12,16 +15,18 @@ import (
 )
 
 type gtfsReader struct {
-	provider      provider
-	data          *StaticData
-	routes        map[string]*api.RouteDetail
-	stops         map[string]*api.Stop
-	shapes        map[string][]shapePoint
-	trips         map[string]*ScheduledTrip
-	shapeForRoute map[string]string
-	directions    map[string]*int
-	pointCount    int
-	routeStops    map[string]map[string]bool
+	provider       provider
+	data           *StaticData
+	routes         map[string]*api.RouteDetail
+	stops          map[string]*api.Stop
+	shapes         map[string][]shapePoint
+	trips          map[string]*ScheduledTrip
+	shapeForRoute  map[string]string
+	directions     map[string]*int
+	pointCount     int
+	badShapes      map[string]bool
+	geometryFailed bool
+	routeStops     map[string]map[string]bool
 }
 
 func readGTFS(blob []byte, p provider, planID, from, until, source string, now time.Time) (*StaticData, error) {
@@ -41,7 +46,6 @@ func readGTFS(blob []byte, p provider, planID, from, until, source string, now t
 		{"calendar_dates.txt", reader.exception},
 		{"trips.txt", reader.trip},
 		{"stop_times.txt", reader.stopTime},
-		{"shapes.txt", reader.shape},
 		{"vehicles.txt", reader.vehicle},
 	}
 	for _, table := range tables {
@@ -49,17 +53,11 @@ func readGTFS(blob []byte, p provider, planID, from, until, source string, now t
 			return nil, err
 		}
 	}
-	reader.connectTrips()
-	reader.buildRoutes()
-	reader.buildStops()
-	if p.Mode == "bus" || p.Mode == "metro" {
-		variants, err := reader.routeShapes(p.Agency)
-		if err != nil {
-			return nil, err
-		}
-		data.Shapes = variants
-		data.GeometryUpdated = ptr(now)
+	if err := reader.readGeometry(archive); err != nil {
+		return nil, err
 	}
+	reader.finishGeometry(now)
+
 	return reader.result()
 }
 func (g *gtfsReader) route(m map[string]string) error {
@@ -168,16 +166,91 @@ func (g *gtfsReader) stopTime(m map[string]string) error {
 }
 
 func (g *gtfsReader) shape(m map[string]string) error {
-	point, err := parseShapePoint(m)
-	if err != nil {
-		return err
-	}
 	g.pointCount++
-	if g.pointCount > maxGeometryPoints && (g.provider.Mode == "bus" || g.provider.Mode == "metro") {
+	if g.pointCount > maxGeometryPoints {
+		return g.geometryPointOverflow()
+	}
+	if g.geometryFailed {
+		return nil
+	}
+	return g.appendShapePoint(m)
+}
+
+func (g *gtfsReader) geometryPointOverflow() error {
+	if g.provider.ID == "cm" {
 		return fmt.Errorf("shape point limit exceeded")
 	}
-	g.shapes[m["shape_id"]] = append(g.shapes[m["shape_id"]], point)
+	g.geometryFailed = true
+	g.data.GeometryError = ptr("Percursos excedem o limite de pontos.")
+	g.shapes = map[string][]shapePoint{}
 	return nil
+}
+
+func (g *gtfsReader) appendShapePoint(m map[string]string) error {
+	id := m["shape_id"]
+	if g.badShapes == nil {
+		g.badShapes = map[string]bool{}
+	}
+	point, err := parseShapePoint(m)
+	if id == "" || err != nil || point.Sequence < 0 {
+		return g.rejectShapePoint(id)
+	}
+	if !g.badShapes[id] {
+		g.shapes[id] = append(g.shapes[id], point)
+	}
+	return nil
+}
+
+func (g *gtfsReader) rejectShapePoint(id string) error {
+	if g.provider.ID == "cm" {
+		return fmt.Errorf("invalid CM shape point")
+	}
+	g.badShapes[id] = true
+	delete(g.shapes, id)
+	return nil
+}
+
+func (g *gtfsReader) validateShapes() {
+	for id, points := range g.shapes {
+		sort.Slice(points, func(i, j int) bool { return points[i].Sequence < points[j].Sequence })
+		usable := false
+		unique := points[:0]
+		for _, point := range points {
+			if len(unique) > 0 && point.Sequence == unique[len(unique)-1].Sequence {
+				prev := unique[len(unique)-1]
+				if prev.Lat != point.Lat || prev.Lon != point.Lon {
+					g.badShapes[id] = true
+				}
+				continue
+			}
+			if point.Lat != points[0].Lat || point.Lon != points[0].Lon {
+				usable = true
+			}
+			unique = append(unique, point)
+		}
+		if !usable || g.badShapes[id] {
+			delete(g.shapes, id)
+		} else {
+			g.shapes[id] = unique
+		}
+	}
+}
+
+func (g *gtfsReader) markPartialGeometry() {
+	covered := map[string]bool{}
+	for _, shape := range g.data.Shapes {
+		covered[shape.RouteId] = true
+	}
+	partial := len(covered) < len(g.data.Routes)
+	for _, trip := range g.data.Schedule.Trips {
+		if trip.Shape == "" || len(g.shapes[trip.Shape]) < 2 {
+			partial = true
+		}
+	}
+	if partial {
+		g.data.GeometryPartial = true
+		g.data.GeometryError = ptr("Algumas carreiras ou variantes não têm percurso utilizável.")
+	}
 }
 
 func (g *gtfsReader) vehicle(m map[string]string) error {
@@ -203,7 +276,7 @@ func (g *gtfsReader) connectTrips() {
 		for _, v := range t.Times {
 			g.routeStops[t.Route][v.Stop] = true
 		}
-		if t.Shape != "" && (g.shapeForRoute[t.Route] == "" || t.Shape < g.shapeForRoute[t.Route]) {
+		if t.Shape != "" && len(g.shapes[t.Shape]) >= 2 && (g.shapeForRoute[t.Route] == "" || t.Shape < g.shapeForRoute[t.Route]) {
 			g.shapeForRoute[t.Route] = t.Shape
 		}
 	}
@@ -257,4 +330,45 @@ func (g *gtfsReader) result() (*StaticData, error) {
 	}
 	return g.data, nil
 
+}
+
+func fatalGTFSGeometryError(err error) bool {
+	return errors.Is(err, errGTFSIntegrity) || errors.Is(err, zip.ErrChecksum) || errors.Is(err, zip.ErrFormat) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, errGTFSResource)
+}
+
+func (g *gtfsReader) readGeometry(archive gtfsArchive) error {
+	if err := archive.read("shapes.txt", g.shape); err != nil {
+		if fatalGTFSGeometryError(err) {
+			return err
+		}
+		g.geometryFailed = true
+		g.data.GeometryError = ptr("Tabela de percursos inválida; horários disponíveis.")
+	}
+	return nil
+}
+
+func (g *gtfsReader) finishGeometry(now time.Time) {
+
+	if g.geometryFailed {
+		g.shapes = map[string][]shapePoint{}
+	} else {
+		g.validateShapes()
+	}
+	g.connectTrips()
+	g.buildRoutes()
+	g.buildStops()
+	variants, err := g.routeShapes(g.provider.Agency)
+	if err != nil {
+		g.geometryFailed = true
+		g.data.GeometryError = ptr("Percursos excedem o limite de variantes.")
+		stripGeometry(g.data)
+	} else {
+		g.data.Shapes = variants
+	}
+	if len(g.data.Shapes) > 0 {
+		g.data.GeometryUpdated = ptr(now)
+	}
+	if !g.geometryFailed {
+		g.markPartialGeometry()
+	}
 }

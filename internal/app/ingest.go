@@ -226,6 +226,10 @@ func (f *Fetcher) refreshMetadata(ctx context.Context) {
 func (f *Fetcher) saveStatic(ctx context.Context, p provider, d *StaticData) {
 	f.Store.PublishMu.Lock()
 	defer f.Store.PublishMu.Unlock()
+	if p.ID != "cm" {
+		state, _ := f.Cache.state("")
+		prepareGTFSGeometry(d, state.Static[p.ID], f.Cache.operator(p.ID))
+	}
 	op := staticHealth(f.Cache.operator(p.ID), d)
 	if e := f.Store.Save(ctx, p.ID, d, nil, op, nil); e != nil {
 		f.Log.Error("static persistence failed", zap.String("operator", p.ID), zap.Error(e))
@@ -284,42 +288,27 @@ func (f *Fetcher) saveLive(ctx context.Context, p provider, vehicles []api.Vehic
 	f.Store.PublishMu.Lock()
 	defer f.Store.PublishMu.Unlock()
 	state, _ := f.Cache.state("")
-	old := map[string]api.Vehicle{}
-	if data := state.Live[p.ID]; data != nil {
-		for _, v := range data.Vehicles {
-			old[v.Id] = v
-		}
+	live, dist := nextLive(state.Live[p.ID], state.Operators[p.ID], vehicles, now)
+	if prior := state.Live[p.ID]; prior != nil && live.LastKnownTruncatedUntil.After(prior.LastKnownTruncatedUntil) {
+		f.Log.Warn("last-known display capped", zap.String("operator", p.ID), zap.Int("display_limit", maxLastKnown))
 	}
-	seen := map[string]bool{}
-	dist := map[string]*float64{}
+	for i := range live.Vehicles {
+		enrichVehicle(&live.Vehicles[i], state.Static[p.ID])
+	}
+	for i := range live.Samples {
+		enrichVehicle(&live.Samples[i], state.Static[p.ID])
+	}
 	latest := time.Time{}
-	reported, estimated := 0, 0
-	for i := range vehicles {
-		v := &vehicles[i]
-		if seen[v.Id] {
-			return
-		}
-		seen[v.Id] = true
-		dist[v.Id] = updateObservedVehicle(v, old)
-		enrichVehicle(v, state.Static[p.ID])
+	for _, v := range live.Vehicles {
 		if v.ObservedAt.After(latest) {
 			latest = v.ObservedAt
 		}
-		if now.Sub(v.ObservedAt) <= 180*time.Second {
-			if v.PositionKind == "estimated" {
-				estimated++
-			} else {
-				reported++
-			}
-		}
 	}
-	sortVehicles(vehicles)
 	op := state.Operators[p.ID]
 	op.Status = api.OperatorStatusOk
 	op.Error = nil
 	op.LiveUpdatedAt = ptr(now)
-	op.ReportedPositions = ptr(reported)
-	op.EstimatedPositions = ptr(estimated)
+	_, op.ReportedPositions, op.EstimatedPositions, op.LastKnownPositions, op.LastKnownTruncated = projectLive(live, op, state.Static[p.ID], now)
 	op.ObservedAt = nil
 	if !latest.IsZero() {
 		op.ObservedAt = ptr(latest)
@@ -327,7 +316,6 @@ func (f *Fetcher) saveLive(ctx context.Context, p provider, vehicles []api.Vehic
 			op.Status = api.OperatorStatusStale
 		}
 	}
-	live := &LiveData{Vehicles: vehicles, Collected: now}
 	f.publishProvider(ctx, p.ID, live, op, dist)
 }
 func (f *Fetcher) cmStatic(ctx context.Context, p provider) (*StaticData, error) {

@@ -69,12 +69,16 @@ export type Operator = {
     direct_status: ("unconfigured" | "ok" | "error") | null;
     direct_error: string | null;
     direct_updated_at: string | null;
+    last_known_positions: number;
+    /** The bounded display omits eligible previous positions. */
+    last_known_truncated: boolean;
 };
 export type Page = {
     limit: number;
     offset: number;
     total: number;
     has_more: boolean;
+    /** Endpoint-specific immutable view token. Vehicle v: tokens pin first-page eligibility time for at most five minutes, subject to version eviction; clients must remove positions whose original expiry has passed. */
     revision: string | null;
 };
 export type OperatorPage = {
@@ -136,6 +140,12 @@ export type Vehicle = {
     typology: string | null;
     /** Published source code or string; code schemes differ by provider/feed version. Metadata recorded with the observation, not a depot assignment. */
     propulsion: string | null;
+    /** Previous position, excluded from current metrics. */
+    last_known: boolean;
+    /** Original observation plus five minutes; indicates lack of newer data, not physical inactivity. */
+    inactive_at: string;
+    /** Position display deadline, one hour after original observation, including current rows so disconnected clients can expire cached data. Clients must remove expired positions even from pinned pages. */
+    last_known_expires_at: string | null;
 };
 export type VehiclePage = {
     data: Vehicle[];
@@ -182,6 +192,9 @@ export type Metrics = {
     "from": string;
     to: string;
     unavailable_fields: string[];
+    /** Coverage of current totals, independently of historical observations. */
+    live_coverage: "complete" | "partial" | "unavailable";
+    unavailable_live_operators: string[];
 };
 export type HistoryPoint = {
     bucket: string;
@@ -288,7 +301,7 @@ export type RouteShape = {
 };
 export type GeometryCoverage = {
     operator_id: string;
-    status: "available" | "stale" | "unavailable";
+    status: "available" | "stale" | "unavailable" | "partial";
     updated_at: string | null;
     message: string;
 };

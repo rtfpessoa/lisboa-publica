@@ -1,0 +1,73 @@
+package app
+
+import (
+ "context"
+ "net/http/httptest"
+ "os"
+ "testing"
+ "time"
+ "go.uber.org/zap"
+ "lisboapublica/internal/api"
+)
+
+// Diagnostic characterization of the real publication -> API path, without a database.
+// Persistence is deliberately outside this bounded reproduction.
+func TestDiagnosticEmptySnapshotContinuity(t *testing.T) {
+ now := time.Now().UTC()
+ store := &Store{HistoryInterval: 300*time.Second}
+ cache := NewCache()
+ f := NewFetcher(store, cache, zap.NewNop())
+ server := &Server{Store:store, Cache:cache}
+ p,_ := providerByID("cp")
+ f.lastPersist[p.ID] = time.Now()
+ raw := []hubPosition{{Agency:p.Agency,ID:"train",Lat:38.72,Lon:-9.15,At:now.UnixMilli()}}
+ rows,err := f.hubVehicles(p,raw,now); if err!=nil {t.Fatal(err)}
+ f.saveLive(context.Background(),p,rows,now)
+ read := func() []api.Vehicle {
+   r := httptest.NewRequest("GET","http://localhost/api/v1/vehicles?operators=cp&limit=500",nil)
+   ctx := context.WithValue(context.Background(),requestKey,r)
+   result,err := server.ListVehicles(ctx,api.ListVehiclesRequestObject{});if err!=nil {t.Fatal(err)}
+   return result.(api.ListVehicles200JSONResponse).Data
+ }
+ if got:=len(read());got!=1 {t.Fatalf("initial count=%d",got)}
+ f.markError(context.Background(),p,false,context.DeadlineExceeded)
+ if got:=len(read());got!=1 {t.Fatalf("HTTP error erased rows: %d",got)}
+ f.saveLive(context.Background(),p,[]api.Vehicle{},now.Add(5*time.Second))
+ got:=len(read())
+ t.Logf("same CP selector after empty success: vehicles=%d reported=%d status=%s",got,*cache.operator("cp").ReportedPositions,cache.operator("cp").Status)
+ if got!=0 {t.Fatalf("empty snapshot did not replace collection: %d",got)}
+ f.saveLive(context.Background(),p,rows,now.Add(10*time.Second))
+ if len(read())!=1 {t.Fatal("recovery failed")}
+ if os.Getenv("DIAGNOSTIC_REQUIRE_CONTINUITY")=="1" && got==0 {t.Fatal("CP remains selected, but empty success removes its marker/count")}
+}
+
+func TestDiagnosticProviderGapMechanisms(t *testing.T) {
+ for _,p:=range providers {
+  t.Run(p.ID,func(t *testing.T){
+   now:=time.Now().UTC();cache:=NewCache();store:=&Store{HistoryInterval:300*time.Second};f:=NewFetcher(store,cache,zap.NewNop());f.lastPersist[p.ID]=time.Now()
+   row:=api.Vehicle{Id:qualify(p.ID,"v"),SourceId:"v",OperatorId:p.ID,Lat:38.72,Lon:-9.15,ObservedAt:now,CollectedAt:now,PositionKind:api.VehiclePositionKindReported}
+   if p.ID=="metro" {row.PositionKind=api.VehiclePositionKindEstimated}
+   f.saveLive(context.Background(),p,[]api.Vehicle{row},now)
+   f.markError(context.Background(),p,false,context.DeadlineExceeded)
+   state,_:=cache.state("");if len(state.Live[p.ID].Vehicles)!=1 {t.Fatal("error removed previous row")}
+   f.saveLive(context.Background(),p,[]api.Vehicle{},now.Add(5*time.Second))
+   state,_=cache.state("");if len(state.Live[p.ID].Vehicles)!=0||*state.Operators[p.ID].ReportedPositions!=0||*state.Operators[p.ID].EstimatedPositions!=0 {t.Fatal("empty result not published")}
+   f.saveLive(context.Background(),p,[]api.Vehicle{row},now.Add(10*time.Second));state,_=cache.state("");if len(state.Live[p.ID].Vehicles)!=1 {t.Fatal("recovery failed")}
+  })
+ }
+}
+
+func TestDiagnosticAgeGeographyPlanAndRevision(t *testing.T) {
+ now:=time.Now().UTC();cache:=NewCache();store:=&Store{HistoryInterval:300*time.Second};f:=NewFetcher(store,cache,zap.NewNop());p,_:=providerByID("cp");f.lastPersist[p.ID]=time.Now();server:=&Server{Store:store,Cache:cache}
+ op:=cache.operator(p.ID);op.PlanId=ptr("active");cache.update(p.ID,&StaticData{PlanID:"active"},nil,op)
+ raw:=hubPosition{Agency:p.Agency,ID:"v",Lat:38.72,Lon:-9.15,At:now.Add(-200*time.Second).UnixMilli(),Route:"route",Trip:"[other][N18KL]trip"}
+ rows,err:=f.hubVehicles(p,[]hubPosition{raw},now);if err!=nil||len(rows)!=1 {t.Fatal("old report removed",err)}
+ f.saveLive(context.Background(),p,rows,now);frozen,_:=cache.state("")
+ read:=func(query string)[]api.Vehicle{r:=httptest.NewRequest("GET","http://localhost/api/v1/vehicles?operators=cp&limit=500"+query,nil);result,e:=server.ListVehicles(context.WithValue(context.Background(),requestKey,r),api.ListVehiclesRequestObject{});if e!=nil {t.Fatal(e)};return result.(api.ListVehicles200JSONResponse).Data}
+ rows=read("");if len(rows)!=1||!rows[0].Stale||*cache.operator("cp").ReportedPositions!=0 {t.Fatal("stale report not separately visible")}
+ if rows[0].RouteId!=nil {t.Fatal("wrong-plan route retained")};if len(read("&route_id=cp:route"))!=0 {t.Fatal("route filter did not exclude unlinked report")}
+ f.saveLive(context.Background(),p,[]api.Vehicle{},now)
+ if len(read("&revision="+frozen.Revision))!=1||len(read(""))!=0 {t.Fatal("pinned collection changed")}
+ raw.Lat=41;raw.At=now.UnixMilli();if rows,e:=f.hubVehicles(p,[]hubPosition{raw},now);e!=nil||len(rows)!=0 {t.Fatal("region boundary changed",e)}
+ raw.Lat=38.72;raw.At=now.Add(31*time.Second).UnixMilli();if _,e:=f.hubVehicles(p,[]hubPosition{raw},now);e==nil {t.Fatal("future report admitted")}
+}

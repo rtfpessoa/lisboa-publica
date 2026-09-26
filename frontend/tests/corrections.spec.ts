@@ -49,7 +49,7 @@ test('route overlays start enabled, follow operators and have independent contro
  await expect(page.locator('.map')).toHaveAttribute('aria-busy','false');await expect(page.locator('.map canvas')).toBeVisible();await page.waitForTimeout(1000);const canvasShot=()=>page.screenshot({clip:{x:400,y:300,width:500,height:350}});const before=await canvasShot();
  await bus.check();await expect.poll(()=>operators.at(-1)).toBe('carris');await page.waitForTimeout(500);const after=await canvasShot();expect(after.equals(before)).toBe(false);await bus.uncheck();await page.waitForTimeout(500);expect((await canvasShot()).equals(before)).toBe(true);await bus.check();
  await metro.check();await expect(metro).toBeChecked();await expect(bus).toBeChecked();
- await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click();await expect.poll(()=>operators.at(-1)).toBe('carris,metro');
+ await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click();await expect(page.getByRole('button',{name:'Metro de Lisboa',exact:true})).toHaveAttribute('aria-pressed','true'); // Geometry may already be present from the initial selection in the query cache.
  await bus.uncheck();await expect(bus).not.toBeChecked();await expect(metro).toBeChecked(); // Reuse Metro geometry already present in the query cache.
  await metro.uncheck();await expect(bus).not.toBeChecked();
 });

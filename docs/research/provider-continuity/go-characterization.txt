@@ -1,0 +1,25 @@
+=== RUN   TestDiagnosticEmptySnapshotContinuity
+    continuity_probe_test.go:37: same CP selector after empty success: vehicles=0 reported=0 status=ok
+--- PASS: TestDiagnosticEmptySnapshotContinuity (0.00s)
+=== RUN   TestDiagnosticProviderGapMechanisms
+=== RUN   TestDiagnosticProviderGapMechanisms/carris
+=== RUN   TestDiagnosticProviderGapMechanisms/cm
+=== RUN   TestDiagnosticProviderGapMechanisms/tcb
+=== RUN   TestDiagnosticProviderGapMechanisms/mobi
+=== RUN   TestDiagnosticProviderGapMechanisms/metro
+=== RUN   TestDiagnosticProviderGapMechanisms/cp
+=== RUN   TestDiagnosticProviderGapMechanisms/ttsl
+=== RUN   TestDiagnosticProviderGapMechanisms/fertagus
+--- PASS: TestDiagnosticProviderGapMechanisms (0.00s)
+    --- PASS: TestDiagnosticProviderGapMechanisms/carris (0.00s)
+    --- PASS: TestDiagnosticProviderGapMechanisms/cm (0.00s)
+    --- PASS: TestDiagnosticProviderGapMechanisms/tcb (0.00s)
+    --- PASS: TestDiagnosticProviderGapMechanisms/mobi (0.00s)
+    --- PASS: TestDiagnosticProviderGapMechanisms/metro (0.00s)
+    --- PASS: TestDiagnosticProviderGapMechanisms/cp (0.00s)
+    --- PASS: TestDiagnosticProviderGapMechanisms/ttsl (0.00s)
+    --- PASS: TestDiagnosticProviderGapMechanisms/fertagus (0.00s)
+=== RUN   TestDiagnosticAgeGeographyPlanAndRevision
+--- PASS: TestDiagnosticAgeGeographyPlanAndRevision (0.00s)
+PASS
+ok  	lisboapublica/internal/app	2.000s

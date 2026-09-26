@@ -114,7 +114,7 @@ func parseShapePoint(row map[string]string) (shapePoint, error) {
 func (g *gtfsReader) shapeTrips() []string {
 	trips := []string{}
 	for id, trip := range g.trips {
-		if g.routes[trip.Route] != nil && len(g.shapes[trip.Shape]) >= 2 && (g.provider.ID == "cm" || len(g.routeStops[trip.Route]) > 0) {
+		if g.routes[trip.Route] != nil && len(g.shapes[trip.Shape]) >= 2 && (g.provider.ID == "cm" || len(g.routeStops[trip.Route]) > 0 && (!(g.provider.Mode == "train" || g.provider.Mode == "ferry") || len(trip.Times) > 0)) {
 			trips = append(trips, id)
 		}
 	}

@@ -26,7 +26,7 @@ const (
 	metroRefreshTimeout       = 20 * time.Second
 	metroStationTolerance     = 0.005
 
-	maxCachedVersions          = 256
+	maxCachedVersions          = 64
 	maxConditionalBodies       = 20
 	maxConditionalBodyBytes    = 1 << 20
 	maxGeometryPoints          = 2_500_000

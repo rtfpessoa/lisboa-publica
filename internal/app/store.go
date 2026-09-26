@@ -142,8 +142,17 @@ func (s *Store) transaction(ctx context.Context, fn func(pgx.Tx) error) error {
 func encodeCache(v any) ([]byte, error) {
 	var b bytes.Buffer
 	z := gzip.NewWriter(&b)
-	if e := json.NewEncoder(z).Encode(v); e != nil {
-		return nil, e
+	var err error
+	switch data := v.(type) {
+	case *StaticData:
+		err = writeStaticCacheJSON(z, data)
+	case StaticData:
+		err = writeStaticCacheJSON(z, &data)
+	default:
+		err = json.NewEncoder(z).Encode(v)
+	}
+	if err != nil {
+		return nil, err
 	}
 	if e := z.Close(); e != nil {
 		return nil, e
@@ -280,22 +289,28 @@ func (s *Store) restoreProvider(ctx context.Context, c *Cache, p provider) error
 		return e
 	}
 	if ok {
-		dl = &live
+		dl = restoreLive(&live, time.Now().UTC())
 	}
 	op := c.operator(p.ID)
-	var data []byte
-	e = s.DB.QueryRow(ctx, "SELECT payload FROM source_health WHERE operator_id=$1", p.ID).Scan(&data)
-	if e == nil {
-		if e = json.Unmarshal(data, &op); e != nil {
-			return e
-		}
-	} else if !errors.Is(e, pgx.ErrNoRows) {
+	if e = s.restoreOperator(ctx, p.ID, &op); e != nil {
 		return e
 	}
 	if ds != nil || dl != nil {
 		c.update(p.ID, ds, dl, op)
 	}
 	return nil
+}
+
+func (s *Store) restoreOperator(ctx context.Context, id string, op *api.Operator) error {
+	var data []byte
+	err := s.DB.QueryRow(ctx, "SELECT payload FROM source_health WHERE operator_id=$1", id).Scan(&data)
+	if err == nil {
+		return json.Unmarshal(data, op)
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	return err
 }
 
 func (s *Store) retentionDays() int {

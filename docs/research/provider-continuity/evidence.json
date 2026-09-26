@@ -1,0 +1,1571 @@
+{
+  "captured_on": "2026-09-26",
+  "feed_attempts_including_TLS_failures": {
+    "upstream": 18,
+    "application": 26
+  },
+  "feed_duration_seconds": 305.6183853340335,
+  "successful_feed_requests": 36,
+  "source_repo_revision": "f90e9f91f3daa3fff60ba2582f3827f4ea4f1300",
+  "samples": [
+    {
+      "at": "2026-09-26T15:23:05.459839+00:00",
+      "hub_generated_at": 1790436182282,
+      "hub_response_at": 1790436183293,
+      "api_revision": "20260926T152303.212176100-2878",
+      "same_revision_all_pages": true,
+      "providers": {
+        "carris": {
+          "raw_count": 253,
+          "api_count": 253,
+          "reported_count": 253,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "82YP2",
+          "observed_at": "2026-09-26T15:22:40Z",
+          "collected_at": "2026-09-26T15:23:03.146404284Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 25.46,
+          "oldest_age_seconds": 92.46,
+          "api_stale_rows": 0
+        },
+        "tcb": {
+          "raw_count": 14,
+          "api_count": 14,
+          "reported_count": 14,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "YFKP6",
+          "observed_at": "2026-09-26T15:22:43Z",
+          "collected_at": "2026-09-26T15:23:03.146404284Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 22.46,
+          "oldest_age_seconds": 83.46,
+          "api_stale_rows": 0
+        },
+        "mobi": {
+          "raw_count": 44,
+          "api_count": 43,
+          "reported_count": 43,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "QQQN3",
+          "observed_at": "2026-09-26T15:22:22Z",
+          "collected_at": "2026-09-26T15:23:03.146404284Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 8.46,
+          "oldest_age_seconds": 49.46,
+          "api_stale_rows": 0
+        },
+        "metro": {
+          "raw_count": 22,
+          "api_count": 22,
+          "reported_count": 0,
+          "estimated_count": 22,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "RSRHS",
+          "observed_at": "2026-09-26T15:22:47.9Z",
+          "collected_at": "2026-09-26T15:23:03.146404284Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 7.322,
+          "oldest_age_seconds": 17.56,
+          "api_stale_rows": 0
+        },
+        "cp": {
+          "raw_count": 16,
+          "api_count": 16,
+          "reported_count": 16,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "76XA2",
+          "observed_at": "2026-09-26T15:22:50Z",
+          "collected_at": "2026-09-26T15:23:03.146404284Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 15.46,
+          "oldest_age_seconds": 90.46,
+          "api_stale_rows": 0
+        },
+        "ttsl": {
+          "raw_count": 3,
+          "api_count": 3,
+          "reported_count": 3,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "YYS70",
+          "observed_at": "2026-09-26T15:22:51Z",
+          "collected_at": "2026-09-26T15:23:03.146404284Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 14.46,
+          "oldest_age_seconds": 25.46,
+          "api_stale_rows": 0
+        },
+        "fertagus": {
+          "raw_count": 7,
+          "api_count": 7,
+          "reported_count": 7,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "2XUL7",
+          "observed_at": "2026-09-26T15:22:51.322Z",
+          "collected_at": "2026-09-26T15:23:03.146404284Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 8.887,
+          "oldest_age_seconds": 8.887,
+          "api_stale_rows": 0
+        },
+        "cm": {
+          "raw_count": 407,
+          "api_count": 406,
+          "reported_count": 406,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": null,
+          "observed_at": "2026-09-26T15:22:49Z",
+          "collected_at": "2026-09-26T15:23:03.146404284Z",
+          "out_of_region": 1,
+          "youngest_age_seconds": 6.46,
+          "oldest_age_seconds": 90.46,
+          "api_stale_rows": 0
+        }
+      }
+    },
+    {
+      "at": "2026-09-26T15:23:50.459420+00:00",
+      "hub_generated_at": 1790436226399,
+      "hub_response_at": 1790436227908,
+      "api_revision": "20260926T152348.217313221-2956",
+      "same_revision_all_pages": true,
+      "providers": {
+        "carris": {
+          "raw_count": 251,
+          "api_count": 251,
+          "reported_count": 251,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "82YP2",
+          "observed_at": "2026-09-26T15:23:19Z",
+          "collected_at": "2026-09-26T15:23:48.14815514Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 31.459,
+          "oldest_age_seconds": 94.459,
+          "api_stale_rows": 0
+        },
+        "tcb": {
+          "raw_count": 13,
+          "api_count": 13,
+          "reported_count": 13,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "YFKP6",
+          "observed_at": "2026-09-26T15:23:11Z",
+          "collected_at": "2026-09-26T15:23:48.14815514Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 39.459,
+          "oldest_age_seconds": 83.459,
+          "api_stale_rows": 0
+        },
+        "mobi": {
+          "raw_count": 44,
+          "api_count": 44,
+          "reported_count": 44,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "QQQN3",
+          "observed_at": "2026-09-26T15:23:21Z",
+          "collected_at": "2026-09-26T15:23:48.14815514Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 29.459,
+          "oldest_age_seconds": 94.459,
+          "api_stale_rows": 0
+        },
+        "metro": {
+          "raw_count": 23,
+          "api_count": 23,
+          "reported_count": 0,
+          "estimated_count": 23,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "RSRHS",
+          "observed_at": "2026-09-26T15:23:30.165Z",
+          "collected_at": "2026-09-26T15:23:48.14815514Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 20.294,
+          "oldest_age_seconds": 20.294,
+          "api_stale_rows": 0
+        },
+        "cp": {
+          "raw_count": 12,
+          "api_count": 12,
+          "reported_count": 12,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "76XA2",
+          "observed_at": "2026-09-26T15:22:50Z",
+          "collected_at": "2026-09-26T15:23:48.14815514Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 60.459,
+          "oldest_age_seconds": 85.459,
+          "api_stale_rows": 0
+        },
+        "ttsl": {
+          "raw_count": 3,
+          "api_count": 3,
+          "reported_count": 3,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "YYS70",
+          "observed_at": "2026-09-26T15:23:30Z",
+          "collected_at": "2026-09-26T15:23:48.14815514Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 20.459,
+          "oldest_age_seconds": 40.459,
+          "api_stale_rows": 0
+        },
+        "fertagus": {
+          "raw_count": 8,
+          "api_count": 8,
+          "reported_count": 8,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "2XUL7",
+          "observed_at": "2026-09-26T15:23:38.561Z",
+          "collected_at": "2026-09-26T15:23:48.14815514Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 11.898,
+          "oldest_age_seconds": 33.035,
+          "api_stale_rows": 0
+        },
+        "cm": {
+          "raw_count": 405,
+          "api_count": 405,
+          "reported_count": 405,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": null,
+          "observed_at": "2026-09-26T15:23:40Z",
+          "collected_at": "2026-09-26T15:23:48.14815514Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 10.459,
+          "oldest_age_seconds": 87.459,
+          "api_stale_rows": 0
+        }
+      }
+    },
+    {
+      "at": "2026-09-26T15:24:35.455562+00:00",
+      "hub_generated_at": 1790436272573,
+      "hub_response_at": 1790436273140,
+      "api_revision": "20260926T152434.494432167-3034",
+      "same_revision_all_pages": true,
+      "providers": {
+        "carris": {
+          "raw_count": 250,
+          "api_count": 248,
+          "reported_count": 248,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "82YP2",
+          "observed_at": "2026-09-26T15:23:59Z",
+          "collected_at": "2026-09-26T15:24:33.139668542Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 15.456,
+          "oldest_age_seconds": 91.456,
+          "api_stale_rows": 0
+        },
+        "tcb": {
+          "raw_count": 15,
+          "api_count": 15,
+          "reported_count": 15,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "YFKP6",
+          "observed_at": "2026-09-26T15:24:11Z",
+          "collected_at": "2026-09-26T15:24:33.139668542Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 24.456,
+          "oldest_age_seconds": 81.456,
+          "api_stale_rows": 0
+        },
+        "mobi": {
+          "raw_count": 43,
+          "api_count": 43,
+          "reported_count": 43,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "QQQN3",
+          "observed_at": "2026-09-26T15:23:52Z",
+          "collected_at": "2026-09-26T15:24:33.139668542Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 43.456,
+          "oldest_age_seconds": 85.456,
+          "api_stale_rows": 0
+        },
+        "metro": {
+          "raw_count": 23,
+          "api_count": 23,
+          "reported_count": 0,
+          "estimated_count": 23,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "RSRHS",
+          "observed_at": "2026-09-26T15:24:22.151Z",
+          "collected_at": "2026-09-26T15:24:33.139668542Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 13.305,
+          "oldest_age_seconds": 13.305,
+          "api_stale_rows": 0
+        },
+        "cp": {
+          "raw_count": 0,
+          "api_count": 0,
+          "reported_count": 0,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "76XA2",
+          "observed_at": null,
+          "collected_at": "2026-09-26T15:24:33.139668542Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": null,
+          "oldest_age_seconds": null,
+          "api_stale_rows": 0
+        },
+        "ttsl": {
+          "raw_count": 3,
+          "api_count": 3,
+          "reported_count": 3,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "YYS70",
+          "observed_at": "2026-09-26T15:23:43Z",
+          "collected_at": "2026-09-26T15:24:33.139668542Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 52.456,
+          "oldest_age_seconds": 85.456,
+          "api_stale_rows": 0
+        },
+        "fertagus": {
+          "raw_count": 8,
+          "api_count": 8,
+          "reported_count": 8,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "2XUL7",
+          "observed_at": "2026-09-26T15:24:24.962Z",
+          "collected_at": "2026-09-26T15:24:33.139668542Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 5.329,
+          "oldest_age_seconds": 78.032,
+          "api_stale_rows": 0
+        },
+        "cm": {
+          "raw_count": 404,
+          "api_count": 403,
+          "reported_count": 403,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": null,
+          "observed_at": "2026-09-26T15:24:25Z",
+          "collected_at": "2026-09-26T15:24:33.139668542Z",
+          "out_of_region": 1,
+          "youngest_age_seconds": 10.456,
+          "oldest_age_seconds": 90.456,
+          "api_stale_rows": 0
+        }
+      }
+    },
+    {
+      "at": "2026-09-26T15:25:20.455371+00:00",
+      "hub_generated_at": 1790436317675,
+      "hub_response_at": 1790436319092,
+      "api_revision": "20260926T152519.001862717-3112",
+      "same_revision_all_pages": true,
+      "providers": {
+        "carris": {
+          "raw_count": 237,
+          "api_count": 237,
+          "reported_count": 237,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "82YP2",
+          "observed_at": "2026-09-26T15:24:39Z",
+          "collected_at": "2026-09-26T15:25:18.182138365Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 41.455,
+          "oldest_age_seconds": 92.455,
+          "api_stale_rows": 0
+        },
+        "tcb": {
+          "raw_count": 14,
+          "api_count": 14,
+          "reported_count": 14,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "YFKP6",
+          "observed_at": "2026-09-26T15:24:35Z",
+          "collected_at": "2026-09-26T15:25:18.182138365Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 45.455,
+          "oldest_age_seconds": 89.455,
+          "api_stale_rows": 0
+        },
+        "mobi": {
+          "raw_count": 42,
+          "api_count": 42,
+          "reported_count": 42,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "QQQN3",
+          "observed_at": "2026-09-26T15:24:50Z",
+          "collected_at": "2026-09-26T15:25:18.182138365Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 30.455,
+          "oldest_age_seconds": 79.455,
+          "api_stale_rows": 0
+        },
+        "metro": {
+          "raw_count": 24,
+          "api_count": 24,
+          "reported_count": 0,
+          "estimated_count": 24,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "RSRHS",
+          "observed_at": "2026-09-26T15:25:04.255Z",
+          "collected_at": "2026-09-26T15:25:18.182138365Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 16.2,
+          "oldest_age_seconds": 16.2,
+          "api_stale_rows": 0
+        },
+        "cp": {
+          "raw_count": 0,
+          "api_count": 0,
+          "reported_count": 0,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "76XA2",
+          "observed_at": null,
+          "collected_at": "2026-09-26T15:25:18.182138365Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": null,
+          "oldest_age_seconds": null,
+          "api_stale_rows": 0
+        },
+        "ttsl": {
+          "raw_count": 2,
+          "api_count": 2,
+          "reported_count": 2,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "YYS70",
+          "observed_at": "2026-09-26T15:24:53Z",
+          "collected_at": "2026-09-26T15:25:18.182138365Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 27.455,
+          "oldest_age_seconds": 29.455,
+          "api_stale_rows": 0
+        },
+        "fertagus": {
+          "raw_count": 7,
+          "api_count": 7,
+          "reported_count": 7,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "2XUL7",
+          "observed_at": "2026-09-26T15:25:11.625Z",
+          "collected_at": "2026-09-26T15:25:18.182138365Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 8.83,
+          "oldest_age_seconds": 8.83,
+          "api_stale_rows": 0
+        },
+        "cm": {
+          "raw_count": 402,
+          "api_count": 400,
+          "reported_count": 400,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": null,
+          "observed_at": "2026-09-26T15:25:06Z",
+          "collected_at": "2026-09-26T15:25:18.182138365Z",
+          "out_of_region": 2,
+          "youngest_age_seconds": 14.455,
+          "oldest_age_seconds": 97.455,
+          "api_stale_rows": 0
+        }
+      }
+    },
+    {
+      "at": "2026-09-26T15:26:02.595584+00:00",
+      "hub_generated_at": 1790436359880,
+      "hub_response_at": 1790436360755,
+      "api_revision": "20260926T152603.569022601-3183",
+      "same_revision_all_pages": true,
+      "providers": {
+        "carris": {
+          "raw_count": 242,
+          "api_count": 242,
+          "reported_count": 242,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "82YP2",
+          "observed_at": "2026-09-26T15:25:19Z",
+          "collected_at": "2026-09-26T15:26:03.291404102Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 43.596,
+          "oldest_age_seconds": 87.596,
+          "api_stale_rows": 0
+        },
+        "tcb": {
+          "raw_count": 14,
+          "api_count": 14,
+          "reported_count": 14,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "YFKP6",
+          "observed_at": "2026-09-26T15:25:41Z",
+          "collected_at": "2026-09-26T15:25:54.193100083Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 21.596,
+          "oldest_age_seconds": 75.596,
+          "api_stale_rows": 0
+        },
+        "mobi": {
+          "raw_count": 39,
+          "api_count": 39,
+          "reported_count": 40,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "QQQN3",
+          "observed_at": "2026-09-26T15:25:32Z",
+          "collected_at": "2026-09-26T15:25:54.193100083Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 30.596,
+          "oldest_age_seconds": 80.596,
+          "api_stale_rows": 0
+        },
+        "metro": {
+          "raw_count": 24,
+          "api_count": 24,
+          "reported_count": 0,
+          "estimated_count": 24,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "RSRHS",
+          "observed_at": "2026-09-26T15:25:47.189Z",
+          "collected_at": "2026-09-26T15:25:54.193100083Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 15.407,
+          "oldest_age_seconds": 15.407,
+          "api_stale_rows": 0
+        },
+        "cp": {
+          "raw_count": 0,
+          "api_count": 0,
+          "reported_count": 0,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "76XA2",
+          "observed_at": null,
+          "collected_at": "2026-09-26T15:25:54.193100083Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": null,
+          "oldest_age_seconds": null,
+          "api_stale_rows": 0
+        },
+        "ttsl": {
+          "raw_count": 3,
+          "api_count": 3,
+          "reported_count": 3,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "YYS70",
+          "observed_at": "2026-09-26T15:25:38Z",
+          "collected_at": "2026-09-26T15:25:54.193100083Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 24.596,
+          "oldest_age_seconds": 71.596,
+          "api_stale_rows": 0
+        },
+        "fertagus": {
+          "raw_count": 7,
+          "api_count": 7,
+          "reported_count": 7,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "2XUL7",
+          "observed_at": "2026-09-26T15:25:43.004Z",
+          "collected_at": "2026-09-26T15:25:54.193100083Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 9.328,
+          "oldest_age_seconds": 9.328,
+          "api_stale_rows": 0
+        },
+        "cm": {
+          "raw_count": 398,
+          "api_count": 396,
+          "reported_count": 396,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": null,
+          "observed_at": "2026-09-26T15:25:47Z",
+          "collected_at": "2026-09-26T15:25:54.193100083Z",
+          "out_of_region": 2,
+          "youngest_age_seconds": 10.596,
+          "oldest_age_seconds": 89.596,
+          "api_stale_rows": 0
+        }
+      }
+    },
+    {
+      "at": "2026-09-26T15:26:47.578958+00:00",
+      "hub_generated_at": 1790436404707,
+      "hub_response_at": 1790436406196,
+      "api_revision": "20260926T152648.203577253-3269",
+      "same_revision_all_pages": true,
+      "providers": {
+        "carris": {
+          "raw_count": 247,
+          "api_count": 247,
+          "reported_count": 247,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "82YP2",
+          "observed_at": "2026-09-26T15:26:19Z",
+          "collected_at": "2026-09-26T15:26:48.149932927Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 28.579,
+          "oldest_age_seconds": 91.579,
+          "api_stale_rows": 0
+        },
+        "tcb": {
+          "raw_count": 12,
+          "api_count": 12,
+          "reported_count": 12,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "YFKP6",
+          "observed_at": "2026-09-26T15:26:11Z",
+          "collected_at": "2026-09-26T15:26:48.149932927Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 36.579,
+          "oldest_age_seconds": 74.579,
+          "api_stale_rows": 0
+        },
+        "mobi": {
+          "raw_count": 37,
+          "api_count": 37,
+          "reported_count": 37,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "QQQN3",
+          "observed_at": "2026-09-26T15:26:30Z",
+          "collected_at": "2026-09-26T15:26:48.149932927Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 17.579,
+          "oldest_age_seconds": 58.579,
+          "api_stale_rows": 0
+        },
+        "metro": {
+          "raw_count": 24,
+          "api_count": 24,
+          "reported_count": 0,
+          "estimated_count": 24,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "RSRHS",
+          "observed_at": "2026-09-26T15:26:30.841Z",
+          "collected_at": "2026-09-26T15:26:48.149932927Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 16.738,
+          "oldest_age_seconds": 16.738,
+          "api_stale_rows": 0
+        },
+        "cp": {
+          "raw_count": 0,
+          "api_count": 0,
+          "reported_count": 0,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "76XA2",
+          "observed_at": null,
+          "collected_at": "2026-09-26T15:26:48.149932927Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": null,
+          "oldest_age_seconds": null,
+          "api_stale_rows": 0
+        },
+        "ttsl": {
+          "raw_count": 2,
+          "api_count": 2,
+          "reported_count": 2,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "YYS70",
+          "observed_at": "2026-09-26T15:25:38Z",
+          "collected_at": "2026-09-26T15:26:48.149932927Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 69.579,
+          "oldest_age_seconds": 74.579,
+          "api_stale_rows": 0
+        },
+        "fertagus": {
+          "raw_count": 7,
+          "api_count": 7,
+          "reported_count": 7,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "2XUL7",
+          "observed_at": "2026-09-26T15:26:34.883Z",
+          "collected_at": "2026-09-26T15:26:48.149932927Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 12.696,
+          "oldest_age_seconds": 12.696,
+          "api_stale_rows": 0
+        },
+        "cm": {
+          "raw_count": 399,
+          "api_count": 398,
+          "reported_count": 398,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": null,
+          "observed_at": "2026-09-26T15:26:33Z",
+          "collected_at": "2026-09-26T15:26:48.149932927Z",
+          "out_of_region": 1,
+          "youngest_age_seconds": 14.579,
+          "oldest_age_seconds": 96.579,
+          "api_stale_rows": 0
+        }
+      }
+    },
+    {
+      "at": "2026-09-26T15:27:32.580995+00:00",
+      "hub_generated_at": 1790436452298,
+      "hub_response_at": 1790436452811,
+      "api_revision": "20260926T152733.202027618-3347",
+      "same_revision_all_pages": true,
+      "providers": {
+        "carris": {
+          "raw_count": 248,
+          "api_count": 248,
+          "reported_count": 248,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "82YP2",
+          "observed_at": "2026-09-26T15:26:58Z",
+          "collected_at": "2026-09-26T15:27:33.136954566Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 34.581,
+          "oldest_age_seconds": 88.581,
+          "api_stale_rows": 0
+        },
+        "tcb": {
+          "raw_count": 14,
+          "api_count": 14,
+          "reported_count": 14,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "YFKP6",
+          "observed_at": "2026-09-26T15:27:10Z",
+          "collected_at": "2026-09-26T15:27:33.136954566Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 22.581,
+          "oldest_age_seconds": 81.581,
+          "api_stale_rows": 0
+        },
+        "mobi": {
+          "raw_count": 40,
+          "api_count": 40,
+          "reported_count": 40,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "QQQN3",
+          "observed_at": "2026-09-26T15:27:02Z",
+          "collected_at": "2026-09-26T15:27:33.136954566Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 30.581,
+          "oldest_age_seconds": 74.581,
+          "api_stale_rows": 0
+        },
+        "metro": {
+          "raw_count": 24,
+          "api_count": 24,
+          "reported_count": 0,
+          "estimated_count": 24,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "RSRHS",
+          "observed_at": "2026-09-26T15:27:24.719Z",
+          "collected_at": "2026-09-26T15:27:33.136954566Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 7.862,
+          "oldest_age_seconds": 29.835,
+          "api_stale_rows": 0
+        },
+        "cp": {
+          "raw_count": 0,
+          "api_count": 0,
+          "reported_count": 0,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "76XA2",
+          "observed_at": null,
+          "collected_at": "2026-09-26T15:27:33.136954566Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": null,
+          "oldest_age_seconds": null,
+          "api_stale_rows": 0
+        },
+        "ttsl": {
+          "raw_count": 4,
+          "api_count": 4,
+          "reported_count": 4,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "YYS70",
+          "observed_at": "2026-09-26T15:27:22Z",
+          "collected_at": "2026-09-26T15:27:33.136954566Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 10.581,
+          "oldest_age_seconds": 82.581,
+          "api_stale_rows": 0
+        },
+        "fertagus": {
+          "raw_count": 7,
+          "api_count": 7,
+          "reported_count": 7,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": "2XUL7",
+          "observed_at": "2026-09-26T15:27:27.464Z",
+          "collected_at": "2026-09-26T15:27:33.136954566Z",
+          "out_of_region": 0,
+          "youngest_age_seconds": 5.117,
+          "oldest_age_seconds": 5.117,
+          "api_stale_rows": 0
+        },
+        "cm": {
+          "raw_count": 406,
+          "api_count": 405,
+          "reported_count": 405,
+          "estimated_count": 0,
+          "source_status": "ok",
+          "static_status": "ok",
+          "plan_id": null,
+          "observed_at": "2026-09-26T15:27:24Z",
+          "collected_at": "2026-09-26T15:27:33.136954566Z",
+          "out_of_region": 1,
+          "youngest_age_seconds": 8.581,
+          "oldest_age_seconds": 81.581,
+          "api_stale_rows": 0
+        }
+      }
+    }
+  ],
+  "withdrawal_witnesses": [
+    {
+      "operator": "carris",
+      "vehicle_hash": "cbec8ff7d8a4",
+      "from_sample": "2026-09-26T15:23:05.459839+00:00",
+      "absent_in_sample": "2026-09-26T15:23:50.459420+00:00",
+      "last_captured_observation_ms": 1790436102000,
+      "last_captured_age_when_absent_seconds": 128.459
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "fb71bd9cc10c",
+      "from_sample": "2026-09-26T15:23:05.459839+00:00",
+      "absent_in_sample": "2026-09-26T15:23:50.459420+00:00",
+      "last_captured_observation_ms": 1790436130000,
+      "last_captured_age_when_absent_seconds": 100.459
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "e5d08253cad8",
+      "from_sample": "2026-09-26T15:23:05.459839+00:00",
+      "absent_in_sample": "2026-09-26T15:23:50.459420+00:00",
+      "last_captured_observation_ms": 1790436121000,
+      "last_captured_age_when_absent_seconds": 109.459
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "6651cfde6897",
+      "from_sample": "2026-09-26T15:23:05.459839+00:00",
+      "absent_in_sample": "2026-09-26T15:23:50.459420+00:00",
+      "last_captured_observation_ms": 1790436117000,
+      "last_captured_age_when_absent_seconds": 113.459
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "a86cbb1898a3",
+      "from_sample": "2026-09-26T15:23:05.459839+00:00",
+      "absent_in_sample": "2026-09-26T15:23:50.459420+00:00",
+      "last_captured_observation_ms": 1790436093000,
+      "last_captured_age_when_absent_seconds": 137.459
+    },
+    {
+      "operator": "tcb",
+      "vehicle_hash": "009980349dcd",
+      "from_sample": "2026-09-26T15:23:05.459839+00:00",
+      "absent_in_sample": "2026-09-26T15:23:50.459420+00:00",
+      "last_captured_observation_ms": 1790436134000,
+      "last_captured_age_when_absent_seconds": 96.459
+    },
+    {
+      "operator": "cp",
+      "vehicle_hash": "704db21ea212",
+      "from_sample": "2026-09-26T15:23:05.459839+00:00",
+      "absent_in_sample": "2026-09-26T15:23:50.459420+00:00",
+      "last_captured_observation_ms": 1790436114000,
+      "last_captured_age_when_absent_seconds": 116.459
+    },
+    {
+      "operator": "cp",
+      "vehicle_hash": "b355d79e16de",
+      "from_sample": "2026-09-26T15:23:05.459839+00:00",
+      "absent_in_sample": "2026-09-26T15:23:50.459420+00:00",
+      "last_captured_observation_ms": 1790436095000,
+      "last_captured_age_when_absent_seconds": 135.459
+    },
+    {
+      "operator": "cp",
+      "vehicle_hash": "d41d1b509963",
+      "from_sample": "2026-09-26T15:23:05.459839+00:00",
+      "absent_in_sample": "2026-09-26T15:23:50.459420+00:00",
+      "last_captured_observation_ms": 1790436126000,
+      "last_captured_age_when_absent_seconds": 104.459
+    },
+    {
+      "operator": "cp",
+      "vehicle_hash": "189560314bf9",
+      "from_sample": "2026-09-26T15:23:05.459839+00:00",
+      "absent_in_sample": "2026-09-26T15:23:50.459420+00:00",
+      "last_captured_observation_ms": 1790436132000,
+      "last_captured_age_when_absent_seconds": 98.459
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "235d0f307296",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436153000,
+      "last_captured_age_when_absent_seconds": 122.456
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "5305bf14c3a0",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436173000,
+      "last_captured_age_when_absent_seconds": 102.456
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "211988a90996",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436136000,
+      "last_captured_age_when_absent_seconds": 139.456
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "d0239396df21",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436159000,
+      "last_captured_age_when_absent_seconds": 116.456
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "7d6a94b43a24",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436170000,
+      "last_captured_age_when_absent_seconds": 105.456
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "2dd55ff99618",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436136000,
+      "last_captured_age_when_absent_seconds": 139.456
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "c8b303eb38c1",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436178000,
+      "last_captured_age_when_absent_seconds": 97.456
+    },
+    {
+      "operator": "mobi",
+      "vehicle_hash": "0054b2af7c50",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436136000,
+      "last_captured_age_when_absent_seconds": 139.456
+    },
+    {
+      "operator": "cp",
+      "vehicle_hash": "46aedf1f53d9",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436150000,
+      "last_captured_age_when_absent_seconds": 125.456
+    },
+    {
+      "operator": "cp",
+      "vehicle_hash": "c4b5ea896b50",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436170000,
+      "last_captured_age_when_absent_seconds": 105.456
+    },
+    {
+      "operator": "cp",
+      "vehicle_hash": "c153216ebd3a",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436145000,
+      "last_captured_age_when_absent_seconds": 130.456
+    },
+    {
+      "operator": "cp",
+      "vehicle_hash": "42838f6a3ac2",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436161000,
+      "last_captured_age_when_absent_seconds": 114.456
+    },
+    {
+      "operator": "cp",
+      "vehicle_hash": "cda83b922adb",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436169000,
+      "last_captured_age_when_absent_seconds": 106.456
+    },
+    {
+      "operator": "cp",
+      "vehicle_hash": "d77312b15be5",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436168000,
+      "last_captured_age_when_absent_seconds": 107.456
+    },
+    {
+      "operator": "cp",
+      "vehicle_hash": "8da43e4a496c",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436153000,
+      "last_captured_age_when_absent_seconds": 122.456
+    },
+    {
+      "operator": "cp",
+      "vehicle_hash": "ef94108171c7",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436168000,
+      "last_captured_age_when_absent_seconds": 107.456
+    },
+    {
+      "operator": "cp",
+      "vehicle_hash": "8c6cbe847682",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436152000,
+      "last_captured_age_when_absent_seconds": 123.456
+    },
+    {
+      "operator": "cp",
+      "vehicle_hash": "5e02f63c3938",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436154000,
+      "last_captured_age_when_absent_seconds": 121.456
+    },
+    {
+      "operator": "cp",
+      "vehicle_hash": "4eb0ce0eea91",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436169000,
+      "last_captured_age_when_absent_seconds": 106.456
+    },
+    {
+      "operator": "cp",
+      "vehicle_hash": "1fa4d2d94721",
+      "from_sample": "2026-09-26T15:23:50.459420+00:00",
+      "absent_in_sample": "2026-09-26T15:24:35.455562+00:00",
+      "last_captured_observation_ms": 1790436167000,
+      "last_captured_age_when_absent_seconds": 108.456
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "93043db96951",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436202000,
+      "last_captured_age_when_absent_seconds": 118.455
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "22b82f880e85",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436191000,
+      "last_captured_age_when_absent_seconds": 129.455
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "139360c27587",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436188000,
+      "last_captured_age_when_absent_seconds": 132.455
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "9aab139f3ef0",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436204000,
+      "last_captured_age_when_absent_seconds": 116.455
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "bf8e011d0ec5",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436224000,
+      "last_captured_age_when_absent_seconds": 96.455
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "81fbd7e5f7ff",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436202000,
+      "last_captured_age_when_absent_seconds": 118.455
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "ea3e74e79b27",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436222000,
+      "last_captured_age_when_absent_seconds": 98.455
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "104ef3915b66",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436221000,
+      "last_captured_age_when_absent_seconds": 99.455
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "c9e25a707a5d",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436184000,
+      "last_captured_age_when_absent_seconds": 136.455
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "0a6e2aed370c",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436226000,
+      "last_captured_age_when_absent_seconds": 94.455
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "4820b6598129",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436214000,
+      "last_captured_age_when_absent_seconds": 106.455
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "3bfa5583ea54",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436196000,
+      "last_captured_age_when_absent_seconds": 124.455
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "2cd19cb9a7c8",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436217000,
+      "last_captured_age_when_absent_seconds": 103.455
+    },
+    {
+      "operator": "tcb",
+      "vehicle_hash": "0009c8ee84ea",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436215000,
+      "last_captured_age_when_absent_seconds": 105.455
+    },
+    {
+      "operator": "mobi",
+      "vehicle_hash": "1d14d4ccf63d",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436190000,
+      "last_captured_age_when_absent_seconds": 130.455
+    },
+    {
+      "operator": "mobi",
+      "vehicle_hash": "36c5cf87c3a0",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436207000,
+      "last_captured_age_when_absent_seconds": 113.455
+    },
+    {
+      "operator": "ttsl",
+      "vehicle_hash": "a7cc4f649ded",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436190000,
+      "last_captured_age_when_absent_seconds": 130.455
+    },
+    {
+      "operator": "fertagus",
+      "vehicle_hash": "11844d0dbe98",
+      "from_sample": "2026-09-26T15:24:35.455562+00:00",
+      "absent_in_sample": "2026-09-26T15:25:20.455371+00:00",
+      "last_captured_observation_ms": 1790436197424,
+      "last_captured_age_when_absent_seconds": 123.031
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "7e8b47d6ac79",
+      "from_sample": "2026-09-26T15:25:20.455371+00:00",
+      "absent_in_sample": "2026-09-26T15:26:02.595584+00:00",
+      "last_captured_observation_ms": 1790436228000,
+      "last_captured_age_when_absent_seconds": 134.596
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "3d2d74f9bb83",
+      "from_sample": "2026-09-26T15:25:20.455371+00:00",
+      "absent_in_sample": "2026-09-26T15:26:02.595584+00:00",
+      "last_captured_observation_ms": 1790436230000,
+      "last_captured_age_when_absent_seconds": 132.596
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "efd40abc9f78",
+      "from_sample": "2026-09-26T15:25:20.455371+00:00",
+      "absent_in_sample": "2026-09-26T15:26:02.595584+00:00",
+      "last_captured_observation_ms": 1790436254000,
+      "last_captured_age_when_absent_seconds": 108.596
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "e3e326bfbc89",
+      "from_sample": "2026-09-26T15:25:20.455371+00:00",
+      "absent_in_sample": "2026-09-26T15:26:02.595584+00:00",
+      "last_captured_observation_ms": 1790436257000,
+      "last_captured_age_when_absent_seconds": 105.596
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "c75c6ec1e4c6",
+      "from_sample": "2026-09-26T15:25:20.455371+00:00",
+      "absent_in_sample": "2026-09-26T15:26:02.595584+00:00",
+      "last_captured_observation_ms": 1790436258000,
+      "last_captured_age_when_absent_seconds": 104.596
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "d680f223fb51",
+      "from_sample": "2026-09-26T15:25:20.455371+00:00",
+      "absent_in_sample": "2026-09-26T15:26:02.595584+00:00",
+      "last_captured_observation_ms": 1790436265000,
+      "last_captured_age_when_absent_seconds": 97.596
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "b8c4ea74239a",
+      "from_sample": "2026-09-26T15:25:20.455371+00:00",
+      "absent_in_sample": "2026-09-26T15:26:02.595584+00:00",
+      "last_captured_observation_ms": 1790436254000,
+      "last_captured_age_when_absent_seconds": 108.596
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "9df00fa76b9e",
+      "from_sample": "2026-09-26T15:25:20.455371+00:00",
+      "absent_in_sample": "2026-09-26T15:26:02.595584+00:00",
+      "last_captured_observation_ms": 1790436258000,
+      "last_captured_age_when_absent_seconds": 104.596
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "cea52e579a33",
+      "from_sample": "2026-09-26T15:25:20.455371+00:00",
+      "absent_in_sample": "2026-09-26T15:26:02.595584+00:00",
+      "last_captured_observation_ms": 1790436253000,
+      "last_captured_age_when_absent_seconds": 109.596
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "3d90afba9108",
+      "from_sample": "2026-09-26T15:25:20.455371+00:00",
+      "absent_in_sample": "2026-09-26T15:26:02.595584+00:00",
+      "last_captured_observation_ms": 1790436260000,
+      "last_captured_age_when_absent_seconds": 102.596
+    },
+    {
+      "operator": "tcb",
+      "vehicle_hash": "2751ce16ec8b",
+      "from_sample": "2026-09-26T15:25:20.455371+00:00",
+      "absent_in_sample": "2026-09-26T15:26:02.595584+00:00",
+      "last_captured_observation_ms": 1790436249000,
+      "last_captured_age_when_absent_seconds": 113.596
+    },
+    {
+      "operator": "mobi",
+      "vehicle_hash": "7f66361aaf68",
+      "from_sample": "2026-09-26T15:25:20.455371+00:00",
+      "absent_in_sample": "2026-09-26T15:26:02.595584+00:00",
+      "last_captured_observation_ms": 1790436268000,
+      "last_captured_age_when_absent_seconds": 94.596
+    },
+    {
+      "operator": "mobi",
+      "vehicle_hash": "a200cab52b24",
+      "from_sample": "2026-09-26T15:25:20.455371+00:00",
+      "absent_in_sample": "2026-09-26T15:26:02.595584+00:00",
+      "last_captured_observation_ms": 1790436241000,
+      "last_captured_age_when_absent_seconds": 121.596
+    },
+    {
+      "operator": "mobi",
+      "vehicle_hash": "2c5cb61596c4",
+      "from_sample": "2026-09-26T15:25:20.455371+00:00",
+      "absent_in_sample": "2026-09-26T15:26:02.595584+00:00",
+      "last_captured_observation_ms": 1790436261000,
+      "last_captured_age_when_absent_seconds": 101.596
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "fb72930b6947",
+      "from_sample": "2026-09-26T15:26:02.595584+00:00",
+      "absent_in_sample": "2026-09-26T15:26:47.578958+00:00",
+      "last_captured_observation_ms": 1790436302000,
+      "last_captured_age_when_absent_seconds": 105.579
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "f89ed4170a32",
+      "from_sample": "2026-09-26T15:26:02.595584+00:00",
+      "absent_in_sample": "2026-09-26T15:26:47.578958+00:00",
+      "last_captured_observation_ms": 1790436302000,
+      "last_captured_age_when_absent_seconds": 105.579
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "a0ab65cfb5e4",
+      "from_sample": "2026-09-26T15:26:02.595584+00:00",
+      "absent_in_sample": "2026-09-26T15:26:47.578958+00:00",
+      "last_captured_observation_ms": 1790436294000,
+      "last_captured_age_when_absent_seconds": 113.579
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "886b897a07e0",
+      "from_sample": "2026-09-26T15:26:02.595584+00:00",
+      "absent_in_sample": "2026-09-26T15:26:47.578958+00:00",
+      "last_captured_observation_ms": 1790436282000,
+      "last_captured_age_when_absent_seconds": 125.579
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "c30b95c23e20",
+      "from_sample": "2026-09-26T15:26:02.595584+00:00",
+      "absent_in_sample": "2026-09-26T15:26:47.578958+00:00",
+      "last_captured_observation_ms": 1790436308000,
+      "last_captured_age_when_absent_seconds": 99.579
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "0bed3b3ec64d",
+      "from_sample": "2026-09-26T15:26:02.595584+00:00",
+      "absent_in_sample": "2026-09-26T15:26:47.578958+00:00",
+      "last_captured_observation_ms": 1790436298000,
+      "last_captured_age_when_absent_seconds": 109.579
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "531398628331",
+      "from_sample": "2026-09-26T15:26:02.595584+00:00",
+      "absent_in_sample": "2026-09-26T15:26:47.578958+00:00",
+      "last_captured_observation_ms": 1790436299000,
+      "last_captured_age_when_absent_seconds": 108.579
+    },
+    {
+      "operator": "tcb",
+      "vehicle_hash": "009980349dcd",
+      "from_sample": "2026-09-26T15:26:02.595584+00:00",
+      "absent_in_sample": "2026-09-26T15:26:47.578958+00:00",
+      "last_captured_observation_ms": 1790436314000,
+      "last_captured_age_when_absent_seconds": 93.579
+    },
+    {
+      "operator": "tcb",
+      "vehicle_hash": "cf441c113c05",
+      "from_sample": "2026-09-26T15:26:02.595584+00:00",
+      "absent_in_sample": "2026-09-26T15:26:47.578958+00:00",
+      "last_captured_observation_ms": 1790436312000,
+      "last_captured_age_when_absent_seconds": 95.579
+    },
+    {
+      "operator": "mobi",
+      "vehicle_hash": "079ed36383e1",
+      "from_sample": "2026-09-26T15:26:02.595584+00:00",
+      "absent_in_sample": "2026-09-26T15:26:47.578958+00:00",
+      "last_captured_observation_ms": 1790436282000,
+      "last_captured_age_when_absent_seconds": 125.579
+    },
+    {
+      "operator": "mobi",
+      "vehicle_hash": "b7ab2591d146",
+      "from_sample": "2026-09-26T15:26:02.595584+00:00",
+      "absent_in_sample": "2026-09-26T15:26:47.578958+00:00",
+      "last_captured_observation_ms": 1790436300000,
+      "last_captured_age_when_absent_seconds": 107.579
+    },
+    {
+      "operator": "ttsl",
+      "vehicle_hash": "db33cdd46e28",
+      "from_sample": "2026-09-26T15:26:02.595584+00:00",
+      "absent_in_sample": "2026-09-26T15:26:47.578958+00:00",
+      "last_captured_observation_ms": 1790436291000,
+      "last_captured_age_when_absent_seconds": 116.579
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "47633f57374d",
+      "from_sample": "2026-09-26T15:26:47.578958+00:00",
+      "absent_in_sample": "2026-09-26T15:27:32.580995+00:00",
+      "last_captured_observation_ms": 1790436334000,
+      "last_captured_age_when_absent_seconds": 118.581
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "c75c6ec1e4c6",
+      "from_sample": "2026-09-26T15:26:47.578958+00:00",
+      "absent_in_sample": "2026-09-26T15:27:32.580995+00:00",
+      "last_captured_observation_ms": 1790436322000,
+      "last_captured_age_when_absent_seconds": 130.581
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "d7243d97eb59",
+      "from_sample": "2026-09-26T15:26:47.578958+00:00",
+      "absent_in_sample": "2026-09-26T15:27:32.580995+00:00",
+      "last_captured_observation_ms": 1790436324000,
+      "last_captured_age_when_absent_seconds": 128.581
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "01303f86b80a",
+      "from_sample": "2026-09-26T15:26:47.578958+00:00",
+      "absent_in_sample": "2026-09-26T15:27:32.580995+00:00",
+      "last_captured_observation_ms": 1790436351000,
+      "last_captured_age_when_absent_seconds": 101.581
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "d604995fe321",
+      "from_sample": "2026-09-26T15:26:47.578958+00:00",
+      "absent_in_sample": "2026-09-26T15:27:32.580995+00:00",
+      "last_captured_observation_ms": 1790436347000,
+      "last_captured_age_when_absent_seconds": 105.581
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "d9ad97479f03",
+      "from_sample": "2026-09-26T15:26:47.578958+00:00",
+      "absent_in_sample": "2026-09-26T15:27:32.580995+00:00",
+      "last_captured_observation_ms": 1790436333000,
+      "last_captured_age_when_absent_seconds": 119.581
+    },
+    {
+      "operator": "carris",
+      "vehicle_hash": "31114402b664",
+      "from_sample": "2026-09-26T15:26:47.578958+00:00",
+      "absent_in_sample": "2026-09-26T15:27:32.580995+00:00",
+      "last_captured_observation_ms": 1790436316000,
+      "last_captured_age_when_absent_seconds": 136.581
+    }
+  ],
+  "limits": {
+    "upstream_attempts": 20,
+    "application_attempts": 80,
+    "window_seconds": 600
+  },
+  "limits_note": "Five additional successful public GitHub source-document requests and two unsuccessful web-tool opens are separate from provider-feed sampling."
+}

@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Lisboa P\u00fablica API",
+    "title": "Lisboa Pública API",
     "version": "1.0.0",
     "description": "Provider-backed Lisbon transit. apiKey scopes use x-required-scopes; all data lists are paginated. Live revisions expire with410; snapshot revisions freeze committed ingestion membership. Scheduled and estimated data are explicitly classified. Dashboard reads are public for now and rate-limited; supplied API keys still enforce x-required-scopes. Key management requires a Google session. Expensive reads share two fail-fast slots and a 15-second operation deadline (503 busy/timeout). Schedule and historical grouped lists reject over 100000 results with 400 result_limit instead of truncation; narrow operators, route or time window. Busy503 responses include Retry-After."
   },
@@ -1596,7 +1596,8 @@
           },
           "revision": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "Endpoint-specific immutable view token. Vehicle v: tokens pin first-page eligibility time for at most five minutes, subject to version eviction; clients must remove positions whose original expiry has passed."
           }
         },
         "required": [
@@ -1846,6 +1847,14 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "last_known_positions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "last_known_truncated": {
+            "type": "boolean",
+            "description": "The bounded display omits eligible previous positions."
           }
         },
         "required": [
@@ -1870,7 +1879,9 @@
           "static_error",
           "direct_status",
           "direct_error",
-          "direct_updated_at"
+          "direct_updated_at",
+          "last_known_positions",
+          "last_known_truncated"
         ]
       },
       "Route": {
@@ -2076,6 +2087,21 @@
             "type": "string",
             "nullable": true,
             "description": "Published source code or string; code schemes differ by provider/feed version. Metadata recorded with the observation, not a depot assignment."
+          },
+          "last_known": {
+            "type": "boolean",
+            "description": "Previous position, excluded from current metrics."
+          },
+          "inactive_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Original observation plus five minutes; indicates lack of newer data, not physical inactivity."
+          },
+          "last_known_expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Position display deadline, one hour after original observation, including current rows so disconnected clients can expire cached data. Clients must remove expired positions even from pinned pages."
           }
         },
         "required": [
@@ -2098,7 +2124,10 @@
           "stale",
           "plan_id",
           "typology",
-          "propulsion"
+          "propulsion",
+          "last_known",
+          "inactive_at",
+          "last_known_expires_at"
         ]
       },
       "Trip": {
@@ -2251,6 +2280,21 @@
             "items": {
               "type": "string"
             }
+          },
+          "live_coverage": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "partial",
+              "unavailable"
+            ],
+            "description": "Coverage of current totals, independently of historical observations."
+          },
+          "unavailable_live_operators": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -2263,7 +2307,9 @@
           "revision",
           "from",
           "to",
-          "unavailable_fields"
+          "unavailable_fields",
+          "live_coverage",
+          "unavailable_live_operators"
         ]
       },
       "HistoryPoint": {
@@ -2888,7 +2934,8 @@
             "enum": [
               "available",
               "stale",
-              "unavailable"
+              "unavailable",
+              "partial"
             ]
           },
           "updated_at": {

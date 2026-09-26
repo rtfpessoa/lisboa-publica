@@ -1,0 +1,170 @@
+[
+  {
+    "operator": "cp",
+    "agency": "N18KL",
+    "plan": "76XA2",
+    "from": 20260616,
+    "until": 20261231,
+    "retrieved_at": "2026-09-26T16:15:57.815276+00:00",
+    "compressed_bytes": 4500254,
+    "sha256": "12c558f62ad460f909a1f9930ac4b2bdfbd0479dba949c8beae309be64b1e828",
+    "source_catalog": "https://go.tmlmobilidade.pt/hub/api/v1/plans",
+    "expanded_bytes": 16184128,
+    "tables": {
+      "agency.txt": 1,
+      "feed_info.txt": 1,
+      "routes.txt": 123,
+      "stops.txt": 454,
+      "trips.txt": 2226,
+      "stop_times.txt": 35371,
+      "shapes.txt": 305436,
+      "calendar.txt": 2226,
+      "calendar_dates.txt": 32157
+    },
+    "shape_count": 209,
+    "raw_points": 305436,
+    "local_stops": 94,
+    "retained_trips": 1244,
+    "retained_routes": 44,
+    "usable_variants": 77,
+    "routes_with_shapes": 44,
+    "routes_without_shapes": [],
+    "referenced_shape_extent_latlon": [
+      37.020462,
+      42.024734,
+      -9.417836,
+      -7.2329
+    ],
+    "agencies": [
+      {
+        "agency_name": "Comboios de Portugal",
+        "agency_url": "https://cp.pt"
+      }
+    ],
+    "feed_info": [
+      {
+        "default_lang": "pt",
+        "feed_contact_email": "go@tmlmobilidade.pt",
+        "feed_contact_url": "https://go.tmlmobilidade.pt",
+        "feed_end_date": "20261231",
+        "feed_lang": "pt",
+        "feed_publisher_name": "Transportes Metropolitanos de Lisboa",
+        "feed_publisher_url": "https://go.tmlmobilidade.pt",
+        "feed_start_date": "20260616",
+        "feed_version": "76XA2"
+      }
+    ]
+  },
+  {
+    "operator": "ttsl",
+    "agency": "LTP61",
+    "plan": "YYS70",
+    "from": 20260711,
+    "until": 20270701,
+    "retrieved_at": "2026-09-26T16:15:59.155828+00:00",
+    "compressed_bytes": 19785,
+    "sha256": "a6e46cd773f354fc72b9fd87882528e7432bce75aece216ef03e515844cc1016",
+    "source_catalog": "https://go.tmlmobilidade.pt/hub/api/v1/plans",
+    "expanded_bytes": 153597,
+    "tables": {
+      "agency.txt": 1,
+      "feed_info.txt": 1,
+      "routes.txt": 5,
+      "stops.txt": 10,
+      "trips.txt": 938,
+      "stop_times.txt": 1972,
+      "shapes.txt": 224,
+      "calendar.txt": 28,
+      "calendar_dates.txt": 240
+    },
+    "shape_count": 17,
+    "raw_points": 224,
+    "local_stops": 10,
+    "retained_trips": 938,
+    "retained_routes": 5,
+    "usable_variants": 17,
+    "routes_with_shapes": 5,
+    "routes_without_shapes": [],
+    "referenced_shape_extent_latlon": [
+      38.6476,
+      38.707,
+      -9.231,
+      -9.006
+    ],
+    "agencies": [
+      {
+        "agency_name": "Transtejo Soflusa",
+        "agency_url": "https://ttsl.pt"
+      }
+    ],
+    "feed_info": [
+      {
+        "default_lang": "pt",
+        "feed_contact_email": "go@tmlmobilidade.pt",
+        "feed_contact_url": "https://go.tmlmobilidade.pt",
+        "feed_end_date": "20270701",
+        "feed_lang": "pt",
+        "feed_publisher_name": "Transportes Metropolitanos de Lisboa",
+        "feed_publisher_url": "https://go.tmlmobilidade.pt",
+        "feed_start_date": "20260711",
+        "feed_version": "YYS70"
+      }
+    ]
+  },
+  {
+    "operator": "fertagus",
+    "agency": "7NTB1",
+    "plan": "2XUL7",
+    "from": 20260702,
+    "until": 20261231,
+    "retrieved_at": "2026-09-26T16:15:59.596547+00:00",
+    "compressed_bytes": 90513,
+    "sha256": "3157944f9a01de8e8072b94c9d56955ac319cff0659ca42dbe807bb11c66b0a5",
+    "source_catalog": "https://go.tmlmobilidade.pt/hub/api/v1/plans",
+    "expanded_bytes": 518246,
+    "tables": {
+      "agency.txt": 1,
+      "feed_info.txt": 1,
+      "routes.txt": 3,
+      "stops.txt": 14,
+      "trips.txt": 260,
+      "stop_times.txt": 3355,
+      "shapes.txt": 4820,
+      "calendar.txt": 4,
+      "calendar_dates.txt": 19
+    },
+    "shape_count": 6,
+    "raw_points": 4820,
+    "local_stops": 14,
+    "retained_trips": 260,
+    "retained_routes": 2,
+    "usable_variants": 4,
+    "routes_with_shapes": 2,
+    "routes_without_shapes": [],
+    "referenced_shape_extent_latlon": [
+      38.53047,
+      38.74564,
+      -9.18625,
+      -8.87098
+    ],
+    "agencies": [
+      {
+        "agency_name": "Fertagus",
+        "agency_url": "https://fertagus.pt"
+      }
+    ],
+    "feed_info": [
+      {
+        "default_lang": "pt",
+        "feed_contact_email": "go@tmlmobilidade.pt",
+        "feed_contact_url": "https://go.tmlmobilidade.pt",
+        "feed_end_date": "20261231",
+        "feed_lang": "pt",
+        "feed_publisher_name": "Transportes Metropolitanos de Lisboa",
+        "feed_publisher_url": "https://go.tmlmobilidade.pt",
+        "feed_start_date": "20260702",
+        "feed_version": "2XUL7"
+      }
+    ]
+  }
+]

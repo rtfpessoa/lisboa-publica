@@ -1,0 +1,26 @@
+[
+  {
+    "url": "https://raw.githubusercontent.com/tmlmobilidade/go/f90e9f91f3daa3fff60ba2582f3827f4ea4f1300/modules/hub/sql/publish-vehicles/select-vehicle-positions.sql",
+    "status": "200",
+    "exit": 0,
+    "file": "/tmp/lisboa-provider-continuity/tml-source-0.txt"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/tmlmobilidade/go/f90e9f91f3daa3fff60ba2582f3827f4ea4f1300/modules/hub/apps/api/src/endpoints/v1/vehicles/handlers/get-vehicle-positions-json.ts",
+    "status": "200",
+    "exit": 0,
+    "file": "/tmp/lisboa-provider-continuity/tml-source-1.txt"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/tmlmobilidade/go/f90e9f91f3daa3fff60ba2582f3827f4ea4f1300/modules/hub/apps/publish-vehicles/src/tasks/publish-vehicle-positions.ts",
+    "status": "200",
+    "exit": 0,
+    "file": "/tmp/lisboa-provider-continuity/tml-source-2.txt"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/tmlmobilidade/go/f90e9f91f3daa3fff60ba2582f3827f4ea4f1300/modules/tracker/apps/pt-tml-cp-api-fetch/src/index.ts",
+    "status": "200",
+    "exit": 0,
+    "file": "/tmp/lisboa-provider-continuity/tml-source-3.txt"
+  }
+]

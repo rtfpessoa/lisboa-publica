@@ -17,7 +17,7 @@ func (s *Store) stageLive(live *LiveData, distances map[string]*float64) {
 	if s.collector == nil {
 		s.collector = newHistoryCollector()
 	}
-	for _, vehicle := range live.Vehicles {
+	for _, vehicle := range live.historyVehicles() {
 		s.collector.observe(vehicle, distances[vehicle.Id], live.Collected, s.HistoryInterval)
 	}
 }

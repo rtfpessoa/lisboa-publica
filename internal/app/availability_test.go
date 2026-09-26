@@ -156,12 +156,16 @@ func TestFastPublicationKeepsFrozenCollections(t *testing.T) {
 	op := c.operator("metro")
 	c.update("metro", d, nil, op)
 	frozen, _ := c.state("")
-	for i := 0; i < 126; i++ {
+	for i := 0; i < maxCachedVersions-1; i++ {
 		c.update("metro", nil, &LiveData{Collected: now.Add(time.Duration(i) * time.Millisecond)}, op)
 	}
 	page, err := c.state(frozen.Revision)
 	if err != nil || page.Static["metro"] != d {
-		t.Fatal("60s-equivalent fast publications expired/shared-static revision", err)
+		t.Fatal("within-cap publications expired/shared-static revision", err)
+	}
+	c.update("metro", nil, &LiveData{Collected: now}, op)
+	if _, err := c.state(frozen.Revision); err == nil {
+		t.Fatal("over-cap revision did not expire")
 	}
 }
 

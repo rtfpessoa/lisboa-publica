@@ -1,0 +1,18 @@
+npm notice run lisboa-publica@1.0.0 npx
+npm notice run 'playwright' test tests/continuity.spec.ts
+
+Running 7 tests using 1 worker
+
+(node:86362) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/continuity.spec.ts:30:1 › selected CP retains one dimmed marker, truthful counts and inactive detail through gaps (3.4s)
+  ✓  2 tests/continuity.spec.ts:43:1 › healthy repeated reports keep current counts between 90 and 180 seconds (1.6s)
+  ✓  3 tests/continuity.spec.ts:48:1 › failed operator refresh makes cached coverage unknown while retaining positions (1.8s)
+  ✓  4 tests/continuity.spec.ts:58:31 › rail and ferry overlays follow selected operators without live reports at width 1280 (2.0s)
+  ✓  5 tests/continuity.spec.ts:58:31 › rail and ferry overlays follow selected operators without live reports at width 390 (2.2s)
+{"width":1280,"variants":2261,"points":607609,"first_all_geometry_ms":1983,"main_js_heap_bytes":227922560,"operator_refreshes":2,"unchanged_network_posts":5}
+  ✓  6 tests/continuity.spec.ts:75:31 › full official geometry remains responsive through operator refresh at width 1280 (4.3s)
+{"width":390,"variants":2261,"points":607609,"first_all_geometry_ms":1347,"main_js_heap_bytes":231394640,"operator_refreshes":2,"unchanged_network_posts":5}
+  ✓  7 tests/continuity.spec.ts:75:31 › full official geometry remains responsive through operator refresh at width 390 (3.7s)
+
+  7 passed (19.8s)

@@ -85,6 +85,7 @@ type StaticData struct {
 	Shapes          []api.RouteShape    `json:"shapes,omitempty"`
 	GeometryUpdated *time.Time          `json:"geometry_updated,omitempty"`
 	GeometryError   *string             `json:"geometry_error,omitempty"`
+	GeometryPartial bool                `json:"geometry_partial,omitempty"`
 }
 
 // Metadata contains published vehicle model and registration fields.
@@ -96,8 +97,14 @@ type Metadata struct {
 
 // LiveData holds provider positions and their collection time.
 type LiveData struct {
-	Vehicles  []api.Vehicle `json:"vehicles"`
-	Collected time.Time     `json:"collected"`
+	Vehicles                []api.Vehicle                `json:"vehicles"`
+	Collected               time.Time                    `json:"collected"`
+	LastKnown               []api.Vehicle                `json:"last_known,omitempty"`
+	LastKnownTruncatedUntil time.Time                    `json:"last_known_truncated_until,omitempty"`
+	Continuity              map[string]vehicleContinuity `json:"continuity,omitempty"`
+	ReplayFloor             time.Time                    `json:"replay_floor,omitempty"`
+	Samples                 []api.Vehicle                `json:"-"`
+	Unverified              bool                         `json:"-"`
 }
 
 // State is an immutable collection version shared by paginated readers.
@@ -135,11 +142,20 @@ func NewCache() *Cache {
 	return c
 }
 func (c *Cache) publish(s *State) {
+	// Pagination needs display rows, not the collector's replay ledger. Keep that
+	// ledger only in the current state, without mutating any in-flight reader.
+	if previous := c.current; previous != nil {
+		c.versions[previous.Revision] = archivedDisplayState(previous)
+	}
 	c.sequence++
 	s.Revision = time.Now().UTC().Format("20060102T150405.000000000") + "-" + stringID(c.sequence)
 	s.Created = time.Now()
 	c.current = s
 	c.versions[s.Revision] = s
+	c.pruneVersions()
+}
+
+func (c *Cache) pruneVersions() {
 	for r, v := range c.versions {
 		if time.Since(v.Created) > staticRefreshInterval {
 			delete(c.versions, r)
@@ -155,6 +171,17 @@ func (c *Cache) publish(s *State) {
 		delete(c.versions, oldest.Revision)
 	}
 }
+func archivedDisplayState(previous *State) *State {
+	archived := *previous
+	archived.Live = make(map[string]*LiveData, len(previous.Live))
+	for id, live := range previous.Live {
+		display := *live
+		display.Continuity = nil
+		archived.Live[id] = &display
+	}
+	return &archived
+}
+
 func (c *Cache) update(id string, static *StaticData, live *LiveData, op api.Operator) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -173,7 +200,10 @@ func (c *Cache) update(id string, static *StaticData, live *LiveData, op api.Ope
 		value.Static[id] = static
 	}
 	if live != nil {
-		value.Live[id] = live
+		published := *live
+		// Samples belong to publication/persistence, never paginated display revisions.
+		published.Samples = []api.Vehicle{}
+		value.Live[id] = &published
 	}
 	value.Operators[id] = op
 	c.publish(value)

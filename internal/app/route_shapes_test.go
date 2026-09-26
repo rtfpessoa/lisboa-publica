@@ -198,3 +198,19 @@ func TestCMPlanWithoutShapesIsRejected(t *testing.T) {
 		t.Fatal("missing agency geometry silently accepted")
 	}
 }
+
+func TestRailFerryPublishedGeometry(t *testing.T) {
+	for _, id := range []string{"cp", "ttsl", "fertagus"} {
+		t.Run(id, func(t *testing.T) {
+			p, _ := providerByID(id)
+			now := time.Now().UTC()
+			d, err := readGTFS(shapeArchive(t, false), p, "plan", "20260101", "20261231", hubBase, now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(d.Shapes) != 2 || geometryCoverage(id, d).Status != api.GeometryCoverageStatusAvailable {
+				t.Fatal("official service geometry not enabled", len(d.Shapes))
+			}
+		})
+	}
+}

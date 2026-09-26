@@ -1,0 +1,33 @@
+{
+  "proof": [
+    {
+      "phase": "nonempty",
+      "cpSelected": "true",
+      "cpText": "CP\n1 observações",
+      "metric": "VEÍCULOS REPORTADOS\n1\n0 posições estimadas à parte",
+      "markerFeatures": 1
+    },
+    {
+      "phase": "HTTP error",
+      "cpSelected": "true",
+      "cpText": "CP\n1 observações",
+      "metric": "VEÍCULOS REPORTADOS\n1\n0 posições estimadas à parte",
+      "markerFeatures": 1
+    },
+    {
+      "phase": "empty success",
+      "cpSelected": "true",
+      "cpText": "CP\nSem observações atuais",
+      "metric": "VEÍCULOS REPORTADOS\n0\nSem observações atuais; cobertura parcial",
+      "markerFeatures": 0
+    },
+    {
+      "phase": "recovery",
+      "cpSelected": "true",
+      "cpText": "CP\n1 observações",
+      "metric": "VEÍCULOS REPORTADOS\n1\n0 posições estimadas à parte",
+      "markerFeatures": 1
+    }
+  ],
+  "errors": []
+}

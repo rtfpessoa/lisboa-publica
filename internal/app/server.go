@@ -363,20 +363,29 @@ func (s *Server) ListOperators(ctx context.Context, _ api.ListOperatorsRequestOb
 	out := []api.Operator{}
 	now := time.Now()
 	for _, p := range providers {
-		v := state.Operators[p.ID]
-		if v.Status == "ok" && (v.LiveUpdatedAt == nil || now.Sub(*v.LiveUpdatedAt) > 90*time.Second) {
-			v.Status = api.OperatorStatusStale
-		}
-		if v.ObservedAt != nil && now.Sub(*v.ObservedAt) > 180*time.Second && v.Status == "ok" {
-			v.Status = api.OperatorStatusStale
-		}
-		if v.StaticStatus == "ok" && (v.StaticUpdatedAt == nil || now.Sub(*v.StaticUpdatedAt) > 12*time.Hour) {
-			v.StaticStatus = api.OperatorStaticStatusStale
-		}
-		out = append(out, v)
+		out = append(out, projectOperator(state, p.ID, now))
 	}
 	page, data := paginate(out, filter, state.Revision)
 	return api.ListOperators200JSONResponse{Data: data, Page: page}, nil
+}
+
+func projectOperator(state *State, id string, now time.Time) api.Operator {
+	v := state.Operators[id]
+	_, v.ReportedPositions, v.EstimatedPositions, v.LastKnownPositions, v.LastKnownTruncated = projectLive(state.Live[id], v, state.Static[id], now)
+	markOperatorFreshness(&v, now)
+	return v
+}
+
+func markOperatorFreshness(v *api.Operator, now time.Time) {
+	if v.Status == "ok" && (v.LiveUpdatedAt == nil || now.Sub(*v.LiveUpdatedAt) > 90*time.Second) {
+		v.Status = api.OperatorStatusStale
+	}
+	if v.ObservedAt != nil && now.Sub(*v.ObservedAt) > 180*time.Second && v.Status == "ok" {
+		v.Status = api.OperatorStatusStale
+	}
+	if v.StaticStatus == "ok" && (v.StaticUpdatedAt == nil || now.Sub(*v.StaticUpdatedAt) > 12*time.Hour) {
+		v.StaticStatus = api.OperatorStaticStatusStale
+	}
 }
 
 // ListRoutes searches published routes within an immutable collection.
@@ -455,7 +464,7 @@ func (s *Server) ListVehicles(ctx context.Context, _ api.ListVehiclesRequestObje
 	if err != nil {
 		return nil, err
 	}
-	state, err := s.Cache.state(filter.Revision)
+	state, asOf, revision, err := s.vehicleState(filter, time.Now().UTC())
 	if err != nil {
 		return nil, err
 	}
@@ -464,16 +473,15 @@ func (s *Server) ListVehicles(ctx context.Context, _ api.ListVehiclesRequestObje
 		if !filter.selected(p) {
 			continue
 		}
-		for _, v := range d.Vehicles {
-			if filter.Route != "" && (v.RouteId == nil || *v.RouteId != filter.Route) {
-				continue
+		rows, _, _, _, _ := projectLive(d, state.Operators[p], state.Static[p], asOf)
+		for _, v := range rows {
+			if filter.Route == "" || v.RouteId != nil && *v.RouteId == filter.Route {
+				out = append(out, v)
 			}
-			v.Stale = time.Since(v.ObservedAt) > 180*time.Second
-			out = append(out, v)
 		}
 	}
 	sortVehicles(out)
-	page, data := paginate(out, filter, state.Revision)
+	page, data := paginate(out, filter, revision)
 	return api.ListVehicles200JSONResponse{Data: data, Page: page}, nil
 }
 

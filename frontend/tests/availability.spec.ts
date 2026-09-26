@@ -108,6 +108,6 @@ test('persistent busy reads stop after bounded retries and expose an error',asyn
  await page.route('**/api/v1/fleet?**',r=>{calls++;return r.fulfill({status:503,headers:{'Retry-After':'1'},json:{code:'busy',message:'Pedidos em curso'}})});
  await page.goto('/');await page.getByRole('button',{name:'Frota',exact:true}).click();await page.getByRole('button',{name:'Veículos',exact:true}).click();
  await expect.poll(()=>calls).toBe(1);
- for(const delay of [1600,2600,4600,8600]){const before=calls;await page.clock.fastForward(delay);await expect.poll(()=>calls).toBe(before+1)}
+ for(const delay of [1600,2600,4600,8600]){const before=calls;await page.clock.fastForward(delay);await expect.poll(async()=>{await page.clock.fastForward(100);return calls}).toBe(before+1)}
  await expect(page.locator('.page-panel')).toContainText('Frota indisponível devido a erro.');await page.clock.fastForward(10000);expect(calls).toBe(5); // The separate 30-second polling cycle can start a new bounded read.
 });

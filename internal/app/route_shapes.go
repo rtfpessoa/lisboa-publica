@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"lisboapublica/internal/api"
 	"sort"
 	"time"
@@ -48,7 +49,15 @@ func geometryCoverage(id string, data *StaticData) api.GeometryCoverage {
 	if len(data.Shapes) > 0 {
 		coverage.Status = api.GeometryCoverageStatusAvailable
 		coverage.Message = "Percursos oficiais GTFS; inclui sentidos e variantes."
-		if data.GeometryError != nil || data.GeometryUpdated == nil || time.Since(*data.GeometryUpdated) > 12*time.Hour {
+		covered := map[string]bool{}
+		for _, shape := range data.Shapes {
+			covered[shape.RouteId] = true
+		}
+		if data.GeometryPartial || len(covered) < len(data.Routes) {
+			coverage.Status = api.GeometryCoverageStatusPartial
+			coverage.Message = fmt.Sprintf("Percursos publicados em %d/%d carreiras; algumas variantes podem estar indisponíveis.", len(covered), len(data.Routes))
+		}
+		if data.GeometryError != nil && !data.GeometryPartial || data.GeometryUpdated == nil || time.Since(*data.GeometryUpdated) > 12*time.Hour {
 			coverage.Status = api.GeometryCoverageStatusStale
 			coverage.Message = "Percursos anteriores; atualização indisponível."
 		}

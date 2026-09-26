@@ -67,28 +67,58 @@ func (s *Server) GetMetrics(ctx context.Context, _ api.GetMetricsRequestObject) 
 	}
 	metrics.Revision = revision
 	state, _ := s.Cache.state("")
-	metrics.ReportedVehicles, metrics.EstimatedVehicles = liveVehicleCounts(state, filter)
+	metrics.ReportedVehicles, metrics.EstimatedVehicles, metrics.LiveCoverage, metrics.UnavailableLiveOperators = liveCounts(state, filter, time.Now())
 	return api.GetMetrics200JSONResponse(metrics), nil
 }
 
 func liveVehicleCounts(state *State, filter Filter) (*int, *int) {
-	reported, estimated := 0, 0
-	available := false
-	for p, data := range state.Live {
-		if !filter.selected(p) {
+	r, e, _, _ := liveCounts(state, filter, time.Now())
+	return r, e
+}
+
+func liveCounts(state *State, filter Filter, now time.Time) (*int, *int, api.MetricsLiveCoverage, []string) {
+	reported, estimated, known := 0, 0, 0
+	unavailable := []string{}
+	for _, p := range providers {
+		if !filter.selected(p.ID) {
 			continue
 		}
-		if time.Since(data.Collected) <= sourceFreshness {
-			available = true
+		rows, r, _, _, _ := projectLive(state.Live[p.ID], state.Operators[p.ID], state.Static[p.ID], now)
+		if r == nil {
+			unavailable = append(unavailable, p.ID)
+			continue
 		}
-		r, e := countLiveVehicles(data.Vehicles, filter.Route)
-		reported += r
-		estimated += e
+		known++
+		rCount, eCount := countCurrentPositions(rows, filter.Route)
+		reported += rCount
+		estimated += eCount
 	}
-	if !available {
-		return nil, nil
+	if known == 0 {
+		return nil, nil, api.MetricsLiveCoverageUnavailable, unavailable
 	}
-	return ptr(reported), ptr(estimated)
+	coverage := api.MetricsLiveCoverageComplete
+	if len(unavailable) > 0 {
+		coverage = api.MetricsLiveCoveragePartial
+	}
+	return ptr(reported), ptr(estimated), coverage, unavailable
+}
+
+func countCurrentPositions(rows []api.Vehicle, route string) (int, int) {
+	reported, estimated := 0, 0
+	for _, v := range rows {
+		if v.LastKnown {
+			continue
+		}
+		if route != "" && (v.RouteId == nil || *v.RouteId != route) {
+			continue
+		}
+		if v.PositionKind == api.VehiclePositionKindEstimated {
+			estimated++
+		} else {
+			reported++
+		}
+	}
+	return reported, estimated
 }
 
 func countLiveVehicles(vehicles []api.Vehicle, route string) (int, int) {

@@ -1,0 +1,20 @@
+npm notice run lisboa-publica@1.0.0 build
+npm notice run tsc -b && vite build
+vite v8.3.1 building client environment for production...
+transforming...
+✓ 2361 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                 0.55 kB │ gzip:   0.38 kB
+dist/assets/maplibre-gl-worker-CRiIRpYb.js    509.70 kB
+dist/assets/index-D7KX0agx.css                 20.04 kB │ gzip:   5.17 kB
+dist/assets/Map-B8-mEBLf.css                   82.96 kB │ gzip:  10.72 kB
+dist/assets/index-ICus9Dbc.js                 706.58 kB │ gzip: 206.98 kB
+dist/assets/Map-CzVcMeAO.js                 1,024.67 kB │ gzip: 277.50 kB
+
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 1000 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 784ms
