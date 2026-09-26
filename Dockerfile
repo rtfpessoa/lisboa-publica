@@ -10,6 +10,7 @@ FROM golang:1.26-alpine AS backend
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
+COPY --from=frontend /src/frontend/dist /frontend-dist
 COPY cmd/ cmd/
 COPY internal/ internal/
 ARG VERSION=development
@@ -20,7 +21,7 @@ FROM alpine:3.23
 RUN apk add --no-cache ca-certificates tzdata && adduser -D -u 10001 dashboard
 WORKDIR /app
 COPY --from=backend /server /app/server
-COPY --from=frontend /src/frontend/dist /app/frontend/dist
+COPY --from=backend /frontend-dist /app/frontend/dist
 ARG VERSION=development
 LABEL org.opencontainers.image.source="https://github.com/rtfpessoa/lisboa-publica" \
       org.opencontainers.image.revision=$VERSION
