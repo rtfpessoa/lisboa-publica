@@ -11,3 +11,5 @@ frontend/playwright-report/
 bin/
 *.log
 frontend/*.tsbuildinfo
+
+/deploy/.cloud.env
