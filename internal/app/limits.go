@@ -23,6 +23,11 @@ const (
 
 	maxCachedVersions          = 24
 	maxConditionalBodies       = 20
+	maxConditionalBodyBytes    = 1 << 20
+	maxGeometryPoints          = 2_500_000
+	maxGeometryVariants        = 5000
+	geometryToleranceMetres    = 2.0
+	metresPerDegree            = 111320.0
 	maxRateEntries             = 4096
 	randomSecretBytes          = 32
 	minimumLoginNonceLength    = 16

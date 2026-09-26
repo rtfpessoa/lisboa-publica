@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -69,14 +68,7 @@ func (f *Fetcher) fetch(ctx context.Context, u string, max int64) ([]byte, error
 	if int64(len(right)) > max {
 		return nil, fmt.Errorf("upstream response exceeds size limit")
 	}
-	if tag = res.Header.Get("ETag"); tag != "" {
-		f.mu.Lock()
-		if len(f.blobs) < maxConditionalBodies {
-			f.etag[u] = tag
-			f.blobs[u] = right
-		}
-		f.mu.Unlock()
-	}
+	f.cacheResponse(u, res.Header.Get("ETag"), right)
 	return right, nil
 }
 func (f *Fetcher) fetchJSON(ctx context.Context, u string, dst any) error {
@@ -189,12 +181,7 @@ func (f *Fetcher) refreshStatic(ctx context.Context) {
 			return
 		}
 		if p.ID == "cm" {
-			d, e := f.cmStatic(ctx, p)
-			if e != nil {
-				f.markError(ctx, p, true, e)
-			} else {
-				f.saveStatic(ctx, p, d)
-			}
+			f.refreshCMStatic(ctx, p, plans.Data, err, today)
 			continue
 		}
 		if err != nil {
@@ -265,13 +252,7 @@ func (f *Fetcher) refreshMetadata(ctx context.Context) {
 func (f *Fetcher) saveStatic(ctx context.Context, p provider, d *StaticData) {
 	f.Store.PublishMu.Lock()
 	defer f.Store.PublishMu.Unlock()
-	op := f.Cache.operator(p.ID)
-	op.StaticStatus = api.OperatorStaticStatusOk
-	op.StaticUpdatedAt = ptr(d.Updated)
-	op.StaticError = nil
-	op.PlanId = optional(d.PlanID)
-	op.ValidFrom = optional(d.ValidFrom)
-	op.ValidUntil = optional(d.ValidUntil)
+	op := staticHealth(f.Cache.operator(p.ID), d)
 	if e := f.Store.Save(ctx, p.ID, d, nil, op, nil); e != nil {
 		f.Log.Error("static persistence failed", zap.String("operator", p.ID), zap.Error(e))
 		return
@@ -482,11 +463,7 @@ func activeHubPlan(plans []hubPlan, agency string, today int) *hubPlan {
 }
 func (f *Fetcher) loadHubPlan(ctx context.Context, p provider, selected *hubPlan) (*StaticData, error) {
 
-	u, e := url.Parse(selected.URL)
-	if e != nil || u.Scheme != "https" || u.Hostname() != "objectstorage.eu-frankfurt-1.oraclecloud.com" {
-		return nil, fmt.Errorf("URL GTFS fora do armazenamento oficial autorizado")
-	}
-	blob, e := f.fetch(ctx, selected.URL, maxGTFSCompressedBytes)
+	blob, e := f.fetchHubArchive(ctx, selected)
 	if e != nil {
 		return nil, e
 	}
@@ -577,5 +554,27 @@ func enrichVehicle(v *api.Vehicle, data *StaticData) {
 				v.LicensePlate = optional(m.Plate)
 			}
 		}
+	}
+}
+
+func staticHealth(op api.Operator, d *StaticData) api.Operator {
+	op.StaticStatus = api.OperatorStaticStatusOk
+	op.StaticUpdatedAt = ptr(d.Updated)
+	op.StaticError = nil
+	op.PlanId = optional(d.PlanID)
+	op.ValidFrom = optional(d.ValidFrom)
+	op.ValidUntil = optional(d.ValidUntil)
+	return op
+}
+
+func (f *Fetcher) cacheResponse(address, tag string, body []byte) {
+	if tag == "" || len(body) > maxConditionalBodyBytes {
+		return
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.blobs) < maxConditionalBodies || f.blobs[address] != nil {
+		f.etag[address] = tag
+		f.blobs[address] = body
 	}
 }

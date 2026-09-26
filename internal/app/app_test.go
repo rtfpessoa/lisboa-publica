@@ -229,6 +229,8 @@ func TestIntegration(t *testing.T) {
 		t.Fatal("key secret storage failure")
 	}
 	keyHeaders := map[string]string{"Authorization": "Bearer " + key.Secret}
+	status, body = req(t, http.DefaultClient, "GET", ts.URL+"/api/v1/route-shapes", nil, keyHeaders)
+	expectStatus(t, status, 200, body)
 	status, body = req(t, http.DefaultClient, "GET", ts.URL+"/api/v1/vehicles", nil, keyHeaders)
 	expectStatus(t, status, 200, body)
 	status, body = req(t, http.DefaultClient, "GET", ts.URL+"/api/v1/history", nil, keyHeaders)
@@ -242,6 +244,8 @@ func TestIntegration(t *testing.T) {
 	status, body = req(t, client, "POST", ts.URL+"/api/v1/keys", api.CreateKey{Name: "expires", Scopes: []api.CreateKeyScopes{"read:history"}}, origin)
 	expectStatus(t, status, 201, body)
 	expired := decode[api.KeySecret](t, body)
+	status, body = req(t, http.DefaultClient, "GET", ts.URL+"/api/v1/route-shapes", nil, map[string]string{"Authorization": "Bearer " + expired.Secret})
+	expectStatus(t, status, 403, body)
 	_, _ = store.DB.Exec(context.Background(), "UPDATE api_keys SET expires_at=$1 WHERE id=$2", now.Add(-time.Hour), expired.Key.Id)
 	status, body = req(t, http.DefaultClient, "GET", ts.URL+"/api/v1/history", nil, map[string]string{"Authorization": "Bearer " + expired.Secret})
 	expectStatus(t, status, 401, body)
@@ -515,7 +519,7 @@ func TestSpecScopePolicy(t *testing.T) {
 		}
 	}
 	sort.Strings(ids)
-	if len(ids) != 22 {
+	if len(ids) != 23 {
 		t.Fatalf("unexpected operation count%d", len(ids))
 	}
 }

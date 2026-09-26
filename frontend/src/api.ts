@@ -263,6 +263,30 @@ export type MetroStatus = {
     source_url: string;
     lines: MetroLine[];
 };
+export type RouteShape = {
+    id: string;
+    operator_id: string;
+    route_id: string;
+    shape_id: string;
+    direction_id: number | null;
+    headsign: string;
+    color: string;
+    plan_id: string;
+    source_url: string;
+    updated_at: string;
+    geometry: number[][];
+};
+export type GeometryCoverage = {
+    operator_id: string;
+    status: "available" | "stale" | "unavailable";
+    updated_at: string | null;
+    message: string;
+};
+export type RouteShapePage = {
+    data: RouteShape[];
+    page: Page;
+    coverage: GeometryCoverage[];
+};
 /**
  * getHealth
  */
@@ -748,6 +772,32 @@ export function getMetroStatus(opts?: Oazapfts.RequestOpts) {
         status: number;
         data: Error;
     }>("/api/v1/metro/status", {
+        ...opts
+    }));
+}
+/**
+ * Official route geometry variants and coverage
+ */
+export function listRouteShapes({ limit, offset, revision, operators, routeId }: {
+    limit?: number;
+    offset?: number;
+    revision?: string;
+    operators?: string;
+    routeId?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: RouteShapePage;
+    } | {
+        status: number;
+        data: Error;
+    }>(`/api/v1/route-shapes${QS.query(QS.explode({
+        limit,
+        offset,
+        revision,
+        operators,
+        route_id: routeId
+    }))}`, {
         ...opts
     }));
 }

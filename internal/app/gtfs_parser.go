@@ -19,6 +19,8 @@ type gtfsReader struct {
 	shapes        map[string][]shapePoint
 	trips         map[string]*ScheduledTrip
 	shapeForRoute map[string]string
+	directions    map[string]*int
+	pointCount    int
 	routeStops    map[string]map[string]bool
 }
 
@@ -28,7 +30,7 @@ func readGTFS(blob []byte, p provider, planID, from, until, source string, now t
 		return nil, err
 	}
 	data := &StaticData{Models: map[string]Metadata{}, PlanID: planID, ValidFrom: from, ValidUntil: until, Source: source, Updated: now, Schedule: &Schedule{Calendars: map[string]Calendar{}, Exceptions: map[string]map[string]int{}, Parents: map[string]string{}}}
-	reader := &gtfsReader{provider: p, data: data, routes: map[string]*api.RouteDetail{}, stops: map[string]*api.Stop{}, shapes: map[string][]shapePoint{}, trips: map[string]*ScheduledTrip{}, shapeForRoute: map[string]string{}, routeStops: map[string]map[string]bool{}}
+	reader := &gtfsReader{provider: p, data: data, routes: map[string]*api.RouteDetail{}, stops: map[string]*api.Stop{}, shapes: map[string][]shapePoint{}, trips: map[string]*ScheduledTrip{}, shapeForRoute: map[string]string{}, directions: map[string]*int{}, routeStops: map[string]map[string]bool{}}
 	tables := []struct {
 		name  string
 		visit func(map[string]string) error
@@ -50,6 +52,14 @@ func readGTFS(blob []byte, p provider, planID, from, until, source string, now t
 	reader.connectTrips()
 	reader.buildRoutes()
 	reader.buildStops()
+	if p.Mode == "bus" || p.Mode == "metro" {
+		variants, err := reader.routeShapes(p.Agency)
+		if err != nil {
+			return nil, err
+		}
+		data.Shapes = variants
+		data.GeometryUpdated = ptr(now)
+	}
 	return reader.result()
 }
 func (g *gtfsReader) route(m map[string]string) error {
@@ -122,6 +132,13 @@ func (g *gtfsReader) trip(m map[string]string) error {
 		return fmt.Errorf("trip has unknown route")
 	}
 	id := m["trip_id"]
+	if raw := m["direction_id"]; raw != "" {
+		direction, err := strconv.Atoi(raw)
+		if err != nil || (direction != 0 && direction != 1) {
+			return fmt.Errorf("invalid shape direction")
+		}
+		g.directions[id] = ptr(direction)
+	}
 	g.trips[id] = &ScheduledTrip{ID: id, Route: m["route_id"], Service: m["service_id"], Headsign: m["trip_headsign"], Shape: m["shape_id"]}
 	return nil
 }
@@ -151,19 +168,15 @@ func (g *gtfsReader) stopTime(m map[string]string) error {
 }
 
 func (g *gtfsReader) shape(m map[string]string) error {
-	lat, e := strconv.ParseFloat(m["shape_pt_lat"], numericBitSize)
-	if e != nil {
-		return e
+	point, err := parseShapePoint(m)
+	if err != nil {
+		return err
 	}
-	lon, e := strconv.ParseFloat(m["shape_pt_lon"], numericBitSize)
-	if e != nil {
-		return e
+	g.pointCount++
+	if g.pointCount > maxGeometryPoints && (g.provider.Mode == "bus" || g.provider.Mode == "metro") {
+		return fmt.Errorf("shape point limit exceeded")
 	}
-	seq, e := strconv.Atoi(m["shape_pt_sequence"])
-	if e != nil {
-		return e
-	}
-	g.shapes[m["shape_id"]] = append(g.shapes[m["shape_id"]], shapePoint{lat, lon, seq})
+	g.shapes[m["shape_id"]] = append(g.shapes[m["shape_id"]], point)
 	return nil
 }
 
@@ -190,7 +203,7 @@ func (g *gtfsReader) connectTrips() {
 		for _, v := range t.Times {
 			g.routeStops[t.Route][v.Stop] = true
 		}
-		if g.shapeForRoute[t.Route] == "" && t.Shape != "" {
+		if t.Shape != "" && (g.shapeForRoute[t.Route] == "" || t.Shape < g.shapeForRoute[t.Route]) {
 			g.shapeForRoute[t.Route] = t.Shape
 		}
 	}

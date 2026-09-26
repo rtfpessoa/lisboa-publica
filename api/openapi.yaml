@@ -1263,6 +1263,71 @@
           }
         }
       }
+    },
+    "/api/v1/route-shapes": {
+      "get": {
+        "operationId": "listRouteShapes",
+        "summary": "Official route geometry variants and coverage",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteShapePage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 includes Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/offset"
+          },
+          {
+            "$ref": "#/components/parameters/revision"
+          },
+          {
+            "$ref": "#/components/parameters/operators"
+          },
+          {
+            "$ref": "#/components/parameters/route_id"
+          }
+        ],
+        "x-public-read": true
+      }
     }
   },
   "components": {
@@ -2628,6 +2693,125 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MetroLine"
+            }
+          }
+        }
+      },
+      "RouteShape": {
+        "type": "object",
+        "description": "Variant of an official GTFS shape. Coordinates are longitude, latitude; official vertices simplified to at most2 metres perpendicular deviation, preserving endpoints. IDs include operator and plan provenance.",
+        "required": [
+          "id",
+          "operator_id",
+          "route_id",
+          "shape_id",
+          "direction_id",
+          "headsign",
+          "color",
+          "plan_id",
+          "source_url",
+          "updated_at",
+          "geometry"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "operator_id": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          },
+          "shape_id": {
+            "type": "string"
+          },
+          "direction_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "headsign": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "geometry": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "type": "number",
+                "format": "double"
+              }
+            },
+            "minItems": 2
+          }
+        }
+      },
+      "GeometryCoverage": {
+        "type": "object",
+        "required": [
+          "operator_id",
+          "status",
+          "updated_at",
+          "message"
+        ],
+        "properties": {
+          "operator_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "stale",
+              "unavailable"
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "RouteShapePage": {
+        "type": "object",
+        "required": [
+          "data",
+          "page",
+          "coverage"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RouteShape"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          },
+          "coverage": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GeometryCoverage"
             }
           }
         }
