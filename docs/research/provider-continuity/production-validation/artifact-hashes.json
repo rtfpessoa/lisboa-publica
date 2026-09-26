@@ -1,0 +1,10 @@
+{
+  "Dockerfile": "1c6eb0d6b0ae14323e022c1a9e8c9408d56e92d79a11d5bf8280158af31caca7",
+  "server": "0349339717bc5e242b5950455601cbba0744e6d24be47d4162bd3006a284c4ee",
+  "frontend-dist/index.html": "4d6b4e9a1f2d5b97f3220242cc86f2548c3cf6c4630ffbad9136cb432ced511f",
+  "frontend-dist/assets/index-D7KX0agx.css": "732aae8c7e13a346d324f9cc582ef9bc0103c402098159b0bc80d506f9570697",
+  "frontend-dist/assets/index-ICus9Dbc.js": "5023a8ad89adbf1cee78266929cb170411442474e95b7369e915573029c6136b",
+  "frontend-dist/assets/maplibre-gl-worker-CRiIRpYb.js": "096f3b4deeeaa7ed1372a96978bea3495b78250041df835fada34f12320e11d2",
+  "frontend-dist/assets/Map-CzVcMeAO.js": "8cd155370b3d594e9e34f8387b6a171ba72ea523f59c60990f96a6f094947ae3",
+  "frontend-dist/assets/Map-B8-mEBLf.css": "946f40662e206d3f7ecf6ef4df1881ff23819a9f93b1419a07e2609f70e7bbf4"
+}

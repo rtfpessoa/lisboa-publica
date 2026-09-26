@@ -1,0 +1,174 @@
+{
+  "/api/v1/health": {
+    "status": 200,
+    "data": {
+      "database": "ok",
+      "status": "ok"
+    }
+  },
+  "/api/v1/config": {
+    "status": 200,
+    "data": {
+      "dev_auth": false,
+      "google_client_id": null,
+      "history_collection_status": "collecting",
+      "history_resolution_seconds": 300,
+      "history_retention_days": 30,
+      "history_storage_limit_bytes": 5000000000,
+      "live_refresh_seconds": 5
+    }
+  },
+  "/api/v1/operators?limit=100": {
+    "status": 200,
+    "data": [
+      {
+        "id": "carris",
+        "status": "ok",
+        "static_status": "ok",
+        "reported_positions": 233,
+        "estimated_positions": 0,
+        "last_known_positions": 24,
+        "last_known_truncated": false,
+        "direct_status": null
+      },
+      {
+        "id": "cm",
+        "status": "ok",
+        "static_status": "ok",
+        "reported_positions": 433,
+        "estimated_positions": 0,
+        "last_known_positions": 40,
+        "last_known_truncated": false,
+        "direct_status": null
+      },
+      {
+        "id": "tcb",
+        "status": "ok",
+        "static_status": "ok",
+        "reported_positions": 11,
+        "estimated_positions": 0,
+        "last_known_positions": 3,
+        "last_known_truncated": false,
+        "direct_status": null
+      },
+      {
+        "id": "mobi",
+        "status": "ok",
+        "static_status": "ok",
+        "reported_positions": 34,
+        "estimated_positions": 0,
+        "last_known_positions": 3,
+        "last_known_truncated": false,
+        "direct_status": null
+      },
+      {
+        "id": "metro",
+        "status": "ok",
+        "static_status": "ok",
+        "reported_positions": 0,
+        "estimated_positions": 26,
+        "last_known_positions": 2,
+        "last_known_truncated": false,
+        "direct_status": "ok"
+      },
+      {
+        "id": "cp",
+        "status": "ok",
+        "static_status": "ok",
+        "reported_positions": 0,
+        "estimated_positions": 0,
+        "last_known_positions": 16,
+        "last_known_truncated": false,
+        "direct_status": null
+      },
+      {
+        "id": "ttsl",
+        "status": "ok",
+        "static_status": "ok",
+        "reported_positions": 4,
+        "estimated_positions": 0,
+        "last_known_positions": 2,
+        "last_known_truncated": false,
+        "direct_status": null
+      },
+      {
+        "id": "fertagus",
+        "status": "ok",
+        "static_status": "ok",
+        "reported_positions": 8,
+        "estimated_positions": 0,
+        "last_known_positions": 0,
+        "last_known_truncated": false,
+        "direct_status": null
+      }
+    ]
+  },
+  "/api/v1/route-shapes?operators=cp,fertagus,ttsl&limit=100": {
+    "status": 200,
+    "data": {
+      "page": {
+        "has_more": false,
+        "limit": 100,
+        "offset": 0,
+        "revision": "20260926T181320.919423173-75",
+        "total": 78
+      },
+      "coverage": [
+        {
+          "message": "Percursos publicados em 36/44 carreiras; algumas variantes podem estar indisponíveis. Algumas carreiras ou variantes não têm percurso utilizável.",
+          "operator_id": "cp",
+          "status": "partial",
+          "updated_at": "2026-09-26T18:12:51.14680552Z"
+        },
+        {
+          "message": "Percursos oficiais GTFS; inclui sentidos e variantes.",
+          "operator_id": "ttsl",
+          "status": "available",
+          "updated_at": "2026-09-26T18:12:52.29889938Z"
+        },
+        {
+          "message": "Percursos oficiais GTFS; inclui sentidos e variantes.",
+          "operator_id": "fertagus",
+          "status": "available",
+          "updated_at": "2026-09-26T18:12:52.808025219Z"
+        }
+      ],
+      "variants": {
+        "cp": 57,
+        "ttsl": 17,
+        "fertagus": 4
+      },
+      "points": {
+        "cp": 36348,
+        "ttsl": 224,
+        "fertagus": 1137
+      }
+    }
+  },
+  "/api/v1/vehicles?operators=cp&limit=100": {
+    "status": 200,
+    "data": {
+      "page": {
+        "has_more": false,
+        "limit": 100,
+        "offset": 0,
+        "revision": "v:20260926T181321.938026205-76:1790446402709022952",
+        "total": 16
+      },
+      "current_page_rows": 0,
+      "previous_page_rows": 16,
+      "original_clock_checks": true
+    }
+  },
+  "/": {
+    "status": 200,
+    "headers": {
+      "Content-Security-Policy": "frame-ancestors 'none'",
+      "Strict-Transport-Security": "max-age=31536000",
+      "X-Frame-Options": "DENY",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=(self)"
+    }
+  }
+}

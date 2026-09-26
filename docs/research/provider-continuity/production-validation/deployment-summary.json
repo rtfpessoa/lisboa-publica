@@ -1,0 +1,46 @@
+{
+  "source_head": "9f1668c3b6222b69b844fd9fe1c26075403f69c5",
+  "application_version": "9f1668c3b6222b69b844fd9fe1c26075403f69c5",
+  "image": "sha256:130c59ce33a6427f5e1cc715fdd38d4efe5409291dc9367d01074bd2f2f14513",
+  "healthy": "healthy",
+  "oom_killed": false,
+  "restarts": 0,
+  "environment_values_unchanged": true,
+  "isolation_resources_networks_mounts_unchanged": true,
+  "only_env_file_change": "VERSION",
+  "other_containers": {
+    "/server-caddy-1": {
+      "same_container": true,
+      "same_image": true
+    },
+    "/lisboa-publica-database-1": {
+      "same_container": true,
+      "same_image": true
+    },
+    "/server-bufin-sandbox-server-1": {
+      "same_container": true,
+      "same_image": true
+    },
+    "/server-bufin-sandbox-init-1": {
+      "same_container": true,
+      "same_image": true
+    },
+    "/server-bufin-sandbox-cockroach-1": {
+      "same_container": true,
+      "same_image": true
+    },
+    "/wud": {
+      "same_container": true,
+      "same_image": true
+    },
+    "/server-corsproxy-1": {
+      "same_container": true,
+      "same_image": true
+    },
+    "/server-api-1": {
+      "same_container": true,
+      "same_image": true
+    }
+  },
+  "rollback_app_image": "sha256:0a8f0cfcd75feb0781eded4ce526ec26433bb73267187ed8e4b4d8c0bb5abfbc"
+}

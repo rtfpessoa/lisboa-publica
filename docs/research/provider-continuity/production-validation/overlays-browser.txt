@@ -1,0 +1,22 @@
+[
+  {
+    "width": 1280,
+    "initial_network_features": {
+      "train": 61,
+      "metro": 19,
+      "ferry": 17
+    },
+    "independent_toggle_and_selection": true,
+    "page_errors": []
+  },
+  {
+    "width": 390,
+    "initial_network_features": {
+      "train": 61,
+      "metro": 19,
+      "ferry": 17
+    },
+    "independent_toggle_and_selection": true,
+    "page_errors": []
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "route-shapes": {
+    "total": 78,
+    "revision_pinned": true,
+    "distinct_second_row": true
+  },
+  "vehicles": {
+    "total": 16,
+    "revision_pinned": true,
+    "distinct_second_row": true
+  }
+}

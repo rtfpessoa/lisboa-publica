@@ -22,3 +22,5 @@ The search/unsupported-state amendment (72c8a63) changes TypeScript/CSS/docs onl
 
 
 The provider-continuity/rail-ferry overlay commit `be07fc3` passes the normal pinned regression gate at scoped Go score **84**, delta **+3**, no critical regressions, zero suppressions. The first attempt correctly blocked31 regressions; main split publication/projection/revision, GTFS table/integrity/geometry, cache serialization and test responsibilities without changing behavior or workload. Full Postgres/Cockroach race, generation/vet/build, official fixtures,26browser checks and1,011.4MiB retained-network resource validation pass after refactoring. TypeScript remains separately validated and unchecked by Maat; the absolute95 target is unresolved.
+
+The narrow rollout correction `9f1668c` passes the normal Go gate at83/delta+1, no structural regressions/zero suppressions. It detects unattempted legacy train/ferry geometry without changing normal TTL or upstream limits. Production checks verify the corrected image, all3 overlays and real CP last-known continuity; detailed evidence remains in VALIDATION-provider-continuity-overlays.md.

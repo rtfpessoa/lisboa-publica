@@ -1,0 +1,37 @@
+{
+  "healthy": true,
+  "restarts": 0,
+  "oom_killed": false,
+  "memory_current_bytes": 760070144,
+  "memory_peak_bytes": 765026304,
+  "memory_events": {
+    "low": "0",
+    "high": "0",
+    "max": "0",
+    "oom": "0",
+    "oom_kill": "0",
+    "oom_group_kill": "0"
+  },
+  "log_levels_last1000": {
+    "info": 4
+  },
+  "refreshed_static_providers": [
+    {
+      "operator": "cp",
+      "routes": 44,
+      "stops": 94
+    },
+    {
+      "operator": "ttsl",
+      "routes": 5,
+      "stops": 10
+    },
+    {
+      "operator": "fertagus",
+      "routes": 2,
+      "stops": 14
+    }
+  ],
+  "app_image": "sha256:130c59ce33a6427f5e1cc715fdd38d4efe5409291dc9367d01074bd2f2f14513",
+  "runtime_version": "9f1668c3b6222b69b844fd9fe1c26075403f69c5"
+}
