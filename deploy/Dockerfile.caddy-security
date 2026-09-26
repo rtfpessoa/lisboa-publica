@@ -1,0 +1,11 @@
+# Rebuild the existing Caddy feature version with patched Go. No additional modules.
+# Registry manifest digests verified 2026-09-26; deliberate updates require rescanning.
+FROM golang:1.27.1-alpine3.23@sha256:0908ac9b9319e09d7c238aabe914e0395c51d63c4e3d0ae8c554fda9158a5769 AS build
+ENV CGO_ENABLED=0 GOTOOLCHAIN=local GOBIN=/out
+RUN go install -trimpath -ldflags '-X github.com/caddyserver/caddy/v2.CustomVersion=v2.11.4-security-go1.27.1' github.com/caddyserver/caddy/v2/cmd/caddy@v2.11.4
+
+FROM caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+COPY --from=build /out/caddy /usr/bin/caddy
+# COPY replaces the official executable's file capabilities; retain its binding behavior.
+RUN setcap cap_net_bind_service=+ep /usr/bin/caddy && caddy version && caddy build-info
+LABEL org.opencontainers.image.description="Caddy 2.11.4 rebuilt with Go 1.27.1; validate before shared-proxy rollout"

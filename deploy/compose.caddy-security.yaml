@@ -1,0 +1,8 @@
+# Apply only to the existing shared server Compose project, never the dashboard project.
+# Set CADDY_SECURITY_IMAGE to an immutable registry digest or the validated local sha256 image ID.
+# Other service settings, ports, mounts, command, and networks are inherited unchanged.
+services:
+  caddy:
+    image: ${CADDY_SECURITY_IMAGE:?set the validated immutable Caddy image reference}
+    labels:
+      wud.watch: "false"

@@ -1,0 +1,6 @@
+# Compile the Linux/ARM64 executable off-host using Dockerfile.caddy-security's Go command.
+# The build context must contain only the verified binary named caddy-security.
+FROM caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+COPY caddy-security /usr/bin/caddy
+RUN setcap cap_net_bind_service=+ep /usr/bin/caddy && caddy version && caddy build-info
+LABEL org.opencontainers.image.description="Caddy 2.11.4 rebuilt off-host with Go 1.27.1"
