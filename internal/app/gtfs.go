@@ -52,6 +52,11 @@ func (s *StopTime) UnmarshalJSON(b []byte) error {
 // ScheduledTrip holds the published stop sequence and service of a planned trip.
 type ScheduledTrip struct {
 	ID, Route, Service, Headsign, Shape string
+	SourceRoute                         string        `json:"source_route,omitempty"`
+	SourcePlan                          string        `json:"source_plan,omitempty"`
+	Agency                              string        `json:"agency,omitempty"`
+	Direction                           *int          `json:"direction,omitempty"`
+	JourneyTimes                        []StopTime    `json:"journey_times,omitempty"`
 	Label                               string        `json:",omitempty"`
 	ArrivalTiming                       uint64        `json:"arrival_timing,omitempty"`
 	CPTiming                            *cpTripTiming `json:"cp_timing,omitempty"`
@@ -61,10 +66,14 @@ type ScheduledTrip struct {
 
 // Schedule combines planned trips, service calendars and station relationships.
 type Schedule struct {
-	Trips      []ScheduledTrip
-	Calendars  map[string]Calendar
-	Exceptions map[string]map[string]int
-	Parents    map[string]string
+	popupIndex       journeyIndexCache
+	Trips            []ScheduledTrip
+	Calendars        map[string]Calendar
+	Exceptions       map[string]map[string]int
+	StopNames        map[string]string `json:"stop_names,omitempty"`
+	CompleteJourneys bool              `json:"complete_journeys,omitempty"`
+	HasFrequencies   bool              `json:"has_frequencies,omitempty"`
+	Parents          map[string]string
 }
 
 type shapePoint struct {
@@ -182,7 +191,7 @@ func (q scheduleQuery) day(day time.Time) ([]api.Trip, []api.Arrival, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		if q.filter.Stop == "" && !trip.PlannedDeparture.Before(q.filter.From) && trip.PlannedDeparture.Before(q.filter.To) {
+		if q.includesDeparture(t, trip) {
 			out = append(out, trip)
 		}
 		if len(out)+len(arrivals)+len(visits) > maxReadResults {
@@ -220,6 +229,9 @@ func (q scheduleQuery) stopVisits(t ScheduledTrip, trip api.Trip, day time.Time)
 			if stop != sid && stop != qualify(p, d.Schedule.Parents[v.Stop]) {
 				continue
 			}
+			if v.Arrival < 0 {
+				continue
+			}
 			at := base.Add(time.Duration(v.Arrival) * time.Second)
 			if at.Before(from) || !at.Before(to) {
 				continue
@@ -247,4 +259,8 @@ func (q scheduleQuery) plannedArrival(t ScheduledTrip, trip api.Trip, day time.T
 	arrival.RouteName = optional(scheduledRouteName(d, trip.RouteId))
 	arrival.ServiceLabel = optional(cleanCPLabel(t.Label))
 	return arrival
+}
+
+func (q scheduleQuery) includesDeparture(t ScheduledTrip, trip api.Trip) bool {
+	return q.filter.Stop == "" && t.Times[0].Departure >= 0 && t.Times[len(t.Times)-1].Arrival >= 0 && !trip.PlannedDeparture.Before(q.filter.From) && trip.PlannedDeparture.Before(q.filter.To)
 }

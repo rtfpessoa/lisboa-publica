@@ -50,7 +50,11 @@ func readFilterDates(filter *Filter, query url.Values, historical bool) error {
 }
 
 func restoreFilterDates(filter *Filter, historical bool) error {
-	parts := strings.Split(filter.Revision, ":")
+	revision := filter.Revision
+	if parts := strings.Split(revision, "|"); len(parts) == 3 && parts[0] == "b" {
+		revision = parts[1]
+	}
+	parts := strings.Split(revision, ":")
 	if len(parts) != 4 || !frozenDateRevision(parts[0], historical) {
 		return nil
 	}

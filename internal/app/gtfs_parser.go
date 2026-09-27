@@ -35,7 +35,7 @@ func readGTFS(blob []byte, p provider, planID, from, until, source string, now t
 	if err != nil {
 		return nil, err
 	}
-	data := &StaticData{CPJourneyEndpoints: p.ID == "cp", Models: map[string]Metadata{}, PlanID: planID, ValidFrom: from, ValidUntil: until, Source: source, Updated: now, Schedule: &Schedule{Calendars: map[string]Calendar{}, Exceptions: map[string]map[string]int{}, Parents: map[string]string{}}}
+	data := &StaticData{Operator: p.ID, CPJourneyEndpoints: p.ID == "cp", Models: map[string]Metadata{}, PlanID: planID, ValidFrom: from, ValidUntil: until, Source: source, Updated: now, Schedule: &Schedule{Calendars: map[string]Calendar{}, Exceptions: map[string]map[string]int{}, Parents: map[string]string{}, StopNames: map[string]string{}, CompleteJourneys: true, HasFrequencies: archive["frequencies.txt"] != nil}}
 	data.setArrivalMetadata(p, archive["frequencies.txt"] != nil)
 	reader := &gtfsReader{provider: p, data: data, routes: map[string]*api.RouteDetail{}, stops: map[string]*api.Stop{}, shapes: map[string][]shapePoint{}, trips: map[string]*ScheduledTrip{}, shapeForRoute: map[string]string{}, directions: map[string]*int{}, routeStops: map[string]map[string]bool{}, endpointNames: map[string]string{}}
 	tables := []struct {
@@ -147,6 +147,9 @@ func (g *gtfsReader) trip(m map[string]string) error {
 		return fmt.Errorf("trip has unknown route")
 	}
 	id := m["trip_id"]
+	if id == "" || m["service_id"] == "" || g.trips[id] != nil {
+		return fmt.Errorf("invalid or duplicate GTFS trip")
+	}
 	if raw := m["direction_id"]; raw != "" {
 		direction, err := strconv.Atoi(raw)
 		if err != nil || (direction != 0 && direction != 1) {
@@ -154,7 +157,7 @@ func (g *gtfsReader) trip(m map[string]string) error {
 		}
 		g.directions[id] = ptr(direction)
 	}
-	g.trips[id] = &ScheduledTrip{ID: id, Route: m["route_id"], Service: m["service_id"], Headsign: m["trip_headsign"], Shape: m["shape_id"], Label: m["trip_short_name"]}
+	g.trips[id] = &ScheduledTrip{ID: id, Route: m["route_id"], Service: m["service_id"], Headsign: m["trip_headsign"], Shape: m["shape_id"], Label: m["trip_short_name"], Direction: g.directions[id]}
 	return nil
 }
 
@@ -168,21 +171,20 @@ func (g *gtfsReader) stopTime(m map[string]string) error {
 		return fmt.Errorf("invalid stop sequence")
 	}
 	g.rememberEndpoint(t, m["stop_id"], seq)
-	if g.provider.ID != "metro" {
-		t.rememberCPTiming(m, seq)
-	}
-	if g.stops[m["stop_id"]] == nil {
-		return nil
-	}
-	a, e := parseClock(m["arrival_time"])
+	t.rememberCPTiming(m, seq)
+	a, e := optionalStopClock(m["arrival_time"])
 	if e != nil {
 		return e
 	}
-	dep, e := parseClock(m["departure_time"])
+	dep, e := optionalStopClock(m["departure_time"])
 	if e != nil {
 		return e
 	}
-	t.Times = append(t.Times, StopTime{g.stops[m["stop_id"]].SourceId, int32(a), int32(dep), seq})
+	visit := StopTime{m["stop_id"], int32(a), int32(dep), seq}
+	t.JourneyTimes = append(t.JourneyTimes, visit)
+	if g.stops[m["stop_id"]] != nil {
+		t.Times = append(t.Times, visit)
+	}
 	return nil
 }
 
@@ -379,4 +381,11 @@ func (g *gtfsReader) finishGeometry(now time.Time) {
 	if !g.geometryFailed {
 		g.markPartialGeometry()
 	}
+}
+
+func optionalStopClock(value string) (int, error) {
+	if value == "" {
+		return -1, nil
+	}
+	return parseClock(value)
 }

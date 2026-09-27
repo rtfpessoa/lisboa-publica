@@ -82,3 +82,9 @@ Live publication may advance despite failed persistence. History can have gaps d
 Implementation: [history collector](../../internal/app/snapshots.go), [storage](../../internal/app/snapshots_store.go), [query/revisions](../../internal/app/history.go), [budget](../../internal/app/storage_budget.go), [continuity](../../internal/app/continuity_publication.go).
 
 Existing behavior tests: [aggregation](../../internal/app/snapshots_test.go), [retention](../../internal/app/retention_test.go), [continuity](../../internal/app/continuity_test.go), [stationary/repeated reports](../../internal/app/vehicle_service_test.go), [budget](../../internal/app/storage_budget_test.go), [archive](../../internal/app/snapshot_archive_test.go). External definition research is dated in [source evidence](../research/SOURCES.md); it does not turn these sampled metrics into the provider's completed-ride commercial speed.
+
+## Explicit stop occurrences
+
+The append-only `stop_events` table stores verified journey/visit arrival and departure occurrences, their original evidence and committed generation. These records are independent of position snapshots, aggregates and forecasts. The internal `saveReportedStopEvents` boundary deduplicates matching occurrences and preserves previous versions for frozen journey readers across later corrections and restart. No public write endpoint exists, and no current adapter is certified to populate this table. Missing past times remain unavailable.
+
+Stop-event writes reserve the existing history budget before their transaction. Configured 1–30-day retention and bounded pruning apply; a storage pause preserves committed events and is exposed in popups as “Recolha de tempos reais em pausa”. The original provider clock is never replaced with polling time. See [popup behavior](../VEHICLE-POPUPS.md).

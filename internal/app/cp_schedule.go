@@ -37,11 +37,18 @@ func (t *ScheduledTrip) rememberCPTiming(row map[string]string, sequence int) {
 }
 
 func cpScheduledJoin(data *StaticData, trip *ScheduledTrip) bool {
-	if !data.CPPredictionMetadata || data.CPHasFrequencies || trip.CPTiming == nil {
+	t := popupTripTiming(trip)
+	if t == nil || !popupTimedInstanceAvailable(data) {
 		return false
 	}
-	t := trip.CPTiming
 	return !t.Invalid && t.FirstSequence < t.LastSequence && t.LastArrival >= t.FirstDeparture
+}
+func popupTimedInstanceAvailable(data *StaticData) bool {
+	if data.CPHasFrequencies || data.Schedule != nil && data.Schedule.HasFrequencies {
+		return false
+	}
+	ordinary := data.Operator != "" && data.Operator != "cp" && completePopupSchedule(data)
+	return data.CPPredictionMetadata || ordinary
 }
 
 func apiDate(day time.Time) openapi_types.Date {
@@ -55,4 +62,17 @@ func scheduledRouteName(data *StaticData, id string) string {
 		}
 	}
 	return ""
+}
+
+func popupTripTiming(t *ScheduledTrip) *cpTripTiming {
+	if t.CPTiming != nil {
+		return t.CPTiming
+	}
+	timing := unpackArrivalTiming(t.ArrivalTiming)
+	visits := journeyTimes(t)
+	if timing != nil && len(visits) > 0 {
+		timing.FirstSequence = visits[0].Sequence
+		timing.LastSequence = visits[len(visits)-1].Sequence
+	}
+	return timing
 }

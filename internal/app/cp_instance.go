@@ -19,7 +19,7 @@ func (i *cpIndex) instance(t *ScheduledTrip, u cpUpdate, at time.Time) (time.Tim
 
 func (i *cpIndex) scheduledInstance(t *ScheduledTrip, u cpUpdate, day, at time.Time) (time.Time, string) {
 	start, _ := parseClock(u.Trip.StartTime)
-	if u.Trip.StartTime != "" && start != t.CPTiming.FirstDeparture {
+	if u.Trip.StartTime != "" && start != popupTripTiming(t).FirstDeparture {
 		return time.Time{}, "invalid"
 	}
 	if !day.IsZero() {
@@ -29,7 +29,7 @@ func (i *cpIndex) scheduledInstance(t *ScheduledTrip, u cpUpdate, day, at time.T
 }
 
 func (i *cpIndex) inferredInstance(t *ScheduledTrip, u cpUpdate, at time.Time) (time.Time, string) {
-	span := t.CPTiming.LastArrival - t.CPTiming.FirstArrival
+	span := popupTripTiming(t).LastArrival - popupTripTiming(t).FirstArrival
 	if span >= secondsPerDay || span+2*cpMaxDeviation >= secondsPerDay || !cpBoundedDeviations(u) {
 		return time.Time{}, ""
 	}
@@ -107,8 +107,7 @@ func (i *cpIndex) verifiedCalls(t *ScheduledTrip, u cpUpdate, day time.Time) (ma
 		if v == nil || !cpScheduled(s.Relationship) {
 			continue
 		}
-		planned := serviceStart(day).Add(time.Duration(v.Arrival) * time.Second)
-		expected, valid := cpExpected(s, planned)
+		expected, valid, consistent := cpVisitExpectation(s, v, day)
 		if !valid {
 			continue
 		}
@@ -116,7 +115,7 @@ func (i *cpIndex) verifiedCalls(t *ScheduledTrip, u cpUpdate, day time.Time) (ma
 			return nil, false
 		}
 		calls[v.Sequence] = expected
-		if !cpEventConsistent(s, expected, planned) {
+		if !consistent {
 			return nil, false
 		}
 	}
@@ -180,4 +179,18 @@ func cpAbsolute(seconds int64) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	return time.Unix(seconds, 0).UTC(), true
+}
+
+func cpVisitExpectation(s cpStopUpdate, v *StopTime, day time.Time) (time.Time, bool, bool) {
+	if s.Arrival.Time == nil && s.Arrival.Delay == nil {
+		planned := serviceStart(day).Add(time.Duration(v.Departure) * time.Second)
+		expected, valid := cpDepartureExpected(s, planned)
+		return expected, valid, cpDepartureConsistent(s, expected, planned)
+	}
+	planned := serviceStart(day).Add(time.Duration(v.Arrival) * time.Second)
+	expected, valid := cpExpected(s, planned)
+	return expected, valid, cpEventConsistent(s, expected, planned)
+}
+func cpDepartureConsistent(s cpStopUpdate, expected, planned time.Time) bool {
+	return s.Departure.Time == nil || s.Departure.Delay == nil || expected.Equal(planned.Add(time.Duration(*s.Departure.Delay)*time.Second))
 }

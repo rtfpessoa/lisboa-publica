@@ -16,4 +16,7 @@ const retryDelay=(attempt:number,error:unknown)=>{
  return Math.max(minimum,Math.min(1000*2**attempt,8000))+Math.random()*500;
 };
 export const queries=new QueryClient({defaultOptions:{queries:{retry,retryDelay,staleTime:20000,refetchOnWindowFocus:false}}});
-createRoot(document.getElementById('root')!).render(<React.StrictMode><QueryClientProvider client={queries}><App/></QueryClientProvider></React.StrictMode>);
+// THROWAWAY popup variants; prototypes are available only in development.
+const StationPopupPrototype=import.meta.env.DEV&&new URLSearchParams(location.search).get('prototype')==='station'?React.lazy(()=>import('./StationPopup.prototype')):null;
+const VehiclePopupPrototype=import.meta.env.DEV&&new URLSearchParams(location.search).get('prototype')==='vehicle'?React.lazy(()=>import('./VehiclePopup.prototype')):null;
+createRoot(document.getElementById('root')!).render(<React.StrictMode><QueryClientProvider client={queries}><App/>{StationPopupPrototype&&<React.Suspense fallback={null}><StationPopupPrototype/></React.Suspense>}{VehiclePopupPrototype&&<React.Suspense fallback={null}><VehiclePopupPrototype/></React.Suspense>}</QueryClientProvider></React.StrictMode>);

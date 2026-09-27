@@ -34,3 +34,5 @@ The existing [source research](research/SOURCES.md), other `docs/research/` note
 New features and changes to behavior, fields, matching, persistence, metrics, configuration or integrations must update the affected canonical documentation in the same change. [Project instructions](../AGENTS.md) record this requirement. Check links, code/schema references, diagrams and English prose before declaring an update complete. All code, documentation and comments are in English; the UI supports Portuguese.
 
 The [popup and selective-path integration validation](VALIDATION-popup-path-integration.md) records the combined release with the existing stop-arrival collectors.
+
+[Direction boards and independent journey times](VEHICLE-POPUPS.md) describe station selection, full visit pagination, source evidence and current actual-event limitations. Canonical matching, history and integration references above remain authoritative for their respective topics.

@@ -56,3 +56,5 @@ For production, set `ENVIRONMENT=production`, an HTTPS `PUBLIC_ORIGIN`, the inte
 ## Supporting evidence
 
 The [source research](docs/research/SOURCES.md), [implementation plan](docs/PLAN.md), [validation](docs/VALIDATION.md), [Maat findings](docs/MAAT.md) and [reference inventory](docs/reference/INVENTORY.md) preserve dated research and delivery evidence. Use the canonical application references above for current behavior.
+
+Station popups expose line/direction selection and independent arrival/departure evidence. Safely identified vehicle journeys include the full ordered visits, with historical actuals only where explicitly reported. Current sources do not provide certified stop occurrences, and Metro's approximate trip assignment does not identify a complete vehicle journey. See [popup behavior](docs/VEHICLE-POPUPS.md).

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,6 +35,11 @@ ALTER TABLE snapshots ADD COLUMN IF NOT EXISTS speed_sample_count INT NOT NULL D
 ALTER TABLE snapshots ADD COLUMN IF NOT EXISTS payload_archive BYTEA;
 CREATE INDEX IF NOT EXISTS snapshots_time ON snapshots(observed_at,operator_id,generation);
 CREATE INDEX IF NOT EXISTS snapshots_route ON snapshots(route_id,observed_at);
+CREATE TABLE IF NOT EXISTS stop_events (
+ journey_id TEXT NOT NULL, stop_sequence INT NOT NULL, event_kind TEXT NOT NULL,
+ generation BIGINT NOT NULL, event_at TIMESTAMPTZ NOT NULL, payload JSONB NOT NULL,
+ PRIMARY KEY(journey_id,stop_sequence,event_kind,generation));
+CREATE INDEX IF NOT EXISTS stop_events_time ON stop_events(event_at);
 CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, email TEXT NOT NULL, name TEXT NOT NULL, auth_kind TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL);
 CREATE TABLE IF NOT EXISTS api_keys (id TEXT PRIMARY KEY, owner_email TEXT NOT NULL, name TEXT NOT NULL, token_hash TEXT UNIQUE NOT NULL, scopes TEXT[] NOT NULL, created_at TIMESTAMPTZ NOT NULL, expires_at TIMESTAMPTZ NOT NULL, revoked BOOLEAN NOT NULL DEFAULT FALSE);
 CREATE INDEX IF NOT EXISTS keys_owner ON api_keys(owner_email,created_at);
@@ -256,8 +262,11 @@ func (s *Store) prune(ctx context.Context) error {
 		return err
 	}
 	return s.transaction(ctx, func(tx pgx.Tx) error {
-		for _, q := range []string{"DELETE FROM snapshots WHERE (operator_id,vehicle_id,observed_at) IN (SELECT operator_id,vehicle_id,observed_at FROM snapshots WHERE observed_at < $1 ORDER BY observed_at LIMIT 10000)", "DELETE FROM sessions WHERE token_hash IN (SELECT token_hash FROM sessions WHERE expires_at < $1 LIMIT 10000)", "DELETE FROM api_keys WHERE id IN (SELECT id FROM api_keys WHERE expires_at < $1 LIMIT 10000)"} {
+		for _, q := range []string{"DELETE FROM stop_events WHERE (journey_id,stop_sequence,event_kind,generation) IN (SELECT journey_id,stop_sequence,event_kind,generation FROM stop_events WHERE event_at < $1 ORDER BY event_at LIMIT 10000)", "DELETE FROM snapshots WHERE (operator_id,vehicle_id,observed_at) IN (SELECT operator_id,vehicle_id,observed_at FROM snapshots WHERE observed_at < $1 ORDER BY observed_at LIMIT 10000)", "DELETE FROM sessions WHERE token_hash IN (SELECT token_hash FROM sessions WHERE expires_at < $1 LIMIT 10000)", "DELETE FROM api_keys WHERE id IN (SELECT id FROM api_keys WHERE expires_at < $1 LIMIT 10000)"} {
 			cutoff := time.Now()
+			if strings.HasPrefix(q, "DELETE FROM stop_events") {
+				cutoff = cutoff.AddDate(0, 0, -s.retentionDays())
+			}
 			if q == "DELETE FROM snapshots WHERE (operator_id,vehicle_id,observed_at) IN (SELECT operator_id,vehicle_id,observed_at FROM snapshots WHERE observed_at < $1 ORDER BY observed_at LIMIT 10000)" {
 				cutoff = cutoff.AddDate(0, 0, -s.retentionDays()).Add(-time.Hour)
 			}

@@ -415,6 +415,8 @@ export type CpPrediction = {
     valid_until: string;
     source_url: string;
     vehicle_ref?: VehicleReference;
+    expected_departure_at?: string | null;
+    scheduled_departure_at?: string | null;
 };
 export type CpPredictionAvailability = {
     status: "loading" | "ok" | "partial" | "stale" | "error";
@@ -457,6 +459,79 @@ export type VehicleCallsPage = {
     valid_until?: string;
     /** Exact published pattern geometry from the frozen revision. Only present on page zero when include_geometry=true; does not change vehicle position. */
     geometry?: RouteShape;
+};
+export type BoardDirection = {
+    line_key: string;
+    line_name: string;
+    color: string;
+    direction_key: string | null;
+    label: string;
+    count: number | null;
+};
+export type PopupCoverage = {
+    status: "available" | "partial" | "unavailable" | "stale" | "loading";
+    message: string;
+    actual_arrivals: boolean;
+    actual_departures: boolean;
+    history_collection_status: "collecting" | "paused" | "unavailable";
+    source_updated_at: string | null;
+};
+export type StopBoard = {
+    directions: BoardDirection[];
+    coverage: PopupCoverage;
+    revision: string;
+};
+export type CallTimeEvidence = {
+    at: string;
+    source_url: string;
+    source_updated_at: string | null;
+    collected_at: string | null;
+    valid_until: string | null;
+    delay_seconds?: number | null;
+};
+export type CallTime = {
+    kind: "actual" | "prediction" | "schedule" | "unavailable";
+    at: string | null;
+    reason: string;
+    actual: (CallTimeEvidence) | null;
+    prediction: (CallTimeEvidence) | null;
+    schedule: (CallTimeEvidence) | null;
+};
+export type StopCall = {
+    id: string;
+    journey_id: string | null;
+    stop_id: string;
+    stop_name: string;
+    stop_sequence: number;
+    line_key: string;
+    direction_key: string | null;
+    destination: string;
+    arrival: CallTime;
+    departure: CallTime;
+    phase: "previous" | "current" | "future" | "unknown";
+    service_label?: string | null;
+    stop?: Stop;
+    stop_static_updated_at?: string;
+    vehicle_ref?: VehicleReference;
+};
+export type StopCallPage = {
+    data: StopCall[];
+    page: Page;
+    coverage: PopupCoverage;
+};
+export type VehicleJourney = {
+    association: "resolved" | "unresolved" | "ambiguous";
+    message: string;
+    journey_id: string | null;
+    line_name: string;
+    direction: string;
+    destination: string;
+    progress: "confirmed" | "estimated" | "unknown";
+    next_index: number | null;
+    complete: boolean;
+    data: StopCall[];
+    page: Page;
+    coverage: PopupCoverage;
 };
 /**
  * getHealth
@@ -1066,6 +1141,80 @@ export function getVehicleCalls(vehicleId: string, { reference, limit, offset, r
         offset,
         revision,
         include_geometry: includeGeometry
+    }))}`, {
+        ...opts
+    }));
+}
+/**
+ * Cached directions and independent arrival/departure times
+ */
+export function getStopBoard(stopId: string, { revision, $from, to }: {
+    revision?: string;
+    $from?: string;
+    to?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: StopBoard;
+    } | {
+        status: number;
+        data: Error;
+    }>(`/api/v1/stops/${encodeURIComponent(stopId)}/board${QS.query(QS.explode({
+        revision,
+        "from": $from,
+        to
+    }))}`, {
+        ...opts
+    }));
+}
+/**
+ * Cached directions and independent arrival/departure times
+ */
+export function listStopCalls(stopId: string, { lineKey, directionKey, limit, offset, revision, $from, to }: {
+    lineKey?: string;
+    directionKey?: string;
+    limit?: number;
+    offset?: number;
+    revision?: string;
+    $from?: string;
+    to?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: StopCallPage;
+    } | {
+        status: number;
+        data: Error;
+    }>(`/api/v1/stops/${encodeURIComponent(stopId)}/board/calls${QS.query(QS.explode({
+        line_key: lineKey,
+        direction_key: directionKey,
+        limit,
+        offset,
+        revision,
+        "from": $from,
+        to
+    }))}`, {
+        ...opts
+    }));
+}
+/**
+ * Cached directions and independent arrival/departure times
+ */
+export function getVehicleJourney(vehicleId: string, { limit, offset, revision }: {
+    limit?: number;
+    offset?: number;
+    revision?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: VehicleJourney;
+    } | {
+        status: number;
+        data: Error;
+    }>(`/api/v1/vehicles/${encodeURIComponent(vehicleId)}/journey${QS.query(QS.explode({
+        limit,
+        offset,
+        revision
     }))}`, {
         ...opts
     }));

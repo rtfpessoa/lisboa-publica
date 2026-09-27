@@ -1594,6 +1594,218 @@
         ],
         "x-public-read": true
       }
+    },
+    "/api/v1/stops/{stop_id}/board": {
+      "get": {
+        "operationId": "getStopBoard",
+        "summary": "Cached directions and independent arrival/departure times",
+        "x-public-read": true,
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "stop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/revision"
+          },
+          {
+            "$ref": "#/components/parameters/from"
+          },
+          {
+            "$ref": "#/components/parameters/to"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Immutable popup data; unavailable evidence stays explicit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopBoard"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stops/{stop_id}/board/calls": {
+      "get": {
+        "operationId": "listStopCalls",
+        "summary": "Cached directions and independent arrival/departure times",
+        "x-public-read": true,
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "stop_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "line_key",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "direction_key",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/offset"
+          },
+          {
+            "name": "revision",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 256
+            }
+          },
+          {
+            "$ref": "#/components/parameters/from"
+          },
+          {
+            "$ref": "#/components/parameters/to"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Immutable popup data; unavailable evidence stays explicit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopCallPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/vehicles/{vehicle_id}/journey": {
+      "get": {
+        "operationId": "getVehicleJourney",
+        "summary": "Cached directions and independent arrival/departure times",
+        "x-public-read": true,
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "vehicle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "Explicit page offset; when omitted, focus the next known visit.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            }
+          },
+          {
+            "$ref": "#/components/parameters/revision"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Immutable popup data; unavailable evidence stays explicit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleJourney"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3474,6 +3686,16 @@
           },
           "vehicle_ref": {
             "$ref": "#/components/schemas/VehicleReference"
+          },
+          "expected_departure_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "scheduled_departure_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "required": [
@@ -3758,6 +3980,363 @@
           }
         },
         "description": "Prediction and planned timetable availability are independent. An empty unknown/error source is not evidence of no service."
+      },
+      "CallTimeEvidence": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "source_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "collected_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "delay_seconds": {
+            "type": "integer",
+            "nullable": true
+          }
+        },
+        "required": [
+          "at",
+          "source_url",
+          "source_updated_at",
+          "collected_at",
+          "valid_until"
+        ]
+      },
+      "CallTime": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "actual",
+              "prediction",
+              "schedule",
+              "unavailable"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string"
+          },
+          "actual": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CallTimeEvidence"
+              }
+            ],
+            "nullable": true
+          },
+          "prediction": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CallTimeEvidence"
+              }
+            ],
+            "nullable": true
+          },
+          "schedule": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CallTimeEvidence"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "kind",
+          "at",
+          "reason",
+          "actual",
+          "prediction",
+          "schedule"
+        ]
+      },
+      "StopCall": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "journey_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "stop_id": {
+            "type": "string"
+          },
+          "stop_name": {
+            "type": "string"
+          },
+          "stop_sequence": {
+            "type": "integer"
+          },
+          "line_key": {
+            "type": "string"
+          },
+          "direction_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "destination": {
+            "type": "string"
+          },
+          "arrival": {
+            "$ref": "#/components/schemas/CallTime"
+          },
+          "departure": {
+            "$ref": "#/components/schemas/CallTime"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "previous",
+              "current",
+              "future",
+              "unknown"
+            ]
+          },
+          "service_label": {
+            "type": "string",
+            "nullable": true
+          },
+          "stop": {
+            "$ref": "#/components/schemas/Stop"
+          },
+          "stop_static_updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "vehicle_ref": {
+            "$ref": "#/components/schemas/VehicleReference"
+          }
+        },
+        "required": [
+          "id",
+          "journey_id",
+          "stop_id",
+          "stop_name",
+          "stop_sequence",
+          "line_key",
+          "direction_key",
+          "destination",
+          "arrival",
+          "departure",
+          "phase"
+        ]
+      },
+      "PopupCoverage": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "partial",
+              "unavailable",
+              "stale",
+              "loading"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "actual_arrivals": {
+            "type": "boolean"
+          },
+          "actual_departures": {
+            "type": "boolean"
+          },
+          "history_collection_status": {
+            "type": "string",
+            "enum": [
+              "collecting",
+              "paused",
+              "unavailable"
+            ]
+          },
+          "source_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "actual_arrivals",
+          "actual_departures",
+          "history_collection_status",
+          "source_updated_at"
+        ]
+      },
+      "BoardDirection": {
+        "type": "object",
+        "properties": {
+          "line_key": {
+            "type": "string"
+          },
+          "line_name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "direction_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "nullable": true
+          }
+        },
+        "required": [
+          "line_key",
+          "line_name",
+          "color",
+          "direction_key",
+          "label",
+          "count"
+        ]
+      },
+      "StopBoard": {
+        "type": "object",
+        "properties": {
+          "directions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoardDirection"
+            }
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/PopupCoverage"
+          },
+          "revision": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "directions",
+          "coverage",
+          "revision"
+        ]
+      },
+      "StopCallPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StopCall"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/PopupCoverage"
+          }
+        },
+        "required": [
+          "data",
+          "page",
+          "coverage"
+        ]
+      },
+      "VehicleJourney": {
+        "type": "object",
+        "properties": {
+          "association": {
+            "type": "string",
+            "enum": [
+              "resolved",
+              "unresolved",
+              "ambiguous"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "journey_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "line_name": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "destination": {
+            "type": "string"
+          },
+          "progress": {
+            "type": "string",
+            "enum": [
+              "confirmed",
+              "estimated",
+              "unknown"
+            ]
+          },
+          "next_index": {
+            "type": "integer",
+            "nullable": true
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StopCall"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/PopupCoverage"
+          }
+        },
+        "required": [
+          "association",
+          "message",
+          "journey_id",
+          "line_name",
+          "direction",
+          "destination",
+          "progress",
+          "next_index",
+          "complete",
+          "data",
+          "page",
+          "coverage"
+        ]
       }
     }
   }

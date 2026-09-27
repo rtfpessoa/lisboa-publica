@@ -142,7 +142,7 @@ func (s *Server) Handler() (http.Handler, error) {
 }
 
 func expensiveRead(path string) bool {
-	if strings.HasPrefix(path, "/api/v1/vehicles/") && strings.HasSuffix(path, "/calls") {
+	if strings.HasPrefix(path, "/api/v1/stops/") || strings.HasPrefix(path, "/api/v1/vehicles/") {
 		return true
 	}
 	switch path {

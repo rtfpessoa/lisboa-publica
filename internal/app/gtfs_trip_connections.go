@@ -5,6 +5,8 @@ import "sort"
 func (g *gtfsReader) connectTrips() {
 	for _, t := range g.trips {
 		t.compactArrivalTiming(g.provider)
+		sort.Slice(t.JourneyTimes, func(i, j int) bool { return t.JourneyTimes[i].Sequence < t.JourneyTimes[j].Sequence })
+		t.JourneyTimes = append([]StopTime(nil), t.JourneyTimes...)
 		if len(t.Times) == 0 {
 			continue
 		}

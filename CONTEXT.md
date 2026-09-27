@@ -8,7 +8,17 @@ Lisbon public transport services and their observed operation.
 
 **Route**: A named service with one or more directions and scheduled journeys.
 
+**Direction**: The orientation of travel along a route. Journeys ending at different destinations can share a direction, including a service that terminates before the route's usual terminus.
+
+**Journey destination**: The endpoint of a particular journey. It can differ from the usual terminus for its direction.
+
 **Stop**: A place where passengers board or leave a service.
+
+**Stop visit**: One occurrence of a passenger stop in the ordered journey. Repeated visits to the same stop are distinct occurrences.
+
+**Actual arrival**: An arrival at a stop visit explicitly reported as having occurred. A prediction or a change of position or stop status does not establish its exact time.
+
+**Actual departure**: A departure from a stop visit explicitly reported as having occurred. It is separate from arrival; neither an arrival nor an inferred movement establishes its exact time.
 
 **Vehicle observation**: A provider report of a vehicle's location at a stated time.
 _Avoid_: Live vehicle when the report is stale
@@ -31,6 +41,8 @@ _Avoid_: Inactive vehicle solely because observations stopped
 **Passenger-facing name**: A readable name for an operator, station, destination or route, distinct from the technical identifier used to associate records.
 
 **Observed trip**: A journey identified in provider observations; incomplete observations do not prove completion.
+
+**Journey instance**: A particular journey on an operating date and in a particular direction. An outbound journey and its return are distinct instances even when the vehicle is the same.
 
 **Fleet view**: Vehicles detected during the selected period, not an operator's complete registered inventory.
 

@@ -13,7 +13,7 @@ func TestLegacyStaticEnrichmentRefreshesBeforeTTL(t *testing.T) {
 	cache := NewCache()
 	for _, p := range providers {
 		t.Run(p.ID, func(t *testing.T) {
-			data := &StaticData{Updated: time.Now(), Schedule: &Schedule{Trips: []ScheduledTrip{{Shape: "official"}}}}
+			data := &StaticData{Updated: time.Now(), Schedule: &Schedule{CompleteJourneys: true, Trips: []ScheduledTrip{{Shape: "official"}}}}
 			op := cache.operator(p.ID)
 			op.StaticStatus = api.OperatorStaticStatusOk
 			op.StaticUpdatedAt = ptr(data.Updated)
@@ -70,7 +70,7 @@ func TestCMPathAttemptRestoresNormalStaticTTL(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			now := time.Now().UTC()
-			d := &StaticData{Updated: now}
+			d := &StaticData{Updated: now, Schedule: &Schedule{CompleteJourneys: true}}
 			mergeCMNetwork(d, test.network)
 			blob, err := encodeCache(d)
 			if err != nil {

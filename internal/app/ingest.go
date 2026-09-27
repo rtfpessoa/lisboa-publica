@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -177,12 +176,7 @@ func (f *Fetcher) refreshLive(ctx context.Context) {
 			return
 		}
 		if p.ID == "cm" {
-			v, e := f.cmLive(ctx, p, now)
-			if e != nil {
-				f.markError(ctx, p, false, e)
-			} else {
-				f.saveLive(ctx, p, v, now)
-			}
+			f.refreshCMLive(ctx, p, hubObservationBatch{result.Data, now, err})
 			continue
 		}
 		if err != nil {
@@ -240,53 +234,17 @@ func (f *Fetcher) saveLive(ctx context.Context, p provider, vehicles []api.Vehic
 	f.publishProvider(ctx, p.ID, live, op, dist)
 }
 func (f *Fetcher) cmStatic(ctx context.Context, p provider) (*StaticData, error) {
-	var lines []struct {
-		ID    string   `json:"id"`
-		Name  string   `json:"long_name"`
-		Short string   `json:"short_name"`
-		Color string   `json:"color"`
-		Stops []string `json:"stop_ids"`
+	var lines []cmStaticLine
+	var stops []cmStaticStop
+	err := f.fetchJSON(ctx, f.CM+"/lines", &lines)
+	if err == nil {
+		err = f.fetchJSON(ctx, f.CM+"/stops", &stops)
 	}
-	var stops []struct {
-		ID    string   `json:"id"`
-		Name  string   `json:"long_name"`
-		Lat   float64  `json:"lat"`
-		Lon   float64  `json:"lon"`
-		Lines []string `json:"line_ids"`
+	var data *StaticData
+	if err == nil {
+		data, err = buildCMStatic(p, f.CM, lines, stops)
 	}
-	if e := f.fetchJSON(ctx, f.CM+"/lines", &lines); e != nil {
-		return nil, e
-	}
-	if e := f.fetchJSON(ctx, f.CM+"/stops", &stops); e != nil {
-		return nil, e
-	}
-	if len(lines) == 0 || len(stops) == 0 {
-		return nil, fmt.Errorf("empty CM static feed")
-	}
-	data := &StaticData{Routes: []api.RouteDetail{}, Stops: []api.Stop{}, Source: f.CM, Updated: time.Now().UTC(), Models: map[string]Metadata{}}
-	for _, r := range lines {
-		if r.ID == "" {
-			return nil, fmt.Errorf("CM route missing ID")
-		}
-		ids := []string{}
-		for _, s := range r.Stops {
-			ids = append(ids, qualify(p.ID, s))
-		}
-		data.Routes = append(data.Routes, api.RouteDetail{Id: qualify(p.ID, r.ID), SourceId: r.ID, OperatorId: p.ID, ShortName: r.Short, LongName: r.Name, Color: r.Color, StopIds: ids})
-	}
-	for _, s := range stops {
-		if !validPosition(s.Lat, s.Lon) {
-			continue
-		}
-		ids := []string{}
-		for _, l := range s.Lines {
-			ids = append(ids, qualify(p.ID, l))
-		}
-		data.Stops = append(data.Stops, api.Stop{Id: qualify(p.ID, s.ID), SourceId: s.ID, OperatorId: p.ID, Name: s.Name, Lat: s.Lat, Lon: s.Lon, RouteIds: ids})
-	}
-	sort.Slice(data.Routes, func(i, j int) bool { return data.Routes[i].Id < data.Routes[j].Id })
-	sort.Slice(data.Stops, func(i, j int) bool { return data.Stops[i].Id < data.Stops[j].Id })
-	return data, nil
+	return data, err
 }
 
 type cmPosition struct {
@@ -444,7 +402,7 @@ func updateObservedVehicle(v *api.Vehicle, old map[string]api.Vehicle) *float64 
 func enrichVehicle(v *api.Vehicle, data *StaticData) {
 
 	if data != nil {
-		if v.PlanId != nil && *v.PlanId != data.PlanID {
+		if v.PlanId != nil && !vehiclePlanMatches(v, data) {
 			v.RouteId = nil
 		}
 		if m, ok := data.Models[v.SourceId]; ok {
@@ -481,4 +439,22 @@ func (f *Fetcher) cacheResponse(address, tag string, body []byte) {
 		f.etag[address] = tag
 		f.blobs[address] = body
 	}
+}
+
+type hubObservationBatch struct {
+	positions []hubPosition
+	collected time.Time
+	err       error
+}
+
+func (f *Fetcher) refreshCMLive(ctx context.Context, p provider, batch hubObservationBatch) {
+	vehicles, err := f.cmLive(ctx, p, batch.collected)
+	if err != nil {
+		f.markError(ctx, p, false, err)
+		return
+	}
+	if batch.err == nil {
+		enrichCMOperationalDates(vehicles, batch.positions)
+	}
+	f.saveLive(ctx, p, vehicles, batch.collected)
 }

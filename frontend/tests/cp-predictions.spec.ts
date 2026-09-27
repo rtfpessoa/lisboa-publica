@@ -35,6 +35,14 @@ async function fixture(page:Page){
    if(paged&&!query.get('stop_id'))data={...(data as object),data:query.get('offset')==='500'?[second]:[prediction],page:{limit:500,offset:query.get('offset')==='500'?500:0,total:2,has_more:query.get('offset')!=='500',revision:'shared-revision'}};
   }
   if(path.endsWith('/arrivals'))data=pageFor([{...arrival,headsign:freshPlanned?'Novo destino publicado':arrival.headsign,plan_id:mismatch?'old-plan':'plan'}]);
+  const coverage={status:failure?'stale':'partial',message:failure?'Previsões indisponíveis. Horários planeados disponíveis.':'Previsões TML · CP; tempos reais anteriores sem fonte comprovada.',actual_arrivals:false,actual_departures:false,history_collection_status:'collecting',source_updated_at:iso(epoch)};
+  const evidence=(at:string)=>({at,source_url:prediction.source_url,source_updated_at:iso(epoch),collected_at:iso(epoch),valid_until:iso(epoch+60000)});
+  const missing={kind:'unavailable',at:null,reason:'Partida não publicada',actual:null,prediction:null,schedule:null};
+  const call={id:'call',journey_id:'journey',stop_id:prediction.stop_id,stop_name:prediction.stop_name,stop_sequence:1,line_key:prediction.route_id,direction_key:'direction',destination:freshPlanned?'Novo destino publicado':prediction.destination_name,service_label:'123',phase:'future',arrival:{kind:failure?'schedule':'prediction',at:failure?prediction.scheduled_at:prediction.expected_at,reason:'',actual:null,prediction:failure?null:{...evidence(prediction.expected_at),delay_seconds:30},schedule:evidence(prediction.scheduled_at!)},departure:missing};
+  if(path.endsWith('/board'))data={directions:[{line_key:prediction.route_id,line_name:'R',color:'#278044',direction_key:'direction',label:prediction.destination_name,count:1}],coverage,revision:failure||freshPlanned?'updated-revision':'shared-revision'};
+  if(path.endsWith('/board/calls'))data={...pageFor(mismatch?[call,{...call,id:'unmatched',arrival:{...call.arrival,kind:'schedule',at:prediction.scheduled_at,prediction:null}}]:[call]),coverage};
+  if(path.endsWith('/journey'))data={association:missingDate?'unresolved':'resolved',message:missingDate?'Sem associação segura à viagem; percurso e tempos indisponíveis.':'',journey_id:missingDate?null:'journey',line_name:'R',direction:prediction.destination_name,destination:prediction.destination_name,progress:'confirmed',next_index:0,complete:true,...pageFor(missingDate?[]:[call]),coverage};
+
   await route.fulfill({json:data});
  });
  return {epoch,requests,setFreshPlanned:(v:boolean)=>freshPlanned=v,setFailure:(v:boolean)=>failure=v,setPaged:(v:boolean)=>paged=v,setMismatch:(v:boolean)=>mismatch=v,setExpiry:(v:boolean)=>revisionExpired=v,setMissingDate:(v:boolean)=>missingDate=v};
@@ -48,8 +56,8 @@ for(const width of [1280,390])test(`CP station arrivals and readable names at ${
  await page.setViewportSize({width,height:800});const f=await fixture(page);await page.goto('/');
  if(width<760)await page.getByRole('button',{name:'Abrir operadores'}).click();await selectCP(page);
  await page.getByLabel('Pesquisar carreira ou paragem').fill('santa apolonia');await expect(page.locator('.search-results button').last()).toContainText('Lisboa Santa Apolónia');await expect(page.locator('.search-results')).not.toContainText('opaque-stop');await page.locator('.search-results button').last().click();
- const panel=page.locator('.detail-panel');await expect(panel).toContainText('Lisboa Santa Apolónia');await expect(panel.getByTestId('cp-prediction')).toHaveCount(1);await expect(panel).toContainText('Comboio 123');await expect(panel).toContainText('Desvio previsto: +0,5 min');await expect(panel).not.toContainText('Horário planeado');
- expect(f.requests.filter(r=>r.path.endsWith('/arrivals')).at(-1)?.query.get('revision')).toBe('shared-revision');
+ const panel=page.locator('.detail-panel');await expect(panel).toContainText('Lisboa Santa Apolónia');await expect(panel.getByTestId('cp-prediction')).toHaveCount(1);await expect(panel).toContainText('Comboio 123');await expect(panel).toContainText('Desvio previsto: +0,5 min');await expect(panel).not.toContainText('Horário');
+ expect(f.requests.filter(r=>r.path.endsWith('/board/calls')).at(-1)?.query.get('revision')).toBe('shared-revision');
  await expect.poll(()=>page.evaluate(()=>(window as unknown as {cpFeatures:unknown[]}).cpFeatures.length)).toBe(1);await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await page.getByRole('button',{name:'Fechar detalhes'}).click();await expect(panel).toHaveCount(0);
 });
@@ -66,7 +74,7 @@ test('expired predictions remove station badges without removing reported trains
 test('all prediction pages load and mismatched planned associations stay separate',async({page})=>{
  const f=await fixture(page);f.setPaged(true);f.setMismatch(true);await page.goto('/');await selectCP(page);
  await expect.poll(()=>f.requests.some(r=>r.path.endsWith('/cp/predictions')&&r.query.get('offset')==='500'&&r.query.get('revision')==='shared-revision')).toBe(true);
- await page.getByLabel('Pesquisar carreira ou paragem').fill('santa');await page.locator('.search-results button').last().click();await expect(page.locator('.detail-panel')).toContainText('Horário planeado');await expect(page.getByTestId('cp-prediction')).toHaveCount(1);
+ await page.getByLabel('Pesquisar carreira ou paragem').fill('santa');await page.locator('.search-results button').last().click();await expect(page.locator('.detail-panel')).toContainText('Horário');await expect(page.getByTestId('cp-prediction')).toHaveCount(1);
 });
 
 test('readable names apply to other operators without technical stop IDs',async({page})=>{
@@ -87,8 +95,8 @@ test('train popup separates published service label, physical identity and upstr
 test('train with no published operating date never inherits a guessed association',async({page})=>{
  const f=await fixture(page);f.setMissingDate(true);await page.goto('/');await selectCP(page);
  await expect.poll(()=>page.evaluate(()=>(window as unknown as {vehicleFeatures:unknown[]}).vehicleFeatures.length)).toBe(1);
- await page.waitForTimeout(300);const box=await page.locator('.map canvas').boundingBox();await page.mouse.click(box!.x+box!.width/2+51,box!.y+box!.height/2-51);
- await expect(page.locator('.popup-footnotes')).toContainText('Não foi possível identificar com segurança');await expect(page.locator('.cp-calls')).not.toContainText('Comboio 123');
+ await page.waitForTimeout(300);const box=await page.locator(".map canvas").boundingBox();await page.mouse.click(box!.x+box!.width/2+51,box!.y+box!.height/2-51);
+ await expect(page.locator(".cp-calls")).toContainText("Sem associação segura à viagem");await expect(page.locator(".cp-calls")).not.toContainText("Comboio 123");
 });
 
 test('prediction window uses exactly one captured clock and retries an expired collection once',async({page})=>{
@@ -106,6 +114,6 @@ test('prediction window uses exactly one captured clock and retries an expired c
  const panel=page.locator('.detail-panel');await expect(panel.getByTestId('cp-prediction')).toHaveCount(1);
  f.setFreshPlanned(true);f.setFailure(true);
  await expect(panel).toContainText('Novo destino publicado',{timeout:15000});
- await expect(panel).toContainText('Horário planeado');await expect(panel.getByTestId('cp-prediction')).toHaveCount(0);
+ await expect(panel).toContainText('Horário');await expect(panel.getByTestId('cp-prediction')).toHaveCount(0);
  await expect(panel).toContainText('Previsões indisponíveis');
  });

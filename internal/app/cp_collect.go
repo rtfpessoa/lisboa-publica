@@ -23,24 +23,11 @@ func (f *Fetcher) cpLoop(ctx context.Context) {
 	}
 }
 
-func (f *Fetcher) refreshCP(parent context.Context) {
-	if !f.etaMu.TryLock() {
-		return
-	}
-	defer f.etaMu.Unlock()
-	ctx, cancel := context.WithTimeout(parent, providerRefreshInterval)
-	defer cancel()
-	state, _ := f.Cache.state("")
-	feed, err := f.collectSharedPredictions(ctx, state)
-	if static := state.Static["cp"]; static != nil {
-		result := f.cpPublication(ctx, feed, err, state)
-		f.Cache.updateCP(static, result)
-	}
-}
+func (f *Fetcher) refreshCP(parent context.Context) { f.refreshSharedPredictions(parent) }
 
 func (f *Fetcher) collectSharedPredictions(ctx context.Context, state *State) (*cpFeed, error) {
 	wanted := f.Cache.arrivals.wanted(false, time.Now())
-	if state.Static["cp"] == nil && len(wanted) == 0 {
+	if len(state.Static) == 0 && len(wanted) == 0 {
 		return nil, nil
 	}
 	blob, empty, err := f.fetchCP(ctx)
@@ -60,28 +47,6 @@ func (f *Fetcher) collectSharedPredictions(ctx context.Context, state *State) (*
 		f.publishArrivals(stop, v)
 	}
 	return feed, err
-}
-
-func (f *Fetcher) cpPublication(ctx context.Context, feed *cpFeed, err error, state *State) *CPData {
-	static := state.Static["cp"]
-	now := time.Now().UTC()
-	var result *CPData
-	if err == nil {
-		if feed == nil {
-			result = emptyCPPublication(static, now)
-		} else {
-			result, err = normalizeCP(ctx, feed, static, now)
-		}
-	}
-	if err != nil {
-		result = failedCP(state.CP, static.PlanID, now)
-		f.Log.Warn("CP predictions unavailable")
-	}
-	return result
-}
-
-func emptyCPPublication(static *StaticData, now time.Time) *CPData {
-	return &CPData{PlanID: static.PlanID, Rows: []api.CPPrediction{}, Availability: api.CPPredictionAvailability{Status: "ok", Message: "Sem previsões atuais na fonte TML · CP.", CollectedAt: &now, SourceUrl: cpSourceURL}}
 }
 
 func (f *Fetcher) fetchCP(ctx context.Context) ([]byte, bool, error) {

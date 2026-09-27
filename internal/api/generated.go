@@ -174,6 +174,30 @@ func (e CPPredictionAvailabilityStatus) Valid() bool {
 	}
 }
 
+// Defines values for CallTimeKind.
+const (
+	CallTimeKindActual      CallTimeKind = "actual"
+	CallTimeKindPrediction  CallTimeKind = "prediction"
+	CallTimeKindSchedule    CallTimeKind = "schedule"
+	CallTimeKindUnavailable CallTimeKind = "unavailable"
+)
+
+// Valid indicates whether the value is a known member of the CallTimeKind enum.
+func (e CallTimeKind) Valid() bool {
+	switch e {
+	case CallTimeKindActual:
+		return true
+	case CallTimeKindPrediction:
+		return true
+	case CallTimeKindSchedule:
+		return true
+	case CallTimeKindUnavailable:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ConfigHistoryCollectionStatus.
 const (
 	ConfigHistoryCollectionStatusCollecting  ConfigHistoryCollectionStatus = "collecting"
@@ -390,6 +414,78 @@ func (e OperatorStatus) Valid() bool {
 	}
 }
 
+// Defines values for PopupCoverageHistoryCollectionStatus.
+const (
+	PopupCoverageHistoryCollectionStatusCollecting  PopupCoverageHistoryCollectionStatus = "collecting"
+	PopupCoverageHistoryCollectionStatusPaused      PopupCoverageHistoryCollectionStatus = "paused"
+	PopupCoverageHistoryCollectionStatusUnavailable PopupCoverageHistoryCollectionStatus = "unavailable"
+)
+
+// Valid indicates whether the value is a known member of the PopupCoverageHistoryCollectionStatus enum.
+func (e PopupCoverageHistoryCollectionStatus) Valid() bool {
+	switch e {
+	case PopupCoverageHistoryCollectionStatusCollecting:
+		return true
+	case PopupCoverageHistoryCollectionStatusPaused:
+		return true
+	case PopupCoverageHistoryCollectionStatusUnavailable:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PopupCoverageStatus.
+const (
+	PopupCoverageStatusAvailable   PopupCoverageStatus = "available"
+	PopupCoverageStatusLoading     PopupCoverageStatus = "loading"
+	PopupCoverageStatusPartial     PopupCoverageStatus = "partial"
+	PopupCoverageStatusStale       PopupCoverageStatus = "stale"
+	PopupCoverageStatusUnavailable PopupCoverageStatus = "unavailable"
+)
+
+// Valid indicates whether the value is a known member of the PopupCoverageStatus enum.
+func (e PopupCoverageStatus) Valid() bool {
+	switch e {
+	case PopupCoverageStatusAvailable:
+		return true
+	case PopupCoverageStatusLoading:
+		return true
+	case PopupCoverageStatusPartial:
+		return true
+	case PopupCoverageStatusStale:
+		return true
+	case PopupCoverageStatusUnavailable:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StopCallPhase.
+const (
+	StopCallPhaseCurrent  StopCallPhase = "current"
+	StopCallPhaseFuture   StopCallPhase = "future"
+	StopCallPhasePrevious StopCallPhase = "previous"
+	StopCallPhaseUnknown  StopCallPhase = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the StopCallPhase enum.
+func (e StopCallPhase) Valid() bool {
+	switch e {
+	case StopCallPhaseCurrent:
+		return true
+	case StopCallPhaseFuture:
+		return true
+	case StopCallPhasePrevious:
+		return true
+	case StopCallPhaseUnknown:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TripKind.
 const (
 	TripKindScheduled TripKind = "scheduled"
@@ -533,16 +629,58 @@ func (e VehicleCallsPageCoverage) Valid() bool {
 
 // Defines values for VehicleCallsPageProgress.
 const (
-	Known   VehicleCallsPageProgress = "known"
-	Unknown VehicleCallsPageProgress = "unknown"
+	VehicleCallsPageProgressKnown   VehicleCallsPageProgress = "known"
+	VehicleCallsPageProgressUnknown VehicleCallsPageProgress = "unknown"
 )
 
 // Valid indicates whether the value is a known member of the VehicleCallsPageProgress enum.
 func (e VehicleCallsPageProgress) Valid() bool {
 	switch e {
-	case Known:
+	case VehicleCallsPageProgressKnown:
 		return true
-	case Unknown:
+	case VehicleCallsPageProgressUnknown:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VehicleJourneyAssociation.
+const (
+	Ambiguous  VehicleJourneyAssociation = "ambiguous"
+	Resolved   VehicleJourneyAssociation = "resolved"
+	Unresolved VehicleJourneyAssociation = "unresolved"
+)
+
+// Valid indicates whether the value is a known member of the VehicleJourneyAssociation enum.
+func (e VehicleJourneyAssociation) Valid() bool {
+	switch e {
+	case Ambiguous:
+		return true
+	case Resolved:
+		return true
+	case Unresolved:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VehicleJourneyProgress.
+const (
+	VehicleJourneyProgressConfirmed VehicleJourneyProgress = "confirmed"
+	VehicleJourneyProgressEstimated VehicleJourneyProgress = "estimated"
+	VehicleJourneyProgressUnknown   VehicleJourneyProgress = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the VehicleJourneyProgress enum.
+func (e VehicleJourneyProgress) Valid() bool {
+	switch e {
+	case VehicleJourneyProgressConfirmed:
+		return true
+	case VehicleJourneyProgressEstimated:
+		return true
+	case VehicleJourneyProgressUnknown:
 		return true
 	default:
 		return false
@@ -738,28 +876,40 @@ type ArrivalPage struct {
 	Page         Page                 `json:"page"`
 }
 
+// BoardDirection defines model for BoardDirection.
+type BoardDirection struct {
+	Color        string  `json:"color"`
+	Count        *int    `json:"count"`
+	DirectionKey *string `json:"direction_key"`
+	Label        string  `json:"label"`
+	LineKey      string  `json:"line_key"`
+	LineName     string  `json:"line_name"`
+}
+
 // CPPrediction defines model for CPPrediction.
 type CPPrediction struct {
-	CollectedAt     time.Time              `json:"collected_at"`
-	DateBasis       *CPPredictionDateBasis `json:"date_basis"`
-	DelaySeconds    *int                   `json:"delay_seconds"`
-	DestinationName string                 `json:"destination_name"`
-	ExpectedAt      time.Time              `json:"expected_at"`
-	Id              string                 `json:"id"`
-	OperatorId      string                 `json:"operator_id"`
-	PlanId          string                 `json:"plan_id"`
-	RouteId         string                 `json:"route_id"`
-	RouteName       string                 `json:"route_name"`
-	ScheduledAt     *time.Time             `json:"scheduled_at"`
-	ServiceDate     *openapi_types.Date    `json:"service_date"`
-	ServiceLabel    *string                `json:"service_label"`
-	SourceTripId    string                 `json:"source_trip_id"`
-	SourceUpdatedAt time.Time              `json:"source_updated_at"`
-	SourceUrl       string                 `json:"source_url"`
-	StopId          string                 `json:"stop_id"`
-	StopName        string                 `json:"stop_name"`
-	StopSequence    int                    `json:"stop_sequence"`
-	ValidUntil      time.Time              `json:"valid_until"`
+	CollectedAt          time.Time              `json:"collected_at"`
+	DateBasis            *CPPredictionDateBasis `json:"date_basis"`
+	DelaySeconds         *int                   `json:"delay_seconds"`
+	DestinationName      string                 `json:"destination_name"`
+	ExpectedAt           time.Time              `json:"expected_at"`
+	ExpectedDepartureAt  *time.Time             `json:"expected_departure_at,omitempty"`
+	Id                   string                 `json:"id"`
+	OperatorId           string                 `json:"operator_id"`
+	PlanId               string                 `json:"plan_id"`
+	RouteId              string                 `json:"route_id"`
+	RouteName            string                 `json:"route_name"`
+	ScheduledAt          *time.Time             `json:"scheduled_at"`
+	ScheduledDepartureAt *time.Time             `json:"scheduled_departure_at,omitempty"`
+	ServiceDate          *openapi_types.Date    `json:"service_date"`
+	ServiceLabel         *string                `json:"service_label"`
+	SourceTripId         string                 `json:"source_trip_id"`
+	SourceUpdatedAt      time.Time              `json:"source_updated_at"`
+	SourceUrl            string                 `json:"source_url"`
+	StopId               string                 `json:"stop_id"`
+	StopName             string                 `json:"stop_name"`
+	StopSequence         int                    `json:"stop_sequence"`
+	ValidUntil           time.Time              `json:"valid_until"`
 
 	// VehicleRef Response-only frozen navigation reference. Binds cache revision, original observation and exact published service. Not an authorization credential.
 	VehicleRef *VehicleReference `json:"vehicle_ref,omitempty"`
@@ -786,6 +936,29 @@ type CPPredictionPage struct {
 	Availability CPPredictionAvailability `json:"availability"`
 	Data         []CPPrediction           `json:"data"`
 	Page         Page                     `json:"page"`
+}
+
+// CallTime defines model for CallTime.
+type CallTime struct {
+	Actual     *CallTimeEvidence `json:"actual"`
+	At         *time.Time        `json:"at"`
+	Kind       CallTimeKind      `json:"kind"`
+	Prediction *CallTimeEvidence `json:"prediction"`
+	Reason     string            `json:"reason"`
+	Schedule   *CallTimeEvidence `json:"schedule"`
+}
+
+// CallTimeKind defines model for CallTime.Kind.
+type CallTimeKind string
+
+// CallTimeEvidence defines model for CallTimeEvidence.
+type CallTimeEvidence struct {
+	At              time.Time  `json:"at"`
+	CollectedAt     *time.Time `json:"collected_at"`
+	DelaySeconds    *int       `json:"delay_seconds,omitempty"`
+	SourceUpdatedAt *time.Time `json:"source_updated_at"`
+	SourceUrl       string     `json:"source_url"`
+	ValidUntil      *time.Time `json:"valid_until"`
 }
 
 // Config defines model for Config.
@@ -1015,6 +1188,22 @@ type Page struct {
 	Total    int     `json:"total"`
 }
 
+// PopupCoverage defines model for PopupCoverage.
+type PopupCoverage struct {
+	ActualArrivals          bool                                 `json:"actual_arrivals"`
+	ActualDepartures        bool                                 `json:"actual_departures"`
+	HistoryCollectionStatus PopupCoverageHistoryCollectionStatus `json:"history_collection_status"`
+	Message                 string                               `json:"message"`
+	SourceUpdatedAt         *time.Time                           `json:"source_updated_at"`
+	Status                  PopupCoverageStatus                  `json:"status"`
+}
+
+// PopupCoverageHistoryCollectionStatus defines model for PopupCoverage.HistoryCollectionStatus.
+type PopupCoverageHistoryCollectionStatus string
+
+// PopupCoverageStatus defines model for PopupCoverage.Status.
+type PopupCoverageStatus string
+
 // Ranking defines model for Ranking.
 type Ranking struct {
 	DetectedTrips    *int     `json:"detected_trips"`
@@ -1108,6 +1297,44 @@ type Stop struct {
 	ParentId   *string  `json:"parent_id"`
 	RouteIds   []string `json:"route_ids"`
 	SourceId   string   `json:"source_id"`
+}
+
+// StopBoard defines model for StopBoard.
+type StopBoard struct {
+	Coverage   PopupCoverage    `json:"coverage"`
+	Directions []BoardDirection `json:"directions"`
+	Revision   string           `json:"revision"`
+}
+
+// StopCall defines model for StopCall.
+type StopCall struct {
+	Arrival             CallTime      `json:"arrival"`
+	Departure           CallTime      `json:"departure"`
+	Destination         string        `json:"destination"`
+	DirectionKey        *string       `json:"direction_key"`
+	Id                  string        `json:"id"`
+	JourneyId           *string       `json:"journey_id"`
+	LineKey             string        `json:"line_key"`
+	Phase               StopCallPhase `json:"phase"`
+	ServiceLabel        *string       `json:"service_label,omitempty"`
+	Stop                *Stop         `json:"stop,omitempty"`
+	StopId              string        `json:"stop_id"`
+	StopName            string        `json:"stop_name"`
+	StopSequence        int           `json:"stop_sequence"`
+	StopStaticUpdatedAt *time.Time    `json:"stop_static_updated_at,omitempty"`
+
+	// VehicleRef Response-only frozen navigation reference. Binds cache revision, original observation and exact published service. Not an authorization credential.
+	VehicleRef *VehicleReference `json:"vehicle_ref,omitempty"`
+}
+
+// StopCallPhase defines model for StopCall.Phase.
+type StopCallPhase string
+
+// StopCallPage defines model for StopCallPage.
+type StopCallPage struct {
+	Coverage PopupCoverage `json:"coverage"`
+	Data     []StopCall    `json:"data"`
+	Page     Page          `json:"page"`
 }
 
 // StopPage defines model for StopPage.
@@ -1304,6 +1531,28 @@ type VehicleCallsPageCoverage string
 
 // VehicleCallsPageProgress defines model for VehicleCallsPage.Progress.
 type VehicleCallsPageProgress string
+
+// VehicleJourney defines model for VehicleJourney.
+type VehicleJourney struct {
+	Association VehicleJourneyAssociation `json:"association"`
+	Complete    bool                      `json:"complete"`
+	Coverage    PopupCoverage             `json:"coverage"`
+	Data        []StopCall                `json:"data"`
+	Destination string                    `json:"destination"`
+	Direction   string                    `json:"direction"`
+	JourneyId   *string                   `json:"journey_id"`
+	LineName    string                    `json:"line_name"`
+	Message     string                    `json:"message"`
+	NextIndex   *int                      `json:"next_index"`
+	Page        Page                      `json:"page"`
+	Progress    VehicleJourneyProgress    `json:"progress"`
+}
+
+// VehicleJourneyAssociation defines model for VehicleJourney.Association.
+type VehicleJourneyAssociation string
+
+// VehicleJourneyProgress defines model for VehicleJourney.Progress.
+type VehicleJourneyProgress string
 
 // VehiclePage defines model for VehiclePage.
 type VehiclePage struct {
@@ -1511,6 +1760,25 @@ type ListStopsParams struct {
 	Q         *Q         `form:"q,omitempty" json:"q,omitempty"`
 }
 
+// GetStopBoardParams defines parameters for GetStopBoard.
+type GetStopBoardParams struct {
+	// Revision Opaque collection revision from page.revision; reuse on later pages. Schedule revisions also freeze their time window and prediction eligibility. Expired revisions return410.
+	Revision *Revision `form:"revision,omitempty" json:"revision,omitempty"`
+	From     *From     `form:"from,omitempty" json:"from,omitempty"`
+	To       *To       `form:"to,omitempty" json:"to,omitempty"`
+}
+
+// ListStopCallsParams defines parameters for ListStopCalls.
+type ListStopCallsParams struct {
+	LineKey      *string `form:"line_key,omitempty" json:"line_key,omitempty"`
+	DirectionKey *string `form:"direction_key,omitempty" json:"direction_key,omitempty"`
+	Limit        *Limit  `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset       *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+	Revision     *string `form:"revision,omitempty" json:"revision,omitempty"`
+	From         *From   `form:"from,omitempty" json:"from,omitempty"`
+	To           *To     `form:"to,omitempty" json:"to,omitempty"`
+}
+
 // ListTrafficParams defines parameters for ListTraffic.
 type ListTrafficParams struct {
 	Limit  *Limit  `form:"limit,omitempty" json:"limit,omitempty"`
@@ -1563,6 +1831,17 @@ type GetVehicleCallsParams struct {
 
 	// IncludeGeometry Opt in to exact CM pattern geometry on page zero only. Cache reads only.
 	IncludeGeometry *bool `form:"include_geometry,omitempty" json:"include_geometry,omitempty"`
+}
+
+// GetVehicleJourneyParams defines parameters for GetVehicleJourney.
+type GetVehicleJourneyParams struct {
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Explicit page offset; when omitted, focus the next known visit.
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Revision Opaque collection revision from page.revision; reuse on later pages. Schedule revisions also freeze their time window and prediction eligibility. Expired revisions return410.
+	Revision *Revision `form:"revision,omitempty" json:"revision,omitempty"`
 }
 
 // DevelopmentLoginJSONRequestBody defines body for DevelopmentLogin for application/json ContentType.
@@ -1642,6 +1921,12 @@ type ServerInterface interface {
 	// ListStops listStops
 	// (GET /api/v1/stops)
 	ListStops(w http.ResponseWriter, r *http.Request, params ListStopsParams)
+	// GetStopBoard Cached directions and independent arrival/departure times
+	// (GET /api/v1/stops/{stop_id}/board)
+	GetStopBoard(w http.ResponseWriter, r *http.Request, stopId string, params GetStopBoardParams)
+	// ListStopCalls Cached directions and independent arrival/departure times
+	// (GET /api/v1/stops/{stop_id}/board/calls)
+	ListStopCalls(w http.ResponseWriter, r *http.Request, stopId string, params ListStopCallsParams)
 	// ListTraffic listTraffic
 	// (GET /api/v1/traffic)
 	ListTraffic(w http.ResponseWriter, r *http.Request, params ListTrafficParams)
@@ -1654,6 +1939,9 @@ type ServerInterface interface {
 	// GetVehicleCalls Read cached visits of a frozen vehicle/service
 	// (GET /api/v1/vehicles/{vehicle_id}/calls)
 	GetVehicleCalls(w http.ResponseWriter, r *http.Request, vehicleId string, params GetVehicleCallsParams)
+	// GetVehicleJourney Cached directions and independent arrival/departure times
+	// (GET /api/v1/vehicles/{vehicle_id}/journey)
+	GetVehicleJourney(w http.ResponseWriter, r *http.Request, vehicleId string, params GetVehicleJourneyParams)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -3070,6 +3358,194 @@ func (siw *ServerInterfaceWrapper) ListStops(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r)
 }
 
+// GetStopBoard operation middleware
+func (siw *ServerInterfaceWrapper) GetStopBoard(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "stop_id" -------------
+	var stopId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "stop_id", r.PathValue("stop_id"), &stopId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "stop_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetStopBoardParams
+
+	// ------------- Optional query parameter "revision" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "revision", r.URL.Query(), &params.Revision, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "revision"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "revision", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetStopBoard(w, r, stopId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListStopCalls operation middleware
+func (siw *ServerInterfaceWrapper) ListStopCalls(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "stop_id" -------------
+	var stopId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "stop_id", r.PathValue("stop_id"), &stopId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "stop_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListStopCallsParams
+
+	// ------------- Optional query parameter "line_key" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "line_key", r.URL.Query(), &params.LineKey, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "line_key"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "line_key", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "direction_key" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "direction_key", r.URL.Query(), &params.DirectionKey, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "direction_key"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "direction_key", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "revision" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "revision", r.URL.Query(), &params.Revision, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "revision"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "revision", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListStopCalls(w, r, stopId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListTraffic operation middleware
 func (siw *ServerInterfaceWrapper) ListTraffic(w http.ResponseWriter, r *http.Request) {
 
@@ -3523,6 +3999,74 @@ func (siw *ServerInterfaceWrapper) GetVehicleCalls(w http.ResponseWriter, r *htt
 	handler.ServeHTTP(w, r)
 }
 
+// GetVehicleJourney operation middleware
+func (siw *ServerInterfaceWrapper) GetVehicleJourney(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "vehicle_id" -------------
+	var vehicleId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "vehicle_id", r.PathValue("vehicle_id"), &vehicleId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "vehicle_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetVehicleJourneyParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "revision" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "revision", r.URL.Query(), &params.Revision, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "revision"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "revision", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetVehicleJourney(w, r, vehicleId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -3665,10 +4209,13 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/routes", wrapper.ListRoutes)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/routes/{route_id}", wrapper.GetRoute)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/stops", wrapper.ListStops)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/stops/{stop_id}/board", wrapper.GetStopBoard)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/stops/{stop_id}/board/calls", wrapper.ListStopCalls)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/traffic", wrapper.ListTraffic)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/trips", wrapper.ListTrips)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/vehicles", wrapper.ListVehicles)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/vehicles/{vehicle_id}/calls", wrapper.GetVehicleCalls)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/vehicles/{vehicle_id}/journey", wrapper.GetVehicleJourney)
 
 	return m
 }
@@ -4682,6 +5229,86 @@ func (response ListStopsdefaultJSONResponse) VisitListStopsResponse(w http.Respo
 	return err
 }
 
+type GetStopBoardRequestObject struct {
+	StopId string `json:"stop_id"`
+	Params GetStopBoardParams
+}
+
+type GetStopBoardResponseObject interface {
+	VisitGetStopBoardResponse(w http.ResponseWriter) error
+}
+
+type GetStopBoard200JSONResponse StopBoard
+
+func (response GetStopBoard200JSONResponse) VisitGetStopBoardResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetStopBoarddefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetStopBoarddefaultJSONResponse) VisitGetStopBoardResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListStopCallsRequestObject struct {
+	StopId string `json:"stop_id"`
+	Params ListStopCallsParams
+}
+
+type ListStopCallsResponseObject interface {
+	VisitListStopCallsResponse(w http.ResponseWriter) error
+}
+
+type ListStopCalls200JSONResponse StopCallPage
+
+func (response ListStopCalls200JSONResponse) VisitListStopCallsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListStopCallsdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ListStopCallsdefaultJSONResponse) VisitListStopCallsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListTrafficRequestObject struct {
 	Params ListTrafficParams
 }
@@ -4871,6 +5498,46 @@ func (response GetVehicleCallsdefaultJSONResponse) VisitGetVehicleCallsResponse(
 	return err
 }
 
+type GetVehicleJourneyRequestObject struct {
+	VehicleId string `json:"vehicle_id"`
+	Params    GetVehicleJourneyParams
+}
+
+type GetVehicleJourneyResponseObject interface {
+	VisitGetVehicleJourneyResponse(w http.ResponseWriter) error
+}
+
+type GetVehicleJourney200JSONResponse VehicleJourney
+
+func (response GetVehicleJourney200JSONResponse) VisitGetVehicleJourneyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetVehicleJourneydefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetVehicleJourneydefaultJSONResponse) VisitGetVehicleJourneyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// ListArrivals listArrivals
@@ -4939,6 +5606,12 @@ type StrictServerInterface interface {
 	// ListStops listStops
 	// (GET /api/v1/stops)
 	ListStops(ctx context.Context, request ListStopsRequestObject) (ListStopsResponseObject, error)
+	// GetStopBoard Cached directions and independent arrival/departure times
+	// (GET /api/v1/stops/{stop_id}/board)
+	GetStopBoard(ctx context.Context, request GetStopBoardRequestObject) (GetStopBoardResponseObject, error)
+	// ListStopCalls Cached directions and independent arrival/departure times
+	// (GET /api/v1/stops/{stop_id}/board/calls)
+	ListStopCalls(ctx context.Context, request ListStopCallsRequestObject) (ListStopCallsResponseObject, error)
 	// ListTraffic listTraffic
 	// (GET /api/v1/traffic)
 	ListTraffic(ctx context.Context, request ListTrafficRequestObject) (ListTrafficResponseObject, error)
@@ -4951,6 +5624,9 @@ type StrictServerInterface interface {
 	// GetVehicleCalls Read cached visits of a frozen vehicle/service
 	// (GET /api/v1/vehicles/{vehicle_id}/calls)
 	GetVehicleCalls(ctx context.Context, request GetVehicleCallsRequestObject) (GetVehicleCallsResponseObject, error)
+	// GetVehicleJourney Cached directions and independent arrival/departure times
+	// (GET /api/v1/vehicles/{vehicle_id}/journey)
+	GetVehicleJourney(ctx context.Context, request GetVehicleJourneyRequestObject) (GetVehicleJourneyResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -5569,6 +6245,60 @@ func (sh *strictHandler) ListStops(w http.ResponseWriter, r *http.Request, param
 	}
 }
 
+// GetStopBoard operation middleware
+func (sh *strictHandler) GetStopBoard(w http.ResponseWriter, r *http.Request, stopId string, params GetStopBoardParams) {
+	var request GetStopBoardRequestObject
+
+	request.StopId = stopId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetStopBoard(ctx, request.(GetStopBoardRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetStopBoard")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetStopBoardResponseObject); ok {
+		if err := validResponse.VisitGetStopBoardResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListStopCalls operation middleware
+func (sh *strictHandler) ListStopCalls(w http.ResponseWriter, r *http.Request, stopId string, params ListStopCallsParams) {
+	var request ListStopCallsRequestObject
+
+	request.StopId = stopId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListStopCalls(ctx, request.(ListStopCallsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListStopCalls")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListStopCallsResponseObject); ok {
+		if err := validResponse.VisitListStopCallsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListTraffic operation middleware
 func (sh *strictHandler) ListTraffic(w http.ResponseWriter, r *http.Request, params ListTrafficParams) {
 	var request ListTrafficRequestObject
@@ -5674,130 +6404,169 @@ func (sh *strictHandler) GetVehicleCalls(w http.ResponseWriter, r *http.Request,
 	}
 }
 
+// GetVehicleJourney operation middleware
+func (sh *strictHandler) GetVehicleJourney(w http.ResponseWriter, r *http.Request, vehicleId string, params GetVehicleJourneyParams) {
+	var request GetVehicleJourneyRequestObject
+
+	request.VehicleId = vehicleId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetVehicleJourney(ctx, request.(GetVehicleJourneyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetVehicleJourney")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetVehicleJourneyResponseObject); ok {
+		if err := validResponse.VisitGetVehicleJourneyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"OTpVN8j/1wA=",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

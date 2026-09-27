@@ -18,6 +18,7 @@ const secondsPerDay = hoursPerDay * secondsPerHour
 // CPData is an immutable, ephemeral prediction snapshot. It is never persisted as history.
 type CPData struct {
 	PlanID       string
+	Departures   []api.CPPrediction
 	Rows         []api.CPPrediction
 	Availability api.CPPredictionAvailability
 }
@@ -34,7 +35,7 @@ func normalizeCP(ctx context.Context, feed *cpFeed, data *StaticData, now time.T
 		return nil, fmt.Errorf("CP publication expired")
 	}
 	out := &CPData{PlanID: data.PlanID, Rows: []api.CPPrediction{}, Availability: api.CPPredictionAvailability{Status: api.CPPredictionAvailabilityStatusOk, Message: "Previsões da fonte pública TML · CP.", SourceUrl: cpSourceURL, CollectedAt: &now, PublishedAt: &published}}
-	batch := cpBatch{index: indexCP(ctx, data, feed.Updates), now: now, out: out, candidates: map[string]api.CPPrediction{}, conflicts: map[string]bool{}, services: map[string]bool{}}
+	batch := cpBatch{index: indexCP(ctx, data, feed.Updates), now: now, out: out, candidates: map[string]api.CPPrediction{}, conflicts: map[string]bool{}, services: map[string]bool{}, departures: map[string]api.CPPrediction{}, departureConflicts: map[string]bool{}}
 	err := batch.collect(feed.Updates)
 	if err == nil {
 		err = ctx.Err()
@@ -45,6 +46,9 @@ func normalizeCP(ctx context.Context, feed *cpFeed, data *StaticData, now time.T
 	if err == nil {
 		err = ctx.Err()
 	}
+	if data.Operator != "" && data.Operator != "cp" {
+		out.Availability.Message = "Previsões TML; cobertura parcial e tempos reais anteriores sem fonte comprovada."
+	}
 	return out, err
 }
 
@@ -54,6 +58,8 @@ type cpBatch struct {
 	out                 *CPData
 	candidates          map[string]api.CPPrediction
 	conflicts, services map[string]bool
+	departures          map[string]api.CPPrediction
+	departureConflicts  map[string]bool
 }
 
 func (b *cpBatch) collect(updates []cpUpdate) error {
@@ -63,6 +69,11 @@ func (b *cpBatch) collect(updates []cpUpdate) error {
 		}
 		if err := b.accept(u); err != nil {
 			return err
+		}
+	}
+	for key, row := range b.departures {
+		if !b.departureConflicts[key] && !cpSuppressed(b.index, updates, row, b.now) {
+			b.out.Departures = append(b.out.Departures, row)
 		}
 	}
 	for key, row := range b.candidates {
@@ -93,6 +104,9 @@ func (b *cpBatch) accept(u cpUpdate) error {
 	for _, s := range u.Stops {
 		if err := b.index.Context.Err(); err != nil {
 			return err
+		}
+		if dep, valid := b.index.departurePrediction(instance, s, b.now); valid {
+			chooseCPPrediction(b.departures, b.departureConflicts, dep)
 		}
 		row, valid := b.index.prediction(instance, s, b.now)
 		if !valid {
@@ -191,7 +205,7 @@ func cpSuppressed(i *cpIndex, updates []cpUpdate, row api.CPPrediction, now time
 			return true
 		}
 		trip := cpTrip(i, u)
-		if !cpBlockingUpdate(trip, u, row, now) {
+		if !cpBlockingUpdate(i, trip, u, row, now) {
 			continue
 		}
 		if !cpScheduled(u.Trip.Relationship) || cpSuppressedVisit(i, trip, u, row.StopSequence) {
@@ -200,8 +214,8 @@ func cpSuppressed(i *cpIndex, updates []cpUpdate, row api.CPPrediction, now time
 	}
 	return false
 }
-func cpBlockingUpdate(trip *ScheduledTrip, u cpUpdate, row api.CPPrediction, now time.Time) bool {
-	if trip == nil || qualify("cp", trip.ID) != row.SourceTripId {
+func cpBlockingUpdate(i *cpIndex, trip *ScheduledTrip, u cpUpdate, row api.CPPrediction, now time.Time) bool {
+	if trip == nil || qualify(i.Operator, trip.ID) != row.SourceTripId {
 		return false
 	}
 	at := time.Unix(u.Timestamp, 0)
@@ -224,7 +238,7 @@ func cpSuppressedVisit(i *cpIndex, trip *ScheduledTrip, u cpUpdate, sequence int
 }
 
 func finishCP(out *CPData) error {
-	if len(out.Rows) > cpMaxRows {
+	if len(out.Rows)+len(out.Departures) > cpMaxRows {
 		return fmt.Errorf("CP row capacity")
 	}
 	sort.Slice(out.Rows, func(a, b int) bool {
@@ -249,10 +263,71 @@ func finishCP(out *CPData) error {
 }
 
 func (i *cpIndex) namedPrediction(t *ScheduledTrip, v *StopTime) api.CPPrediction {
-	row := api.CPPrediction{OperatorId: "cp", PlanId: i.Data.PlanID, SourceTripId: qualify("cp", t.ID), RouteId: qualify("cp", t.Route), StopId: qualify("cp", v.Stop), StopSequence: v.Sequence}
+	row := api.CPPrediction{OperatorId: i.Operator, PlanId: predictionTripPlan(i.Data, t), SourceTripId: qualify(i.Operator, t.ID), RouteId: qualify(i.Operator, t.Route), StopId: qualify(i.Operator, v.Stop), StopSequence: v.Sequence}
 	row.StopName = cleanCPName(i.Names[v.Stop])
 	row.RouteName = cleanCPName(scheduledRouteName(i.Data, row.RouteId))
 	row.DestinationName = cleanCPName(t.Headsign)
 	row.ServiceLabel = optional(cleanCPLabel(t.Label))
 	return row
+}
+
+// Use the published departure event, independently of arrival. A departure-only
+// update remains usable by the common popup without populating the old arrival API.
+func (i *cpIndex) departurePrediction(instance cpResolvedUpdate, s cpStopUpdate, now time.Time) (api.CPPrediction, bool) {
+	v := i.visit(instance.Trip, s)
+	if v == nil || instance.Basis == "invalid" || !cpScheduled(s.Relationship) {
+		return api.CPPrediction{}, false
+	}
+	var planned time.Time
+	if !instance.Day.IsZero() {
+		planned = serviceStart(instance.Day).Add(time.Duration(v.Departure) * time.Second)
+	}
+	expected, ok := cpDepartureExpected(s, planned)
+	if !ok || expected.Before(now) || expected.After(now.Add(2*time.Hour)) {
+		return api.CPPrediction{}, false
+	}
+	return i.departureRow(instance, s, now, cpDepartureVisit{v, planned, expected}), true
+}
+
+type cpDepartureVisit struct {
+	visit             *StopTime
+	planned, expected time.Time
+}
+
+func (i *cpIndex) departureRow(instance cpResolvedUpdate, s cpStopUpdate, now time.Time, clock cpDepartureVisit) api.CPPrediction {
+	v, planned, expected := clock.visit, clock.planned, clock.expected
+	row := i.namedPrediction(instance.Trip, v)
+	observed := time.Unix(instance.Update.Timestamp, 0).UTC()
+	row.ExpectedAt = expected
+	row.ExpectedDepartureAt = &expected
+	row.DelaySeconds = s.Departure.Delay
+	row.SourceUpdatedAt = observed
+	row.CollectedAt = now
+	row.ValidUntil = observed.Add(sourceFreshness)
+	row.SourceUrl = cpSourceURL
+	date := "unknown"
+	if !instance.Day.IsZero() {
+		row.ServiceDate = ptr(apiDate(instance.Day))
+		row.DateBasis = ptr(api.CPPredictionDateBasis(instance.Basis))
+		row.ScheduledDepartureAt = &planned
+		date = instance.Day.Format("2006-01-02")
+	}
+	row.Id = strings.Join([]string{row.PlanId, row.SourceTripId, date, row.StopId, fmt.Sprint(row.StopSequence), "departure"}, "|")
+	return row
+}
+func cpDepartureExpected(s cpStopUpdate, planned time.Time) (time.Time, bool) {
+	if s.Departure.Delay != nil && (*s.Departure.Delay < -secondsPerDay || *s.Departure.Delay > secondsPerDay) {
+		return time.Time{}, false
+	}
+	if s.Departure.Time != nil {
+		return cpAbsolute(*s.Departure.Time)
+	}
+	return cpDelayed(s.Departure.Delay, planned)
+}
+
+func predictionTripPlan(d *StaticData, t *ScheduledTrip) string {
+	if t.SourcePlan != "" {
+		return t.SourcePlan
+	}
+	return d.PlanID
 }

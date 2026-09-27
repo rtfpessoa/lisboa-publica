@@ -6,23 +6,38 @@ import (
 )
 
 type cpIndex struct {
-	Context   context.Context
-	Data      *StaticData
-	Trips     map[string]*ScheduledTrip
-	Names     map[string]string
-	Crosswalk map[string]string
-	BadHub    map[string]bool
-	BadStop   map[string]bool
+	Operator, Agency string
+	Context          context.Context
+	Data             *StaticData
+	Trips            map[string]*ScheduledTrip
+	Names            map[string]string
+	Crosswalk        map[string]string
+	BadHub           map[string]bool
+	BadStop          map[string]bool
 }
 
 func indexCP(ctx context.Context, data *StaticData, updates []cpUpdate) *cpIndex {
-	index := &cpIndex{Context: ctx, Data: data, Trips: map[string]*ScheduledTrip{}, Names: map[string]string{}, Crosswalk: map[string]string{}, BadHub: map[string]bool{}, BadStop: map[string]bool{}}
+	operator, agency := "cp", "N18KL"
+	if data.Operator != "" {
+		operator = data.Operator
+		if p, ok := providerByID(operator); ok {
+			agency = p.Agency
+		}
+	}
+	index := &cpIndex{Operator: operator, Agency: agency, Context: ctx, Data: data, Trips: map[string]*ScheduledTrip{}, Names: map[string]string{}, Crosswalk: map[string]string{}, BadHub: map[string]bool{}, BadStop: map[string]bool{}}
 	for n := range data.Schedule.Trips {
 		if ctx.Err() != nil {
 			break
 		}
 		t := &data.Schedule.Trips[n]
-		index.Trips[t.ID] = t
+		if _, exists := index.Trips[t.ID]; exists {
+			index.Trips[t.ID] = nil
+		} else {
+			index.Trips[t.ID] = t
+		}
+	}
+	for id, name := range data.Schedule.StopNames {
+		index.Names[id] = name
 	}
 	for _, s := range data.Stops {
 		if ctx.Err() != nil {
@@ -45,32 +60,52 @@ func (i *cpIndex) addMapping(hub, stop string, reverse map[string]string) {
 }
 
 func cpTrip(i *cpIndex, u cpUpdate) *ScheduledTrip {
-	prefix := "[" + i.Data.PlanID + "][N18KL]"
-	if !strings.HasPrefix(u.Trip.ID, prefix) {
-		return nil
-	}
-	t := i.Trips[strings.TrimPrefix(u.Trip.ID, prefix)]
-	if t == nil {
-		return nil
-	}
-	if u.Trip.Route != "" && u.Trip.Route != t.Route && u.Trip.Route != "[N18KL]"+t.Route {
-		return nil
+	var t *ScheduledTrip
+	if i.Operator == "cm" {
+		t = cmPredictionTrip(i, u)
+	} else {
+		t = ordinaryPredictionTrip(i, u)
 	}
 	return t
+}
+func ordinaryPredictionTrip(i *cpIndex, u cpUpdate) *ScheduledTrip {
+	prefix := "[" + i.Data.PlanID + "][" + i.Agency + "]"
+	var t *ScheduledTrip
+	if strings.HasPrefix(u.Trip.ID, prefix) {
+		t = i.Trips[strings.TrimPrefix(u.Trip.ID, prefix)]
+	}
+	if t != nil && !predictionRouteMatches(u, t, i.Agency) {
+		t = nil
+	}
+	return t
+}
+func cmPredictionTrip(i *cpIndex, u cpUpdate) *ScheduledTrip {
+	t := i.Trips[u.Trip.ID]
+	if t != nil && !predictionRouteMatches(u, t, t.Agency) {
+		t = nil
+	}
+	return t
+}
+func predictionRouteMatches(update cpUpdate, t *ScheduledTrip, agency string) bool {
+	published, route := update.Trip.Route, t.Route
+	if t.SourceRoute != "" {
+		route = t.SourceRoute
+	}
+	return published == "" || published == route || published == "["+agency+"]"+route
 }
 
 func cpScheduled(relationship string) bool { return relationship == "" || relationship == "SCHEDULED" }
 
 func uniqueCPSequence(t *ScheduledTrip, seq int) *StopTime {
 	var found *StopTime
-	for n := range t.Times {
-		if t.Times[n].Sequence != seq {
+	for n := range journeyTimes(t) {
+		if journeyTimes(t)[n].Sequence != seq {
 			continue
 		}
 		if found != nil {
 			return nil
 		}
-		found = &t.Times[n]
+		found = &journeyTimes(t)[n]
 	}
 	return found
 }
@@ -96,14 +131,14 @@ func uniqueCPStop(t *ScheduledTrip, stop string) *StopTime {
 		return nil
 	}
 	var v *StopTime
-	for n := range t.Times {
-		if t.Times[n].Stop != stop {
+	for n := range journeyTimes(t) {
+		if journeyTimes(t)[n].Stop != stop {
 			continue
 		}
 		if v != nil {
 			return nil
 		}
-		v = &t.Times[n]
+		v = &journeyTimes(t)[n]
 	}
 	return v
 }

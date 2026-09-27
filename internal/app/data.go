@@ -75,6 +75,7 @@ func optional(s string) *string {
 type StaticData struct {
 	CMPaths              []CMPath            `json:"cm_paths,omitempty"`
 	CMPathError          *string             `json:"cm_path_error,omitempty"`
+	Operator             string              `json:"operator,omitempty"`
 	Routes               []api.RouteDetail   `json:"routes"`
 	Stops                []api.Stop          `json:"stops"`
 	Schedule             *Schedule           `json:"schedule,omitempty"`
@@ -120,13 +121,14 @@ type LiveData struct {
 
 // State is an immutable collection version shared by paginated readers.
 type State struct {
-	Metro     *MetroData
-	CP        *CPData
-	Revision  string
-	Created   time.Time
-	Static    map[string]*StaticData
-	Live      map[string]*LiveData
-	Operators map[string]api.Operator
+	Predictions map[string]*CPData
+	Metro       *MetroData
+	CP          *CPData
+	Revision    string
+	Created     time.Time
+	Static      map[string]*StaticData
+	Live        map[string]*LiveData
+	Operators   map[string]api.Operator
 }
 
 // Cache publishes immutable states and retains recent versions for pagination.
@@ -199,17 +201,9 @@ func (c *Cache) update(id string, static *StaticData, live *LiveData, op api.Ope
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	old := c.current
-	value := &State{Metro: old.Metro, CP: old.CP, Static: map[string]*StaticData{}, Live: map[string]*LiveData{}, Operators: map[string]api.Operator{}}
-	for k, v := range old.Static {
-		value.Static[k] = v
-	}
-	for k, v := range old.Live {
-		value.Live[k] = v
-	}
-	for k, v := range old.Operators {
-		value.Operators[k] = v
-	}
+	value := copiedPublication(old)
 	if static != nil {
+		delete(value.Predictions, id)
 		value.Static[id] = static
 		if id == "cp" {
 			value.CP = nil
@@ -275,3 +269,20 @@ func sampledDistance(a, b api.Vehicle) (*float64, *float64) {
 	return &distance, &speed
 }
 func sortVehicles(v []api.Vehicle) { sort.Slice(v, func(i, j int) bool { return v[i].Id < v[j].Id }) }
+
+func copiedPublication(old *State) *State {
+	value := &State{Metro: old.Metro, CP: old.CP, Static: map[string]*StaticData{}, Live: map[string]*LiveData{}, Operators: map[string]api.Operator{}, Predictions: map[string]*CPData{}}
+	for k, v := range old.Predictions {
+		value.Predictions[k] = v
+	}
+	for k, v := range old.Static {
+		value.Static[k] = v
+	}
+	for k, v := range old.Live {
+		value.Live[k] = v
+	}
+	for k, v := range old.Operators {
+		value.Operators[k] = v
+	}
+	return value
+}

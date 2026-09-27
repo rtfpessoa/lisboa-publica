@@ -18,21 +18,21 @@ type tripEndpoints struct {
 }
 
 func (g *gtfsReader) rememberStop(m map[string]string) error {
-	if g.provider.ID != "cp" {
-		return nil
-	}
+
 	id, name := m["stop_id"], m["stop_name"]
 	if len(id) == 0 || len(id) > 128 || len(name) > 512 || len(g.endpointNames) >= maxReadResults {
-		return fmt.Errorf("CP endpoint metadata limit")
+		return fmt.Errorf("GTFS stop metadata limit")
 	}
 	g.endpointNames[id] = name
+	g.data.Schedule.StopNames[id] = name
+	if parent := m["parent_station"]; parent != "" {
+		g.data.Schedule.Parents[id] = parent
+	}
 	return nil
 }
 
 func (g *gtfsReader) rememberEndpoint(t *ScheduledTrip, stop string, seq int) {
-	if g.provider.ID != "cp" {
-		return
-	}
+
 	endpoint := tripEndpoint{Stop: stop, Name: g.endpointNames[stop], Sequence: seq}
 	if t.Endpoints == nil {
 		t.Endpoints = &tripEndpoints{Origin: endpoint, Destination: endpoint}

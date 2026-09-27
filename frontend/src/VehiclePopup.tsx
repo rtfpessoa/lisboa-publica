@@ -2,6 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {AlertTriangle,BusFront,Ship,TramFront,TrainFront,X} from 'lucide-react';
 import * as api from './api';
+import {VehiclePopup as JourneyPopup} from './TransitPopups';
 import {VehicleSpecifications} from './VehicleSpecifications';
 import {errorText,number,observationAge,observationTime,passengerName,plate,routeName,sameVehicleService,stopStatus,time} from './data';
 
@@ -12,6 +13,7 @@ const propulsion:Record<string,string>={diesel:'Diesel',electricity:'Elétrica',
 const publishedText=(raw:string|undefined|null)=>{const value=raw?.trim();return value?propulsion[value]??(/^[0-9]+$/.test(value)?`Código publicado: ${value}`:value):undefined};
 
 export default function VehiclePopup({vehicle:v,mode,operatorName,now,onClose,onStop,filterNotice,navigationBusy,navigationError,showPath,onPath,onShowPath}:Props){
+ const [journeyResolved,setJourneyResolved]=useState(false);
  const origin=useRef(v),warningsRef=useRef<HTMLElement>(null),bound=useRef({observed:v.observed_at,stop:v.stop_id,status:v.current_status,previous:!!v.last_known||!!v.stale,at:now});
  const [reference,setReference]=useState(v.vehicle_ref?.reference),[offset,setOffset]=useState(0),[revision,setRevision]=useState<string>();
  const [path,setPath]=useState<{reference:string,shape:api.RouteShape}>();
@@ -76,14 +78,14 @@ export default function VehiclePopup({vehicle:v,mode,operatorName,now,onClose,on
    {v.scheduled_service&&<p className="journey">{passengerName(v.operator_id,v.scheduled_service.origin_name)} → {passengerName(v.operator_id,v.scheduled_service.destination_name)} <small>Serviço planeado</small></p>}
    {fields.length>0&&<div className="detail-grid">{fields.map(([label,value])=><span key={label}>{label}<strong>{value}</strong></span>)}</div>}
    <VehicleSpecifications vehicle={v}/>
-   {reference&&<section className="cp-calls vehicle-calls" aria-busy={calls.isFetching||geometry.isFetching}><h4>{calls.data?.coverage==='complete_published_route'?'Percurso completo publicado':calls.data?.availability==='next_stop_only'?'Próxima paragem publicada':v.operator_id==='cm'?'Paragens publicadas':previous||frozen?'Percurso do último serviço observado':predicted?'Próximas paragens previstas':calls.data?.progress==='known'?'Próximas paragens planeadas':'Percurso planeado na área de Lisboa'}</h4>
+   <JourneyPopup vehicle={v} onResolved={setJourneyResolved} onStop={onStop}/>{reference&&<section className="vehicle-calls" aria-busy={calls.isFetching||geometry.isFetching}><h4>{calls.data?.coverage==='complete_published_route'?'Percurso completo publicado':calls.data?.availability==='next_stop_only'?'Próxima paragem publicada':v.operator_id==='cm'?'Paragens publicadas':previous||frozen?'Percurso do último serviço observado':predicted?'Próximas paragens previstas':calls.data?.progress==='known'?'Próximas paragens planeadas':'Percurso planeado na área de Lisboa'}</h4>
     {v.operator_id==='cm'&&v.pattern_id&&<label className="path-toggle"><input type="checkbox" checked={showPath} onChange={e=>onShowPath(e.target.checked)}/>Mostrar percursos de autocarro no mapa</label>}
     {frozen&&calls.data&&<p className="subtle">Paragens associadas ao registo de {observationTime(calls.data.vehicle.observed_at,now)}. <button className="quiet" onClick={reload}>Atualizar percurso</button></p>}
     {navigationBusy&&<p role="status">A abrir paragem…</p>}
     {calls.isFetching&&<p role="status">A carregar paragens…</p>}{geometry.isFetching&&<p role="status">A carregar percurso no mapa…</p>}
-    {rows.map(row=><div className="arrival" key={row.id}>{row.stop&&row.stop_static_updated_at?<button className="stop-link" disabled={navigationBusy} onClick={()=>onStop(row)}>{passengerName(v.operator_id,row.stop_name)}</button>:<strong>{row.stop?passengerName(v.operator_id,row.stop_name):'Paragem não identificada'}</strong>}{(row.expected_at||row.scheduled_at)&&<time>{time(row.expected_at??row.scheduled_at)}</time>}<small>{row.kind==='predicted'?'Previsão':row.kind==='scheduled'?'Horário planeado':'Paragem publicada'}{row.delay_seconds!=null?` · desvio ${row.delay_seconds>0?'+':''}${number(row.delay_seconds/60)} min`:''}</small></div>)}
-    {!calls.isFetching&&!rows.length&&!calls.error&&<p className="empty">Sem paragens disponíveis neste registo.</p>}
-    {calls.data&&<div className="pagination"><button disabled={offset===0||calls.isFetching} onClick={()=>{setRevision(calls.data?.page.revision??undefined);setOffset(Math.max(0,offset-20))}}>Anterior</button><span>{calls.data.page.total} paragens</span><button disabled={!calls.data.page.has_more||calls.isFetching} onClick={()=>{setRevision(calls.data?.page.revision??undefined);setOffset(offset+20)}}>Seguinte</button></div>}
+    {!journeyResolved&&rows.map(row=><div className="arrival" key={row.id}>{row.stop&&row.stop_static_updated_at?<button className="stop-link" disabled={navigationBusy} onClick={()=>onStop(row)}>{passengerName(v.operator_id,row.stop_name)}</button>:<strong>{row.stop?passengerName(v.operator_id,row.stop_name):'Paragem não identificada'}</strong>}{(row.expected_at||row.scheduled_at)&&<time>{time(row.expected_at??row.scheduled_at)}</time>}<small>{row.kind==='predicted'?'Previsão':row.kind==='scheduled'?'Horário planeado':'Paragem publicada'}{row.delay_seconds!=null?` · desvio ${row.delay_seconds>0?'+':''}${number(row.delay_seconds/60)} min`:''}</small></div>)}
+    {!journeyResolved&&!calls.isFetching&&!rows.length&&!calls.error&&<p className="empty">Sem paragens disponíveis neste registo.</p>}
+    {!journeyResolved&&calls.data&&<div className="pagination"><button disabled={offset===0||calls.isFetching} onClick={()=>{setRevision(calls.data?.page.revision??undefined);setOffset(Math.max(0,offset-20))}}>Anterior</button><span>{calls.data.page.total} paragens</span><button disabled={!calls.data.page.has_more||calls.isFetching} onClick={()=>{setRevision(calls.data?.page.revision??undefined);setOffset(offset+20)}}>Seguinte</button></div>}
    </section>}
   </>}
   <section ref={warningsRef} className="popup-footnotes" tabIndex={-1} aria-label="Avisos e fontes">{unique.map(w=><p className="notice" key={w}><AlertTriangle size={14}/>{w}</p>)}{(calls.error||geometryError||predictionsExpired)&&<button onClick={reload}>Atualizar percurso</button>}

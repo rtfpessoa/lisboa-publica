@@ -14,7 +14,7 @@ func writeStaticCacheJSON(w io.Writer, d *StaticData) error {
 		return json.NewEncoder(w).Encode(nil)
 	}
 	fields := []cacheJSONField{
-		{"routes", d.Routes, false}, {"stops", d.Stops, false},
+		{"operator", d.Operator, d.Operator == ""}, {"routes", d.Routes, false}, {"stops", d.Stops, false},
 		{"schedule", d.Schedule, d.Schedule == nil},
 		{"cm_paths", d.CMPaths, len(d.CMPaths) == 0}, {"cm_path_error", d.CMPathError, d.CMPathError == nil},
 		{"models", d.Models, len(d.Models) == 0},
@@ -105,7 +105,7 @@ func writeCacheJSONValue(w io.Writer, value any) error {
 	case []api.RouteShape:
 		err = writeCacheJSONArray(w, rows)
 	case *Schedule:
-		err = writeCacheJSONObject(w, []cacheJSONField{{"Trips", rows.Trips, false}, {"Calendars", rows.Calendars, false}, {"Exceptions", rows.Exceptions, false}, {"Parents", rows.Parents, false}})
+		err = writeCacheJSONObject(w, []cacheJSONField{{"Trips", rows.Trips, false}, {"Calendars", rows.Calendars, false}, {"Exceptions", rows.Exceptions, false}, {"Parents", rows.Parents, false}, {"stop_names", rows.StopNames, len(rows.StopNames) == 0}, {"complete_journeys", rows.CompleteJourneys, !rows.CompleteJourneys}, {"has_frequencies", rows.HasFrequencies, !rows.HasFrequencies}})
 	default:
 		err = json.NewEncoder(w).Encode(value)
 	}

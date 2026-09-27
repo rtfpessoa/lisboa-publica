@@ -19,28 +19,11 @@ func (f *Fetcher) fetchHubArchive(ctx context.Context, plan *hubPlan) ([]byte, e
 }
 
 func (f *Fetcher) cmShapes(ctx context.Context, plans []hubPlan, today int) (*StaticData, error) {
-	network := &StaticData{Models: map[string]Metadata{}}
+	network := &StaticData{Models: map[string]Metadata{}, Schedule: &Schedule{Calendars: map[string]Calendar{}, Exceptions: map[string]map[string]int{}, Parents: map[string]string{}, StopNames: map[string]string{}, CompleteJourneys: true}}
 	p, _ := providerByID("cm")
 	for _, agency := range []string{"LA77N", "BNA17", "YA15B", "A2L1N"} {
-		plan := activeHubPlan(plans, agency, today)
-		if plan == nil {
-			return nil, fmt.Errorf("Plano de percursos CM indisponível")
-		}
-		blob, err := f.fetchHubArchive(ctx, plan)
-		if err != nil {
+		if err := f.appendCMAgencyNetwork(ctx, network, activeHubPlan(plans, agency, today), p); err != nil {
 			return nil, err
-		}
-		data, err := readCMNetwork(blob, plan, p, f.Hub+"/plans", time.Now().UTC())
-		if err != nil {
-			return nil, err
-		}
-		network.Shapes = append(network.Shapes, data.Shapes...)
-		network.CMPaths = append(network.CMPaths, data.CMPaths...)
-		if data.CMPathError != nil {
-			network.CMPathError = data.CMPathError
-		}
-		for id, metadata := range data.Models {
-			network.Models[id] = metadata
 		}
 	}
 	sort.Slice(network.CMPaths, func(i, j int) bool { return network.CMPaths[i].ID < network.CMPaths[j].ID })
@@ -53,6 +36,7 @@ func (f *Fetcher) updateCMShapes(ctx context.Context, data *StaticData, plans []
 		network, err = f.cmShapes(ctx, plans, today)
 	}
 	if err == nil {
+		data.Schedule = network.Schedule
 		mergeCMNetwork(data, network)
 		err = admitCMGeometry(data, staticHealth(f.Cache.operator("cm"), data))
 	}
@@ -153,4 +137,31 @@ func (f *Fetcher) refreshCMStatic(ctx context.Context, p provider, plans []hubPl
 	}
 	f.updateCMShapes(ctx, data, plans, planErr, today)
 	f.saveStatic(ctx, p, data)
+}
+
+func (f *Fetcher) appendCMAgencyNetwork(ctx context.Context, network *StaticData, plan *hubPlan, p provider) error {
+	if plan == nil {
+		return fmt.Errorf("Plano de percursos CM indisponível")
+	}
+	blob, err := f.fetchHubArchive(ctx, plan)
+	if err != nil {
+		return err
+	}
+	data, err := readCMNetwork(blob, plan, p, f.Hub+"/plans", time.Now().UTC())
+	if err == nil {
+		importer := cmJourneyImport{network, plan, p, f.Hub + "/plans"}
+		err = importer.append(blob, data)
+	}
+	return err
+}
+func (i cmJourneyImport) append(blob []byte, data *StaticData) error {
+	i.network.Shapes = append(i.network.Shapes, data.Shapes...)
+	i.network.CMPaths = append(i.network.CMPaths, data.CMPaths...)
+	if data.CMPathError != nil {
+		i.network.CMPathError = data.CMPathError
+	}
+	for id, metadata := range data.Models {
+		i.network.Models[id] = metadata
+	}
+	return i.merge(blob)
 }

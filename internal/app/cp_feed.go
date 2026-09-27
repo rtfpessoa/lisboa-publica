@@ -36,8 +36,10 @@ type cpFeed struct {
 		Incrementality string `json:"incrementality"`
 		Timestamp      int64  `json:"timestamp"`
 	}
-	Updates []cpUpdate
-	visit   func(cpEntity)
+	Updates          []cpUpdate
+	OtherUpdates     map[string][]cpUpdate
+	PartialOperators map[string]bool
+	visit            func(cpEntity)
 }
 
 type cpUpdate struct {
@@ -63,6 +65,10 @@ type cpStopUpdate struct {
 		Time  *int64 `json:"time"`
 		Delay *int   `json:"delay"`
 	} `json:"arrival"`
+	Departure struct {
+		Time  *int64 `json:"time"`
+		Delay *int   `json:"delay"`
+	} `json:"departure"`
 }
 
 func decodeCPEntities(d *json.Decoder, feed *cpFeed) error {
@@ -113,7 +119,7 @@ func retainCPEntity(feed *cpFeed, rows *int, entity cpEntity) error {
 		return fmt.Errorf("unsupported CP deleted entity")
 	}
 	if !strings.Contains(entity.Update.Trip.ID, "[N18KL]") {
-		return nil
+		return retainProviderEntity(feed, entity)
 	}
 	// CP does not use physical vehicle identity; preserve its previous admission
 	// rules and avoid retaining this new field in the CP input snapshot.
