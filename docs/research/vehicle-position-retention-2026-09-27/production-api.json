@@ -1,0 +1,84 @@
+{
+  "health": {
+    "database": "ok",
+    "status": "ok"
+  },
+  "pagination_complete": true,
+  "unique_vehicles": 923,
+  "vehicles_by_operator": {
+    "carris": 257,
+    "cm": 556,
+    "fertagus": 13,
+    "metro": 31,
+    "mobi": 44,
+    "tcb": 15,
+    "ttsl": 7
+  },
+  "retained_original_clock_24h": 923,
+  "operators": [
+    {
+      "id": "carris",
+      "status": "ok",
+      "reported": 181,
+      "estimated": 0,
+      "retained": 76,
+      "error": null
+    },
+    {
+      "id": "cm",
+      "status": "ok",
+      "reported": 379,
+      "estimated": 0,
+      "retained": 177,
+      "error": null
+    },
+    {
+      "id": "tcb",
+      "status": "ok",
+      "reported": 11,
+      "estimated": 0,
+      "retained": 4,
+      "error": null
+    },
+    {
+      "id": "mobi",
+      "status": "ok",
+      "reported": 33,
+      "estimated": 0,
+      "retained": 11,
+      "error": null
+    },
+    {
+      "id": "metro",
+      "status": "ok",
+      "reported": 0,
+      "estimated": 26,
+      "retained": 5,
+      "error": null
+    },
+    {
+      "id": "cp",
+      "status": "ok",
+      "reported": 0,
+      "estimated": 0,
+      "retained": 0,
+      "error": null
+    },
+    {
+      "id": "ttsl",
+      "status": "ok",
+      "reported": 2,
+      "estimated": 0,
+      "retained": 5,
+      "error": null
+    },
+    {
+      "id": "fertagus",
+      "status": "ok",
+      "reported": 7,
+      "estimated": 0,
+      "retained": 6,
+      "error": null
+    }
+  ]
+}

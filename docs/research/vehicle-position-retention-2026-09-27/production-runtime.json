@@ -1,0 +1,1 @@
+{"version": "a18a7747aca38323b917cc50e8ddb0ab7c81aaf2", "health": "healthy", "restarts": 0, "oom_killed": false, "memory_peak_bytes": 792231936, "memory_limit_bytes": 1342177280, "memory_events": {"low": "0", "high": "0", "max": "0", "oom": "0", "oom_kill": "0", "oom_group_kill": "0"}}

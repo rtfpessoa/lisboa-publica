@@ -1,0 +1,14 @@
+npm notice run lisboa-publica@1.0.0 npx
+npm notice run 'playwright' test tests/dashboard.spec.ts
+
+Running 4 tests using 1 worker
+
+(node:74205) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/dashboard.spec.ts:4:1 › desktop public dashboard, independent sources, search, tabs, charts and fleet (52.5s)
+  -  2 tests/dashboard.spec.ts:28:1 › optional local account can create and revoke scoped keys
+  ✓  3 tests/dashboard.spec.ts:33:1 › mobile navigation, panels and map fit the viewport (6.9s)
+  ✓  4 tests/dashboard.spec.ts:38:1 › Metro station board advances on the shared refresh tick (2.8s)
+
+  1 skipped
+  3 passed (1.1m)

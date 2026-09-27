@@ -1,0 +1,42 @@
+=== RUN   TestProviderContinuityResourceEnvelope
+    continuity_resource_test.go:193: production_CM_patterns=1621 visits=57286 gzip_bytes=12351521
+    cp_resource_test.go:82: cp_worst_case_distinct_snapshots=64 cp_rows_per_snapshot=110
+    cp_resource_test.go:106: all_operator_forecast_snapshots=512
+    continuity_resource_test.go:42: churn_retained_versions=64 history_pending=20000
+    continuity_resource_test.go:43: arrival_retention_carris_accounted_bytes=3145561
+    continuity_resource_test.go:43: arrival_retention_cm_accounted_bytes=1046204
+    continuity_resource_test.go:43: arrival_evicted_inflight_readers=2 reader_accounted_bytes=1991074
+    continuity_resource_test.go:43: arrival_result_leases=1 additional_workspace_bytes=3145728
+    continuity_resource_test.go:193: production_CM_patterns=1621 visits=57286 gzip_bytes=12351534
+    continuity_resource_test.go:50: concurrent_vehicle_pages=2 calls_from_frozen_refs=2 complete_CM_paths=2 pinned_CM_pages=2 geometry_opt_in=verified cancelled_calls=verified
+    continuity_resource_test.go:51: cp_concurrent_decode_bytes=16776905 workers=2
+    continuity_resource_test.go:58: static_providers=8 retained_versions=64 history_pending=20000 heap_bytes=877887496 sys_bytes=1539366520
+    continuity_resource_test.go:61: carris source=1000 retained=9000 ledger=2000
+    continuity_resource_test.go:61: cm source=1000 retained=9000 ledger=2000
+    continuity_resource_test.go:61: tcb source=1000 retained=9000 ledger=2000
+    continuity_resource_test.go:61: mobi source=1000 retained=9000 ledger=2000
+    continuity_resource_test.go:61: metro source=1000 retained=9000 ledger=2000
+    continuity_resource_test.go:61: cp source=1000 retained=9000 ledger=2000
+    continuity_resource_test.go:61: ttsl source=1000 retained=9000 ledger=2000
+    continuity_resource_test.go:61: fertagus source=1000 retained=9000 ledger=2000
+--- PASS: TestProviderContinuityResourceEnvelope (486.36s)
+PASS
+ok  	lisboapublica/internal/app	487.205s
+      489.73 real       900.89 user        15.40 sys
+          1538490368  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              132328  page reclaims
+                2289  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   8  messages sent
+                 152  messages received
+              124185  signals received
+               12586  voluntary context switches
+             1425686  involuntary context switches
+          6402104665  instructions retired
+          3154494944  cycles elapsed
+            31326784  peak memory footprint

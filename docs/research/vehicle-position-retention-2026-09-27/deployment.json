@@ -1,0 +1,11 @@
+{
+  "version": "a18a7747aca38323b917cc50e8ddb0ab7c81aaf2",
+  "image": "sha256:10e91c7a682c78708f8207298d04e22f42abd024423c686cce96058b21e3ed24",
+  "healthy": true,
+  "environment_unchanged": true,
+  "isolation_and_limits_unchanged": true,
+  "other_containers_unchanged": 6,
+  "rollback_image": "sha256:69bf5c443e81da689fe6c92aa50a23420d06375ae607f1d4b32806fe35048365",
+  "secret_backups_protected": true,
+  "artifact_hashes_match": true
+}
