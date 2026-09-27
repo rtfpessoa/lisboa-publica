@@ -10,11 +10,15 @@ import (
 )
 
 type snapshotMetadata struct {
-	SourceID   string  `json:"source_id"`
-	Model      *string `json:"model"`
-	Plate      *string `json:"license_plate"`
-	Typology   *string `json:"typology,omitempty"`
-	Propulsion *string `json:"propulsion,omitempty"`
+	SourceID             string  `json:"source_id"`
+	Model                *string `json:"model"`
+	Plate                *string `json:"license_plate"`
+	Typology             *string `json:"typology,omitempty"`
+	Propulsion           *string `json:"propulsion,omitempty"`
+	SeatedCapacity       *int    `json:"seated_capacity,omitempty"`
+	TotalCapacity        *int    `json:"total_capacity,omitempty"`
+	WheelchairAccessible *bool   `json:"wheelchair_accessible,omitempty"`
+	Contactless          *bool   `json:"contactless,omitempty"`
 }
 
 func (s *Store) prepareHistory(operator string, live *LiveData, distances map[string]*float64) ([]historicalRecord, *historyCollector) {
@@ -40,7 +44,7 @@ func recordBytes(records []historicalRecord) int64 {
 	for _, record := range records {
 		vehicle := record.Vehicle
 		fields := len(vehicle.Id) + len(vehicle.SourceId) + len(vehicle.OperatorId) + len(stringValue(vehicle.RouteId)) + len(stringValue(vehicle.TripId)) + len(stringValue(vehicle.Model)) + len(stringValue(vehicle.LicensePlate)) + len(stringValue(vehicle.Typology)) + len(stringValue(vehicle.Propulsion))
-		bytes += int64(fields)*storageWriteOverhead + historyRecordOverhead
+		bytes += int64(fields)*storageWriteOverhead + historyRecordOverhead + specificationWriteBytes(vehicle)
 	}
 	return bytes
 }
@@ -52,7 +56,7 @@ func insertHistory(ctx context.Context, tx pgx.Tx, operator string, generation i
 	batch := &pgx.Batch{}
 	for _, record := range records {
 		vehicle := record.Vehicle
-		blob, err := json.Marshal(snapshotMetadata{SourceID: vehicle.SourceId, Model: vehicle.Model, Plate: vehicle.LicensePlate, Typology: vehicle.Typology, Propulsion: vehicle.Propulsion})
+		blob, err := json.Marshal(snapshotMetadata{SourceID: vehicle.SourceId, Model: vehicle.Model, Plate: vehicle.LicensePlate, Typology: vehicle.Typology, Propulsion: vehicle.Propulsion, SeatedCapacity: vehicle.SeatedCapacity, TotalCapacity: vehicle.TotalCapacity, WheelchairAccessible: vehicle.WheelchairAccessible, Contactless: vehicle.Contactless})
 		if err != nil {
 			return err
 		}
@@ -117,4 +121,14 @@ func (s *Store) persistUpdate(ctx context.Context, id string, update cacheUpdate
 		_, err := tx.Exec(ctx, "INSERT INTO source_health(operator_id,payload) VALUES($1,$2) ON CONFLICT(operator_id) DO UPDATE SET payload=excluded.payload", id, update.Health)
 		return err
 	})
+}
+
+// Four bounded specification values add at most128JSON bytes, before MVCC reservation.
+const snapshotSpecificationBytes = 128
+
+func specificationWriteBytes(vehicle api.Vehicle) int64 {
+	if vehicle.SeatedCapacity == nil && vehicle.TotalCapacity == nil && vehicle.WheelchairAccessible == nil && vehicle.Contactless == nil {
+		return 0
+	}
+	return snapshotSpecificationBytes * storageWriteOverhead
 }

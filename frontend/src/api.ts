@@ -165,6 +165,14 @@ export type Vehicle = {
     /** Validated explicit source service date, YYYY-MM-DD; never inferred from collection time. */
     operational_date?: string | null;
     scheduled_service?: ScheduledEndpoints;
+    /** Optional published vehicle specification, not live free places or occupancy. Exact source identity only. */
+    seated_capacity?: number | null;
+    /** Optional published vehicle specification, not live free places or occupancy. Exact source identity only. */
+    total_capacity?: number | null;
+    /** Optional published equipment value. Some upstream schemas default false when unspecified; false does not prove equipment absence or working availability. */
+    wheelchair_accessible?: boolean | null;
+    /** Optional published equipment value. Some upstream schemas default false when unspecified; false does not prove equipment absence or working availability. */
+    contactless?: boolean | null;
 };
 export type VehiclePage = {
     data: Vehicle[];

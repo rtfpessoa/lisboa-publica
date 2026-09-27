@@ -1,0 +1,46 @@
+# Existing provider enrichment and lossless historical payload compression
+
+## Evidence and limits
+
+Complete the accepted CP map/predictions work first. The runtime sources, identity crosswalks, observation clocks and request budgets stay unchanged. Main owns research, plan, implementation, tests and fixes; independent quasar-alpha/xhigh reviewers only review.
+
+See [source and UI inventory](research/PROVIDER-ENRICHMENT-HISTORY.md). Current snapshots already retain five-minute aggregate facts and small metadata JSON, not every raw incoming position. Compression cannot recover observations that were never retained. Thirty-day retention, five-minute resolution and the application5GB guard remain fixed. No additional credentials, Mover APIs, collectors, guessed units or vehicle allocations.
+
+## Implementation
+
+1. Reuse published metadata responses to preserve propulsion strings and optional seated capacity, wheelchair and contactless information for exact existing CM/Mobi vehicle identities. Parse corresponding documented vehicles.txt fields for all existing exact GTFS vehicle matches; distinguish missing/unknown from explicit zero/false. Reject negative/out-of-range capacities. Preserve published propulsion codes without guessing across differing feed versions. No Hub vehicle_type-to-typology conversion. Direct CM vehicle capacity/boarding fields take precedence when present; no occupancy estimate.
+2. Add optional vehicle specification fields to the single OpenAPI contract and regenerate Go/TypeScript. Show published seats/total capacity, wheelchair accessibility and contactless boarding in vehicle popups, with an explicit unavailable label. These are specifications, not live free-seat counts or station facilities. Hub booleans default false upstream, so label false “Não indicado”, true “Sim (publicado)” and missing/null “Indisponível”; never assert equipment actually works. Existing model/plate/propulsion historical fleet fields remain unchanged. Retain optional new published specifications in snapshots from collection onward for future offline analysis; omit missing values and never backfill present specifications into old observations. No new historical fleet specification feature. Fields without verified joins remain unknown, especially Metro/Fertagus physical fleet identities. API/UI tests must prove zero/false display and absent field handling.
+3. Compress old **large legacy payloads**, preserving the complete canonical JSON in a nullable `payload_archive` BYTEA gzip column while keeping the five metadata fields used by fleet queries in `payload` JSONB. Add a nullable archive column without a backfill/index. Run at most one bounded batch per existing five-minute maintenance cycle, only for rows older than24hours inside retained history. Skip compact payloads and any row where gzip+query projection+conservative row overhead is not materially smaller. Do not change SQL query facts, observation timestamps, generation, pagination, retention or totals. Old binaries continue reading the same metadata projection; the new archive remains alongside it on rollback.
+4. Bound compressed and uncompressed payload size, candidate rows/bytes, decompression, context deadline and transaction retries. Reserve conservative rewritten-row/MVCC headroom under the operational4.5GB ceiling before updates, using existing write serialization/storage guard; skip on unavailable/exhausted measurement. Cleanup still runs separately. Archive deletion happens only with its snapshot at normal expiry. Do not synchronously decompress in passenger queries. Keep a tested internal decoder for future offline analysis that reconstructs the complete original JSON; fail closed on corrupt/oversized archives.
+
+## Tests and acceptance
+
+- Metadata source fixtures: exact identities, conflicting/unknown agencies, missing/false/zero, invalid capacities, source precedence, raw propulsion strings and cache round-trip. OpenAPI generation parity; browser popup specifications and missing fields.
+- Both Postgres and CockroachDB: old/full, compact and mixed snapshot rows; all historical endpoint results identical before/after (metrics, history, traffic, rankings, fleet, pinned revisions); exact original payload round-trip; idempotence; bounded batch; context cancellation; invalid gzip; fail-closed storage guard; rollback reads using unchanged JSON projection.
+- Report measured fixture bytes before/after; do not promise savings for existing compact rows or longer retention. Storage compaction is asynchronous; logical compression is not an immediate cluster-wide physical size guarantee.
+- Full Go race/vet, frontend build/generated parity and browser suite; existing production-memory resource acceptance remains mandatory. Maat normal commit gate, no bypass/suppressions. Independent final review recommends acceptance, main confirms requirements.
+- Commit, push and deploy only dashboard through existing protected Compose/Caddy workflow. Capture previous image/secret-safe config, preserve external database/env/isolation and other container IDs, health and bounded production verification; rollback uses the preserved image and compatible schema.
+
+## Deferred
+
+Whole-day observation archives would require rewriting query windows, grouping, frozen pagination and recovery paths. Defer that larger change. Also defer per-stop CM arrival fanout, new alerts UI, uncertain speed/occupancy semantics, station facility scraping and unverified operator contracts.
+
+## Independent review revisions: precise admission contracts
+
+### Published fields
+
+| Source | Field → API | Admission / precedence |
+|---|---|---|
+| Hub metadata | propulsion → propulsion; available_seats → seated_capacity; wheelchair → wheelchair_accessible; contactless → contactless | Nullable pointers. Exact existing CM/Mobi crosswalk only. Nonempty propulsion string≤128bytes; integers0..10000. Valid Hub fields override GTFS per field, including0/false; absent/null/invalid leaves valid GTFS fallback. |
+| Direct CM vehicles | capacity_seated → seated_capacity; capacity_total → total_capacity; wheelchair_accessible/contactless → same API names | Valid present direct value wins over metadata, including0/false; invalid leaves valid metadata. No sum/derived totals. |
+| Existing vehicles.txt | total_capacity → total_capacity; wheelchair_accessible → wheelchair_accessible; existing propulsion → propulsion | Documented enum0/blank unknown,1true,2false, others rejected. Integers0..10000. No GTFS seated/contactless field assumed: checked documentation does not define them. Existing raw propulsion preserved; no mapping across code versions. |
+
+### Compression and scan
+
+Only PostgreSQL admits extra application compression: use actual `pg_column_size(payload)` on the stored column (accounts for TOAST) and compare native `pg_column_size(projected JSONB)` plus `pg_column_size(archive BYTEA)` plus128bytes conservative per-row overhead. Require at least512bytes saving. Cockroach pg_column_size reports encoded value size, not physical SST compressed bytes: keep this optional compactor a no-op there, verify/document existing native SST compression without changing its settings. Do not claim additional Cloud capacity without physical evidence.
+
+One existing5-minute maintenance invocation, prune independently first; total compaction deadline2seconds. Scan at most128candidate rows in `(observed_at, operator_id, vehicle_id)` ascending keyset order between retention cut-off and24hours old. In-memory cursor advances over compact/nonbeneficial/oversized rows, wraps after exhaustion, and resets on restart; one sweep never blocks later candidates permanently. SQL returns payload text only when length≤65536bytes; oversized rows still advance cursor. Raw+decoded limit65536bytes, gzip archive limit65536bytes plus4-byte version marker. Batch raw input≤8MiB from128rows; avoid whole-feed/archive materialization. Empty/malformed/oversized/skipped cases write nothing.
+
+Archive exact original JSONB text bytes with versioned gzip; build five-field query projection from original raw JSON values, preserving key absence/null/empty and non-string legacy types. Never decode/re-enrich through current API values. Atomically update projection/archive conditional on unchanged original payload and NULL archive. Existing transaction retry must never pair different payload versions; cursor advances only after successful processing/commit, or wraps safely on exhaustion. No generation changes.
+
+Reserve conservative old+new rewrite/MVCC bytes (`4*(raw+projection+archive)+1024` per changed row) under operational4.5GB before transactional updates. Optional reservation rejection does not set a collecting history budget to paused merely because maintenance was skipped; measurement errors/genuine history exhaustion retain existing fail-closed status. Nullable column/no default/index/backfill uses existing guarded migration reservation. Test codec limit/corruption/trailing stream, native-compressed and incompressible no-ops, scan progress and bounded rows, reservation rejection/no-write, actual stored-value saving, historical equivalence and rollback SQL on both databases (Cockroach no-op path included).

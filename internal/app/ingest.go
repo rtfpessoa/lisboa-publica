@@ -373,17 +373,21 @@ func (f *Fetcher) cmStatic(ctx context.Context, p provider) (*StaticData, error)
 }
 
 type cmPosition struct {
-	Status  *string  `json:"current_status"`
-	Stop    *string  `json:"stop_id"`
-	ID      string   `json:"id"`
-	Line    string   `json:"line_id"`
-	Trip    string   `json:"trip_id"`
-	Lat     float64  `json:"lat"`
-	Lon     float64  `json:"lon"`
-	At      int64    `json:"timestamp"`
-	Bearing *float64 `json:"bearing"`
-	Model   *string  `json:"model"`
-	Plate   *string  `json:"license_plate"`
+	Seats       *int     `json:"capacity_seated"`
+	Capacity    *int     `json:"capacity_total"`
+	Wheelchair  *bool    `json:"wheelchair_accessible"`
+	Contactless *bool    `json:"contactless"`
+	Status      *string  `json:"current_status"`
+	Stop        *string  `json:"stop_id"`
+	ID          string   `json:"id"`
+	Line        string   `json:"line_id"`
+	Trip        string   `json:"trip_id"`
+	Lat         float64  `json:"lat"`
+	Lon         float64  `json:"lon"`
+	At          int64    `json:"timestamp"`
+	Bearing     *float64 `json:"bearing"`
+	Model       *string  `json:"model"`
+	Plate       *string  `json:"license_plate"`
 }
 
 func (f *Fetcher) cmLive(ctx context.Context, p provider, now time.Time) ([]api.Vehicle, error) {
@@ -420,6 +424,8 @@ func (f *Fetcher) cmVehicle(p provider, r cmPosition, at, now time.Time) api.Veh
 	if r.Trip != "" {
 		v.TripId = ptr(qualify(p.ID, r.Trip))
 	}
+	v.SeatedCapacity, v.TotalCapacity = publishedCapacity(r.Seats), publishedCapacity(r.Capacity)
+	v.WheelchairAccessible, v.Contactless = r.Wheelchair, r.Contactless
 	v.CurrentStatus = publishedStopStatus(r.Status)
 	v.SourceStopId = boundedStopReference(r.Stop)
 	enrichStopReference(&v, f.currentStatic(p.ID), true)
@@ -531,6 +537,7 @@ func enrichVehicle(v *api.Vehicle, data *StaticData) {
 			}
 			v.Typology = optional(m.Typology)
 			v.Propulsion = optional(m.Propulsion)
+			enrichSpecifications(v, m)
 		}
 	}
 }

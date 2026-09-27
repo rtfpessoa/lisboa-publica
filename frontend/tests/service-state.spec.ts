@@ -6,10 +6,10 @@ test('plate presentation respects road modes and raw unknown registrations',()=>
  expect(plate('CE29PV','train')).toBe('CE29PV');expect(plate('CE29PV','ferry')).toBe('CE29PV');expect(plate(null,'bus')).toBe('Indisponível');expect(plate('','bus')).toBe('Indisponível');
 });
 
-async function fixture(page:Page,operator='carris',known=false,status:string|null='STOPPED_AT'){
+async function fixture(page:Page,operator='carris',known=false,status:string|null='STOPPED_AT',specs:Record<string,unknown>={}){
  const now=Date.now(),at=new Date(now-(known?360000:0)).toISOString();
  const service={origin_source_stop_id:'O',origin_name:'Porto',destination_source_stop_id:'D',destination_name:'Faro',service_date:'2026-09-26',source_url:'https://official.example/gtfs'};
- const v={id:operator+':v',source_id:'v',operator_id:operator,position_kind:operator==='metro'?'estimated':'reported',lat:38.731,lon:-9.145,observed_at:at,collected_at:at,current_status:status,stop_name:'Oriente',license_plate:'CE29PV',source_url:'https://go.tmlmobilidade.pt',last_known:known,stale:known,inactive_at:new Date(Date.parse(at)+300000).toISOString(),last_known_expires_at:new Date(Date.parse(at)+3600000).toISOString(),...(operator==='cp'?{scheduled_service:service}:{})};
+ const v={id:operator+':v',source_id:'v',operator_id:operator,position_kind:operator==='metro'?'estimated':'reported',lat:38.731,lon:-9.145,observed_at:at,collected_at:at,current_status:status,stop_name:'Oriente',license_plate:'CE29PV',source_url:'https://go.tmlmobilidade.pt',last_known:known,stale:known,inactive_at:new Date(Date.parse(at)+300000).toISOString(),last_known_expires_at:new Date(Date.parse(at)+3600000).toISOString(),...(operator==='cp'?{scheduled_service:service}:{}),...specs};
  const operators=[{id:'metro',name:'Metro de Lisboa',mode:'metro',color:'#e22'},{id:operator,name:operator==='cp'?'CP':'Carris',mode:operator==='cp'?'train':'bus',color:'#2a2'}].filter((v,i,a)=>a.findIndex(x=>x.id===v.id)===i).map(o=>({...o,status:'ok',static_status:'ok',live_updated_at:new Date(now).toISOString(),reported_positions:1,estimated_positions:1}));
  const paged=(data:unknown[])=>({data,page:{limit:500,offset:0,total:data.length,has_more:false}});
  await page.route('https://tiles.openfreemap.org/styles/positron',r=>r.fulfill({json:{version:8,sources:{},layers:[{id:'background',type:'background',paint:{'background-color':'#fff'}}]}}));
@@ -66,4 +66,14 @@ test('CP endpoint row labels its retained Lisbon times without claiming full jou
  await page.route('**/api/v1/trips?**',r=>r.fulfill({json:{data:[{id:'cp:20260926:A',operator_id:'cp',route_id:'cp:1',headsign:'Faro',kind:'scheduled',planned_departure:'2026-09-26T23:00:00Z',planned_end:'2026-09-26T23:00:00Z',scheduled_service:service}],page:{limit:500,offset:0,total:1,has_more:false}}}));
  await page.goto('/');await page.getByLabel('Pesquisar carreira ou paragem').fill('1');await page.locator('.search-results button').first().click();await page.getByRole('button',{name:'Viagens planeadas',exact:true}).click();
  await expect(page.locator('.detail-panel table')).toContainText('Porto → Faro (planeado)');await expect(page.getByRole('columnheader',{name:'Primeira paragem local (hora)'})).toBeVisible();await expect(page.getByRole('columnheader',{name:'Última paragem local (hora)'})).toBeVisible();await expect(page.locator('.detail-panel')).toContainText('não aos extremos da viagem completa');
+});
+
+for(const width of [1280,390])test(`published vehicle specifications preserve zero false and unavailable at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:800});await fixture(page,'carris',false,'STOPPED_AT',{seated_capacity:0,total_capacity:80,wheelchair_accessible:false,contactless:true});await page.goto('/');await openVehicle(page);
+ const panel=page.locator('.detail-panel');await expect(panel.locator('span').filter({hasText:'Lugares sentados (capacidade publicada)'})).toContainText('0');
+ await expect(panel.locator('span').filter({hasText:'Capacidade total publicada'})).toContainText('80');
+ await expect(panel.locator('span').filter({hasText:'Acessibilidade para cadeira de rodas'})).toContainText('Não indicado');
+ await expect(panel.locator('span').filter({hasText:'Pagamento contactless'})).toContainText('Sim (publicado)');await expect(panel).toContainText('Não indicam lugares livres');
+ await fixture(page,'metro');await page.reload();await openVehicle(page);await expect(panel.locator('span').filter({hasText:'Capacidade total publicada'})).toContainText('Indisponível');
+ await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });

@@ -2217,6 +2217,30 @@
           },
           "scheduled_service": {
             "$ref": "#/components/schemas/ScheduledEndpoints"
+          },
+          "seated_capacity": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 10000,
+            "description": "Optional published vehicle specification, not live free places or occupancy. Exact source identity only."
+          },
+          "total_capacity": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 10000,
+            "description": "Optional published vehicle specification, not live free places or occupancy. Exact source identity only."
+          },
+          "wheelchair_accessible": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Optional published equipment value. Some upstream schemas default false when unspecified; false does not prove equipment absence or working availability."
+          },
+          "contactless": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Optional published equipment value. Some upstream schemas default false when unspecified; false does not prove equipment absence or working availability."
           }
         },
         "required": [

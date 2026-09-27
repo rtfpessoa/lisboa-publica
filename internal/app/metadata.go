@@ -1,6 +1,10 @@
 package app
 
-import "strings"
+import (
+	"lisboapublica/internal/api"
+	"strconv"
+	"strings"
+)
 
 func publishedModel(makeName, model string) string {
 	makeName, model = strings.TrimSpace(makeName), strings.TrimSpace(model)
@@ -21,7 +25,7 @@ func publishedModel(makeName, model string) string {
 }
 
 func metadataRow(row map[string]string) Metadata {
-	return Metadata{Model: publishedModel(row["make"], row["model"]), Plate: strings.TrimSpace(row["license_plate"]), Typology: strings.TrimSpace(row["typology"]), Propulsion: strings.TrimSpace(row["propulsion"])}
+	return Metadata{Model: publishedModel(row["make"], row["model"]), Plate: strings.TrimSpace(row["license_plate"]), Typology: strings.TrimSpace(row["typology"]), Propulsion: strings.TrimSpace(row["propulsion"]), TotalCapacity: capacityText(row["total_capacity"]), WheelchairAccessible: wheelchairEnum(row["wheelchair_accessible"])}
 }
 
 func mergeMetadata(previous, next Metadata) Metadata {
@@ -37,15 +41,31 @@ func mergeMetadata(previous, next Metadata) Metadata {
 	if next.Propulsion != "" {
 		previous.Propulsion = next.Propulsion
 	}
+	if next.SeatedCapacity != nil {
+		previous.SeatedCapacity = next.SeatedCapacity
+	}
+	if next.TotalCapacity != nil {
+		previous.TotalCapacity = next.TotalCapacity
+	}
+	if next.WheelchairAccessible != nil {
+		previous.WheelchairAccessible = next.WheelchairAccessible
+	}
+	if next.Contactless != nil {
+		previous.Contactless = next.Contactless
+	}
 	return previous
 }
 
 type publishedMetadata struct {
-	ID     string `json:"vehicle_id"`
-	Agency string `json:"agency_id"`
-	Make   string `json:"make"`
-	Model  string `json:"model"`
-	Plate  string `json:"license_plate"`
+	ID          string `json:"vehicle_id"`
+	Agency      string `json:"agency_id"`
+	Make        string `json:"make"`
+	Model       string `json:"model"`
+	Plate       string `json:"license_plate"`
+	Propulsion  string `json:"propulsion"`
+	Seats       *int   `json:"available_seats"`
+	Wheelchair  *bool  `json:"wheelchair"`
+	Contactless *bool  `json:"contactless"`
 }
 
 func mergePublishedMetadata(d *StaticData, id string, rows []publishedMetadata) *StaticData {
@@ -67,7 +87,55 @@ func mergePublishedMetadata(d *StaticData, id string, rows []publishedMetadata) 
 		if id == "cm" {
 			key = "[" + row.Agency + "]" + key
 		}
-		copyData.Models[key] = mergeMetadata(copyData.Models[key], Metadata{Model: publishedModel(row.Make, row.Model), Plate: row.Plate})
+		copyData.Models[key] = mergeMetadata(copyData.Models[key], Metadata{Model: publishedModel(row.Make, row.Model), Plate: row.Plate, Propulsion: boundedPropulsion(row.Propulsion), SeatedCapacity: publishedCapacity(row.Seats), WheelchairAccessible: row.Wheelchair, Contactless: row.Contactless})
 	}
 	return &copyData
+}
+
+const maxPublishedCapacity = 10000
+const maxPropulsionBytes = 128
+
+func publishedCapacity(value *int) *int {
+	if value == nil || *value < 0 || *value > maxPublishedCapacity {
+		return nil
+	}
+	return value
+}
+func capacityText(value string) *int {
+	n, err := strconv.Atoi(strings.TrimSpace(value))
+	if err != nil {
+		return nil
+	}
+	return publishedCapacity(&n)
+}
+func wheelchairEnum(value string) *bool {
+	switch strings.TrimSpace(value) {
+	case "1":
+		return ptr(true)
+	case "2":
+		return ptr(false)
+	}
+	return nil
+}
+func boundedPropulsion(value string) string {
+	value = strings.TrimSpace(value)
+	if len(value) > maxPropulsionBytes {
+		return ""
+	}
+	return value
+}
+
+func enrichSpecifications(v *api.Vehicle, m Metadata) {
+	if v.SeatedCapacity == nil {
+		v.SeatedCapacity = m.SeatedCapacity
+	}
+	if v.TotalCapacity == nil {
+		v.TotalCapacity = m.TotalCapacity
+	}
+	if v.WheelchairAccessible == nil {
+		v.WheelchairAccessible = m.WheelchairAccessible
+	}
+	if v.Contactless == nil {
+		v.Contactless = m.Contactless
+	}
 }
