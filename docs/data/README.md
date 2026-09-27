@@ -23,14 +23,14 @@ Names above refer to [OpenAPI schemas](../../api/openapi.yaml); the contract is 
 
 | Operator | Position kind | Network/scheduled trips | Predictions | Specifications |
 |---|---|---|---|---|
-| Carris | Reported Hub positions | Selected normalized GTFS; geometry when usable | No dedicated collected prediction source | Optional published GTFS metadata with exact identity |
-| Carris Metropolitana | Reported direct CM observations | Direct line/stop catalogue; Hub GTFS geometry; no collected CM schedule engine | None collected | Direct fields, optional GTFS records and Hub enrichment |
-| TCB | Reported Hub positions | Selected normalized GTFS; geometry when usable | None collected | Optional GTFS metadata with exact identity |
-| MobiCascais | Reported Hub positions | Selected normalized GTFS; geometry when usable | None collected | Optional GTFS plus verified Hub metadata |
+| Carris | Reported Hub positions | Selected normalized GTFS; geometry when usable | Requested-stop Hub ETA | Optional published GTFS metadata with exact identity |
+| Carris Metropolitana | Reported direct CM observations | Direct line/stop catalogue; Hub GTFS geometry; no collected CM schedule engine | Direct requested-stop arrivals | Direct fields, optional GTFS records and Hub enrichment |
+| TCB | Reported Hub positions | Selected normalized GTFS; geometry when usable | Requested-stop Hub ETA | Optional GTFS metadata with exact identity |
+| MobiCascais | Reported Hub positions | Selected normalized GTFS; geometry when usable | Requested-stop Hub ETA | Optional GTFS plus verified Hub metadata |
 | Metro | Estimated Hub positions | Selected normalized GTFS; geometry when usable | Direct waits with configured credentials | No verified physical-unit crosswalk for inferred entities |
 | CP | Reported Hub positions, potentially with gaps | Lisbon-serving GTFS trips/local stops and published endpoint context | Public Hub CP ETA updates | Optional metadata only when exact identities match; absence is unknown |
-| TTSL | Reported Hub positions | Selected normalized GTFS; geometry when usable | None collected | Optional GTFS metadata; completeness not established |
-| Fertagus | Reported Hub positions | Selected normalized GTFS; geometry when usable | None collected | Published records require an exact observation crosswalk; no guaranteed physical-unit mapping |
+| TTSL | Reported Hub positions | Selected normalized GTFS; geometry when usable | Requested-stop Hub ETA | Optional GTFS metadata; completeness not established |
+| Fertagus | Reported Hub positions | Selected normalized GTFS; geometry when usable | Requested-stop Hub ETA | Published records require an exact observation crosswalk; no guaranteed physical-unit mapping |
 
 The collector can be disabled, feeds can fail or return no current observations, and static validity changes. “Optional metadata” states a parser/enrichment capability, not evidence that a provider publishes a complete populated fleet. Published capacity is not occupancy. See the [operator/source matrix](../integrations/README.md#operator-to-source-coverage).
 
@@ -41,6 +41,7 @@ The collector can be disabled, feeds can fail or return no current observations,
 | Static GTFS | Active plan archives parsed into network, calendars, trips and optional metadata | Routes/stops/planned services/shapes | Compressed normalized static state | No proof of operated trips; context for associations |
 | CM catalogue | Direct lines/stops; Hub geometry and metadata supplement it | CM routes/stops/shapes | Static state | No static CM scheduled trips; observed trip IDs may appear in positions |
 | Positions | Admitted source reports and identity/continuity checks | Current or labelled last-known vehicles | Selected live state, without pending history samples | New admitted samples feed selected facts/aggregates, speed and partial distance |
+| Requested-stop predictions | Validated CM/TML arrivals, source-specific clocks and bounded validity | Stop arrival API/popups | None | None; memory-only |
 | CP predictions | Current publication/update clocks plus validated stop visits | CP prediction services and typed arrivals | None | None; memory-only |
 | Metro direct data | Line state, waits and stations | Status and predicted arrivals | Separate direct cache | No direct prediction history or GPS conversion |
 | Fleet specifications | Verified static/live identity enrichment | Fleet and vehicle details | Static/live metadata | Supported metadata/specification projection in future snapshots; old missing values remain absent |
@@ -58,6 +59,9 @@ Exposure is also field-specific: live `Vehicle` includes capacity/accessibility/
 |---|---|
 | Vehicle `observed_at` | Original Hub `created_at` or CM `timestamp`, both Unix milliseconds converted to UTC |
 | Vehicle `collected_at` | Local time that admitted source report was collected; an identical repeated report preserves its original report clocks |
+| TML arrival `source_updated_at` | Original trip-update seconds; independent of collection/header time |
+| Arrival `valid_until` | Original prediction expiry or bounded CM collection validity; retries do not extend retained rows |
+| Arrival `date_basis` | Published date or uniquely matched GTFS date; absent when unproven |
 | CP `source_updated_at` | Trip-update Unix seconds; drives prediction age |
 | CP publication time | Feed-header Unix seconds; validates feed publication but does not make trip updates newer |
 | Metro arrival `observed_at` | Published `hora` parsed in Europe/Lisbon |
@@ -80,8 +84,10 @@ Exact commercial speed, completed-trip counts, operational headway, depot alloca
 
 ## Consumers and evidence
 
-The UI starts in the live view with Metro selected, vehicles/stops and official network overlays enabled. Operator cards reflect coverage for the selected view/window while remaining selectable for other supported data. Empty selection and missing observations are distinct states. CP services/station popups use typed prediction availability; ordinary route/stop views can still use planned schedules. Unsupported completion/frequency/depot views explain their missing operational inputs.
+The UI starts in the live view with Metro selected, vehicles/stops and official network overlays enabled. Operator cards reflect coverage for the selected view/window while remaining selectable for other supported data. Empty selection and missing observations are distinct states. CP services/station popups use typed prediction availability; other stop views use bounded CM/TML arrival availability with planned fallback where available. Unsupported completion/frequency/depot views explain their missing operational inputs.
 
 [Frontend queries](../../frontend/src/App.tsx) consume operators, vehicles, routes/stops, shapes, schedules, predictions and historical views. [VehicleSpecifications](../../frontend/src/VehicleSpecifications.tsx) and [CP predictions](../../frontend/src/CPPredictions.tsx) preserve typed unavailable/optional fields. API operations and access scopes remain in [OpenAPI](../../api/openapi.yaml).
 
 Implementation: [entities/cache](../../internal/app/data.go), [source ingestion](../../internal/app/ingest.go), [specifications](../../internal/app/metadata.go), [snapshot storage](../../internal/app/snapshots_store.go), [coverage queries](../../internal/app/coverage.go). Relevant existing evidence: [availability tests](../../internal/app/availability_test.go), [specification tests](../../internal/app/provider_specs_test.go), [CP reads](../../internal/app/cp_reads_test.go), [continuity tests](../../internal/app/continuity_test.go).
+
+Stop popups group visible operators' stops within50metres of the initial stop. The group stays anchored while switching or zooming; buttons and focused left/right arrows select alternatives, Tab remains normal and Escape returns focus. Overlapping map stops/vehicles offer explicit targets. Expired or already-past arrivals leave the list even after a failed refetch. This selection does not prove that stops are operationally interchangeable.

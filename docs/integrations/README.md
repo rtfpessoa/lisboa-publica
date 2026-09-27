@@ -4,8 +4,8 @@ The runtime consumes six external integration families. References group shared 
 
 | Integration | Reference | Runtime role |
 |---|---|---|
-| TML Hub | [TML Hub](tml-hub.md) | Positions, plan discovery, normalized GTFS archive downloads, fleet metadata and public CP predictions |
-| Carris Metropolitana v2 | [CM v2](carris-metropolitana.md) | Direct CM lines, stops and reported vehicles |
+| TML Hub | [TML Hub](tml-hub.md) | Positions, plan discovery, normalized GTFS archive downloads, fleet metadata and public CP/selected-stop TML predictions |
+| Carris Metropolitana v2 | [CM v2](carris-metropolitana.md) | Direct CM lines, stops, reported vehicles and requested-stop arrivals |
 | Metro de Lisboa | [Metro](metro.md) | Credential-dependent line status, station metadata and waits, with OAuth |
 | Google Identity | [Google Identity](google-identity.md) | Optional sign-in script and server-side ID-token validation |
 | OpenFreeMap | [OpenFreeMap](openfreemap.md) | Browser map style and referenced map resources |
@@ -17,14 +17,14 @@ The application API is an internal boundary whose authoritative contract is [Ope
 
 | Operator ID | Operator | Consumed transport inputs |
 |---|---|---|
-| `carris` | Carris | Hub positions and active normalized GTFS plan, agency `IA9T6` |
-| `cm` | Carris Metropolitana | Direct CM v2 catalogue/positions; four Hub GTFS plans for geometry/optional fleet records; Hub metadata |
-| `tcb` | TCB | Hub positions and active normalized GTFS plan, agency `A3H3M` |
-| `mobi` | MobiCascais | Hub positions/GTFS, agency `HF16N`, and verified Hub fleet metadata |
+| `carris` | Carris | Hub positions, active normalized GTFS plan and requested-stop ETA, agency `IA9T6` |
+| `cm` | Carris Metropolitana | Direct CM v2 catalogue/positions/requested-stop arrivals; four Hub GTFS plans for geometry/optional fleet records; Hub metadata |
+| `tcb` | TCB | Hub positions, active normalized GTFS plan and requested-stop ETA, agency `A3H3M` |
+| `mobi` | MobiCascais | Hub positions/GTFS/requested-stop ETA, agency `HF16N`, and verified Hub fleet metadata |
 | `metro` | Metro de Lisboa | Estimated Hub positions/GTFS, agency `IA2N9`; direct waits/status/stations with credentials |
 | `cp` | CP | Hub positions/GTFS, agency `N18KL`; Hub `/realtime/eta/gtfs` CP updates |
-| `ttsl` | TTSL | Hub positions and active normalized GTFS plan, agency `LTP61` |
-| `fertagus` | Fertagus | Hub positions and active normalized GTFS plan, agency `7NTB1` |
+| `ttsl` | TTSL | Hub positions, active normalized GTFS plan and requested-stop ETA, agency `LTP61` |
+| `fertagus` | Fertagus | Hub positions, active normalized GTFS plan and requested-stop ETA, agency `7NTB1` |
 
 CM's geometry plans use agencies `LA77N`, `BNA17`, `YA15B`, `A2L1N`. All GTFS downloads are discovered from active Hub plans and admitted only from the authorized object-storage host. CP predictions are a dedicated Hub contract, not a direct CP API subscription. Rail/ferry paths come from published GTFS shapes; there is no external routing service.
 

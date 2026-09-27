@@ -11,7 +11,7 @@ flowchart LR
     subgraph App["Single Go process"]
         HTTP["API and frontend assets"]
         Reads["Read handlers and access controls"]
-        Collect["Static, position, CP and Metro collection"]
+        Collect["Static, position, shared ETA, CM arrivals and Metro collection"]
         Cache["Revisioned published state"]
         Store["Persistence and history collection"]
     end
@@ -38,7 +38,7 @@ The proxy represents the configured production deployment; local development can
 
 [The entry point](../cmd/server/main.go) requires `DATABASE_URL`, opens the store, initializes the schema, applies [history settings](../cmd/server/config.go), creates a cache and restores persisted state. Configuration, initialization or restoration errors stop startup. The API validates origin/environment configuration and constructs its generated handler before serving requests.
 
-One shared `http.Client` has a 45-second timeout and a `BudgetTransport` capped at 900 provider attempts per rolling minute. General ingestion starts when `INGEST_ENABLED=true` (the default). The direct Metro loop starts when both Metro credentials exist, independently of `INGEST_ENABLED`. CP predictions wait for static CP data. A cold start can show loading/unavailable data until collection succeeds.
+One shared `http.Client` has a 45-second timeout and a `BudgetTransport` capped at 900 provider attempts per rolling minute. General ingestion starts when `INGEST_ENABLED=true` (the default). The direct Metro loop starts when both Metro credentials exist, independently of `INGEST_ENABLED`. CP predictions wait for static CP data; additional TML arrivals require a requested stop with eligible static data. A cold start can show loading/unavailable data until collection succeeds.
 
 SIGINT/SIGTERM cancels the shared context and initiates HTTP shutdown with a ten-second timeout. The entry point does not explicitly join every collector or perform a final flush of unfinished history buckets. Restart can lose transient predictions, unpublished writes and unfinished aggregates.
 
@@ -48,11 +48,12 @@ SIGINT/SIGTERM cancels the shared context and initiates HTTP shutdown with a ten
 |---|---|---|
 | Static | Initial collection, then five-minute loop; reusable successful static cache lasts six hours | Active Hub plan discovery, bounded normalized GTFS parsing, CM catalogue/geometry and fleet metadata |
 | Positions | Initial collection, then nominal five-second loop | Hub positions for seven operators, direct CM positions, observation admission and continuity |
-| CP predictions | Nominal five-second loop, after a CP static plan exists; per-attempt context is five seconds | Validated ephemeral predictions associated with CP schedules |
+| Shared ETA | Nominal five-second loop when CP static data or additional-stop demand exists; serialized five-second attempt | CP predictions plus demanded TML stop arrivals from one decode |
+| CM arrivals | Separate nominal five-second loop; bounded requested-stop demand | Ephemeral direct arrivals independent of CP latency |
 | Direct Metro | Initial collection, then nominal five-second loop with credentials; refresh serialized and at most once per five seconds | OAuth token reuse, line status, waits and station metadata |
 | Cleanup/archival | Five-minute ticker in the position loop | Bounded retention cleanup and optional PostgreSQL payload archival |
 
-These are local schedules, not guarantees of exact completion intervals or new source observations. Filters in the UI affect enabled queries and returned entities, not which operators the collector ingests.
+These are local schedules, not guarantees of exact completion intervals or new source observations. Filters in the UI affect enabled queries and returned entities, not which operators the position/static collectors ingest. Stop arrival reads additionally register bounded30-second demand; they never perform an upstream fetch in the HTTP reader.
 
 [Request policy](../internal/app/upstream.go) caps actual attempts, including OAuth and followed redirects. In addition to the shared 900/minute ceiling, TML uses a local 120/minute cap and CM uses 40/second. These are implementation policies, not assertions of current provider quotas. Network failures and HTTP 429/503 introduce source cooldowns; a valid `Retry-After` is respected. Attempts rejected by a budget wait for a later scheduled refresh. Redirects retain HTTPS hostname and effective port and have a bounded chain.
 
@@ -64,6 +65,7 @@ Parsers validate identity, time, coordinates and bounded payloads. [Source refer
 |---|---|---|
 | Static data and metadata | Replace the static state after a successful save | Compressed, chunked static cache and source health |
 | Vehicle positions | Advance in-memory state independently of successful writes | Live cache/health and selected history; normally at most once per 30 seconds in aggregate mode, each update in raw mode |
+| Requested-stop arrivals | Publish only against the exact static generation used; independent bounded store | None; no ETA rows in64 archived network revisions |
 | CP predictions | Publish only if the static state used for normalization is still current | Memory only; a static CP update invalidates predictions |
 | Direct Metro | Advance in-memory direct state independently of successful writes | Separate `cache_parts` kind `direct`, with writes limited separately to 30-second cadence |
 
@@ -94,7 +96,7 @@ sequenceDiagram
 
 [Live cache revisions](../internal/app/data.go) expire by age (five minutes) and capacity (64 versions); validity for the entire five minutes is not guaranteed. [Vehicle revisions](../internal/app/vehicle_revision.go) also freeze the clock used to project freshness. [Historical revisions](../internal/app/history.go) freeze a SQL generation and time window. CP reads preserve a coherent prediction/schedule view. These mechanisms do not create one transaction covering all dashboard queries.
 
-[The frontend pagination helper](../frontend/src/data.ts) carries the returned revision through subsequent pages and restarts on HTTP 410, up to three attempts. [CP queries](../frontend/src/cp.ts) have their own coherent collection logic. TanStack Query uses the [generated client](../frontend/src/api.ts), same-origin credentials and query keys incorporating selections. Live queries generally refresh at the reported live interval; historical windows advance on a 30-second cadence. CP, Metro and ordinary live API reads consume published cache; they do not initiate source collection.
+[The frontend pagination helper](../frontend/src/data.ts) carries the returned revision through subsequent pages and restarts on HTTP 410, up to three attempts. [CP queries](../frontend/src/cp.ts) have their own coherent collection logic. TanStack Query uses the [generated client](../frontend/src/api.ts), same-origin credentials and query keys incorporating selections. Live queries generally refresh at the reported live interval; historical windows advance on a 30-second cadence. CP, Metro and ordinary live API reads consume published cache. Additional stop arrival reads register demand for the asynchronous collectors; popup cancellation does not cancel shared collection.
 
 ## API, authentication and trust
 
@@ -150,3 +152,9 @@ These defaults come from [main.go](../cmd/server/main.go), [config.go](../cmd/se
 | CP/Metro | [CP collection](../internal/app/cp_collect.go), [CP read tests](../internal/app/cp_reads_test.go), [metro.go](../internal/app/metro.go) |
 | Auth/HTTP | [auth.go](../internal/app/auth.go), [middleware](../internal/app/http_middleware.go), [security tests](../internal/app/security_fixes_test.go) |
 | Frontend | [App.tsx](../frontend/src/App.tsx), [main.tsx](../frontend/src/main.tsx), [data.ts](../frontend/src/data.ts) |
+
+## Arrival result leases
+
+[Arrival reads](../internal/app/arrivals_reads.go) default to a one-hour interval. An `a:` revision pins the first page's normalized result, selector and bounds with a random process epoch and bounded retention; expiry, eviction, restart or static-generation replacement returns410. Selector changes return400. Source clocks and validity survive pagination. Pure GTFS pages and existing CP/Metro paths retain their previous revision behavior.
+
+[Retention](../internal/app/arrivals_store.go) is independent of the64 network revisions:32 demand keys per source,3MiB TML/1MiB CM normalized retention,1MiB results and at most64 leases. No neighbour prefetch or full multi-provider trip index is added. [Measured resource validation](VALIDATION-stop-arrivals.md) preserves the original full-network workload and limits. These application limits are separate from upstream provider guarantees and container settings.

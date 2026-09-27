@@ -1,6 +1,6 @@
 # TML Hub
 
-The public Hub is the shared integration for seven operators' positions and static plans, additional CM geometry/fleet records, selected fleet metadata and CP predictions. The base is `https://go.tmlmobilidade.pt/hub/api/v1`. General collection runs when `INGEST_ENABLED=true`; provider availability and actual observations are not guaranteed by that setting.
+The public Hub is the shared integration for seven operators' positions and static plans, additional CM geometry/fleet records, selected fleet metadata, CP predictions and requested-stop ETA for Carris, TCB, MobiCascais, TTSL and Fertagus. The base is `https://go.tmlmobilidade.pt/hub/api/v1`. General collection runs when `INGEST_ENABLED=true`; provider availability and actual observations are not guaranteed by that setting.
 
 ## Consumed contracts
 
@@ -9,10 +9,10 @@ The public Hub is the shared integration for seven operators' positions and stat
 | `GET /vehicles/positions` | JSON envelope with `data` array and nullable `error` | Seven operators' vehicle positions |
 | `GET /plans` | JSON envelope with plan records and nullable `error` | Active static plan selection, GTFS discovery |
 | `GET /vehicles/metadata` | Bare JSON array | MobiCascais and CM metadata enrichment |
-| `GET /realtime/eta/gtfs` | JSON wrapper containing GTFS-RT-style `data.header` and `data.entity`; nullable `error` | CP predictions |
+| `GET /realtime/eta/gtfs` | JSON wrapper containing GTFS-RT-style `data.header` and `data.entity`; nullable `error` | CP and requested-stop predictions |
 | Discovered normalized GTFS ZIP | Plan `operation_gtfs_normalized_url` | Static network/schedule and optional fleet/shape parsing |
 
-Public source calls do not use a source token. The shared local TML cap is 120 attempts/minute; see [collection policy](README.md#shared-collection-policy). Position and CP loops are nominally five seconds. Static plans/metadata are checked on the five-minute loop, with reusable static cache up to six hours. Source timestamps retain their original meaning.
+Public source calls do not use a source token. The shared local TML cap is 120 attempts/minute; see [collection policy](README.md#shared-collection-policy). Position and shared ETA loops are nominally five seconds. Static plans/metadata are checked on the five-minute loop, with reusable static cache up to six hours. Source timestamps retain their original meaning.
 
 ## Position fields
 
@@ -62,10 +62,10 @@ The following are fields read by [the GTFS parser](../../internal/app/gtfs_parse
 | `calendar.txt` | `service_id`, `start_date`, `end_date`, `sunday`, `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday` | Service calendar; weekday active only when value is `1` |
 | `calendar_dates.txt` | `service_id`, `date`, `exception_type` | Exceptions require numeric 1/add or 2/remove |
 | `trips.txt` | `trip_id`, `route_id`, `service_id`, `trip_headsign`, `shape_id`, `trip_short_name`, `direction_id` | Existing-route relationship, service/headsign/label/shape; optional direction must be 0 or 1 |
-| `stop_times.txt` | `trip_id`, `stop_id`, `stop_sequence`, `arrival_time`, `departure_time` | Existing trip, nonnegative sequence, local visits, bounded service-day clocks; CP endpoint/timing extrema also use nonlocal rows |
+| `stop_times.txt` | `trip_id`, `stop_id`, `stop_sequence`, `arrival_time`, `departure_time` | Existing trip, nonnegative sequence, local visits, bounded service-day clocks; CP endpoints and all scheduled providers' timing extrema also use nonlocal rows |
 | `shapes.txt` | `shape_id`, `shape_pt_lat`, `shape_pt_lon`, `shape_pt_sequence` | Finite world-bounded coordinates and nonnegative sequence; published variant geometry, `[lon,lat]` output |
 | `vehicles.txt` | `vehicle_id`, `make`, `model`, `license_plate`, `typology`, `propulsion`, `total_capacity`, `wheelchair_accessible` | Optional exact-identity specifications; capacity is bounded integer; wheelchair codes 1/2 become true/false, others unknown |
-| `frequencies.txt` (CP) | File presence only | Marks frequency-based schedules to restrict CP planned-instance joins; rows are not a frequency scheduling engine |
+| `frequencies.txt` (scheduled providers) | File presence only | Marks frequency-based schedules to restrict prediction instance joins; rows are not a frequency scheduling engine |
 
 CM reads `routes.txt.line_id` in addition to route fields and uses only route/trip/shape/optional-vehicle tables for enrichment. It does not load CM GTFS calendars/stop-times into a scheduling engine. [The CM reference](carris-metropolitana.md) owns its direct catalogue contract. MobiCascais GTFS vehicle IDs strip the configured `21-` prefix; CM metadata keys retain plan agency.
 
@@ -114,6 +114,14 @@ Trip/update fields in abbreviated rows belong beneath `data.entity[].trip_update
 
 Failed fetches can retain previous same-plan prediction rows with error availability and unchanged source clocks. Successful empty responses clear current predictions. Static CP replacement invalidates the prediction snapshot. No CP prediction cache/history survives restart.
 
+## Requested-stop TML predictions
+
+The same bounded ETA download feeds CP and the five additional operators; [shared collection](../../internal/app/cp_collect.go) decodes each entity once and retains only demanded visits for the additional operators. Their source field names follow the CP table above, but matching uses each operator's exact active `[plan][agency]trip` descriptor. `trip_update.vehicle.id` is additionally read for a strictly verified optional vehicle link. Original trip-update and feed-header clocks are checked independently; collection never renews them.
+
+[Matching](../data/associations.md#requested-stop-arrival-matching) requires unique sequences and reversible stop mappings. Absolute ETA takes precedence over delay. An explicit service date must fit plan/calendar/start time and bounded timing compatibility. A missing date needs a uniquely proven time/delay equation; contradictory delay can leave a useful absolute ETA with unknown date, scheduled time and vehicle. Frequencies or ambiguous daily instances remain partial/unmatched. `date_basis` distinguishes published and schedule-matched dates; neither invents a vehicle operating date.
+
+The admission horizon is24hours; the default arrival query is one hour. Interest lasts30seconds for at most32 stops. Per selection, retention is at most256rows/256KiB, within a3MiB TML store; a bounded1MiB result store pins pages. Workspace bounds are512candidates and4096 crosswalk nodes, counting both directions. Prediction rows are not copied into the64 network revisions, persisted, or used as historical observations. Source failures expose planned GTFS fallback when available. Availability indicates partial coverage rather than claiming a complete forecast. [Tests and captured identity fixtures](../../internal/app/arrivals_test.go) establish implementation behavior; old captured payloads do not establish current provider coverage.
+
 ## Usage and storage
 
 | Data | API/UI use | Durable cache | Retained history/derivation |
@@ -122,6 +130,7 @@ Failed fetches can retain previous same-plan prediction rows with error availabi
 | Bearing, stop status/reference, scheduled-service context | Live vehicle details | Live state | Not in current historical fact projection |
 | GTFS routes/stops/trips/calendars/shapes | Search, schedules, route/network overlays | Static normalized state | Not proof of operation; matching context |
 | Fleet metadata | Vehicle popups/specifications and fleet views | Static/live metadata | Supported metadata in subsequent snapshots |
+| Requested-stop normalized predictions | Stop arrival API/popups | None | None |
 | CP normalized predictions | CP services/station views and typed arrivals | None | None |
 | Plan selection/error fields | Source health and matching decisions | Static/health state | Not historical observations |
 

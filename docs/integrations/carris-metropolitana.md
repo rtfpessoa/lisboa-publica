@@ -1,6 +1,6 @@
 # Carris Metropolitana v2
 
-The direct CM integration provides the line/stop catalogue and reported vehicle observations. Its base is `https://api.carrismetropolitana.pt/v2`. [TML Hub](tml-hub.md) separately supplies official geometry and optional fleet enrichment. The direct line catalogue remains authoritative for the app's CM routes.
+The direct CM integration provides the line/stop catalogue, reported vehicle observations and requested-stop arrivals. Its base is `https://api.carrismetropolitana.pt/v2`. [TML Hub](tml-hub.md) separately supplies official geometry and optional fleet enrichment. The direct line catalogue remains authoritative for the app's CM routes.
 
 ## Access and collection
 
@@ -9,6 +9,7 @@ The direct CM integration provides the line/stop catalogue and reported vehicle 
 | `GET /lines` | Bare JSON array | Static refresh when cache is not reusable |
 | `GET /stops` | Bare JSON array | Same static refresh, after lines |
 | `GET /vehicles` | Bare JSON array | Nominal five-second position loop |
+| `GET /arrivals/by_stop/{id}` | Bare JSON array | Separate nominal five-second collector, only while the known stop is requested |
 
 The app supplies no source credentials. General ingestion requires `INGEST_ENABLED=true`. Static checks run every five minutes; successfully cached static data can be reused for six hours. The shared client enforces local 40/rolling-second CM and 900/rolling-minute global budgets. These are local limits; dated quota research is in [polling evidence](../research/POLLING-LIMITS.md). ETags/cooldowns and bounded JSON fetching follow [shared policy](README.md#shared-collection-policy).
 
@@ -55,10 +56,26 @@ GTFS `routes.txt.line_id` links shapes to the direct route ID. A successful fres
 
 Optional GTFS fleet keys preserve `[agency]vehicle_id`. Hub metadata adds only verified agency/numeric-prefix matches. [Fleet associations](../data/associations.md#fleet-metadata-crosswalks-and-precedence) explain source-ID lookup and direct-field precedence; unavailable identities are not invented.
 
+## Requested-stop arrivals
+
+[Collection](../../internal/app/arrivals_collect.go) escapes the raw direct stop ID and streams a response of at most512KiB through the [decoder](../../internal/app/arrivals_cm_decode.go). A null/malformed response fails; `[]` is a successful empty publication. At most32 CM stops have30-second interest, with two requests in flight, five seconds between attempts per stop and48 admitted attempts per rolling minute, within the shared transport policy. Nearby alternatives are not prefetched.
+
+| Source field | Validation and mapping |
+|---|---|
+| `line_id`, `trip_id`, `headsign` | Bounded strings; line is required; scoped route/trip and destination label |
+| `scheduled_arrival_unix` | Unix seconds in2000–2100, required; `scheduled_at` and visit identity |
+| `estimated_arrival_unix` | Optional Unix seconds; valid absolute ETA becomes `expected_at` and kind `prediction`; an invalid estimate can leave a valid scheduled row |
+| `observed_arrival_unix` | Nonzero means already observed and excludes the passage; malformed/future observation marks partial coverage |
+
+An ETA can remain upcoming when its scheduled time is past. Admission is bounded to the next24hours and256rows; duplicate visit identities mark partial coverage. Published coverage is limited to the next Lisbon midnight. No source update clock or vehicle identity is invented. The30-second local validity is a collection bound, not proof of source freshness. Failure can preserve unexpired future scheduled times from the previous response, with their original expiry and no prediction/vehicle fields. There is no CM GTFS schedule fallback.
+
+The [arrival API](../../internal/app/arrivals_reads.go) distinguishes loading, empty publication, error, stale and partial coverage. These rows are ephemeral and do not enter vehicle history. [HTTP and identity tests](../../internal/app/arrivals_test.go) cover expiry, failure, milliseconds and cancellation.
+
 ## Usage and lifecycle
 
 | Data | Consumers | Durable cache | History/derivation |
 |---|---|---|---|
+| Requested-stop arrivals | Stop popup and arrival API | None | None |
 | Lines/stops and verified shapes | Route/stop search, map/network overlays | Static normalized state | Static context only |
 | Observation IDs, coordinates and clocks | Vehicle API/map and detected fleet | Live state | Selected new facts/aggregates, sampled speed and partial distance |
 | Model/plate/type/propulsion | Vehicle popups and fleet details | Static/live enrichment | Supported metadata in subsequent snapshots |

@@ -84,6 +84,18 @@ The [frontend CP helpers](../../frontend/src/cp.ts) apply separate display joins
 
 Evidence: [normalization](../../internal/app/cp_predictions.go), [prediction tests](../../internal/app/cp_predictions_test.go), [read/plan-race tests](../../internal/app/cp_reads_test.go), [sanitized fixtures](../../internal/app/testdata/cp/README.md).
 
+## Requested-stop arrival matching
+
+The five additional TML operators use exact active plan/agency/trip identity and a unique published visit sequence. A batch builds both directions of the source-stop/GTFS-stop crosswalk, including unrequested visits that reveal conflicts. Contradictory mappings, cancelled trips, duplicate sequence identities and equal-clock conflicting predictions exclude affected associations. Parent-station requests collect validated child visits without replacing their identities. The latest original update wins for a visit; admission does not depend on GPS.
+
+Explicit service dates require plan/calendar validity, compatible absolute events and the correct optional start time. Without a date, a unique active day must satisfy published absolute-time/delay equations. Absolute time remains authoritative when delay contradicts it, but only within a uniquely compatible nonoverlapping daily instance; unknown date leaves schedule/date/vehicle fields absent. Frequency descriptors lacking sufficient instance context are rejected. GTFS timing extrema include national visits, remain compact in the static cache, and respect Lisbon DST and clocks beyond24:00.
+
+A prediction replaces a planned visit only when plan, normalized source trip, service date and visit sequence are proven equal. Unmatched planned rows remain separate. A vehicle link additionally requires exact normalized physical identity, operator, plan, trip, published operating date, one usable fresh observation and current context. The API and UI revalidate the link as live context changes without discarding the ETA. CM direct arrivals do not establish such a link.
+
+Synthetic example: `[P][IA9T6]T` with sequence2 can prove source stop `H` corresponds to GTFS visit `S`. If another current record maps `H` to a different stop, affected ETAs cannot replace scheduled visits. A future absolute ETA with inconsistent delay can still be shown without an inferred service date.
+
+Implementation: [visits](../../internal/app/arrivals_tml_visits.go), [date proof](../../internal/app/arrivals_tml_day.go), [snapshot selection](../../internal/app/arrivals_tml_snapshot.go), [merge](../../internal/app/arrivals_merge.go), [vehicle proof](../../internal/app/arrivals_vehicle.go). Evidence: [HTTP/date/identity tests](../../internal/app/arrivals_test.go).
+
 ## Metro station and line matching
 
 [`metroStationID`](../../internal/app/metro.go) first accepts an exact source station code. Otherwise it finds the requested GTFS stop and returns the first published station whose normalized name is a prefix of the GTFS normalized name and whose absolute latitude and longitude differences are each less than 0.005 degrees. Normalization ignores accents/case. This is a coordinate tolerance, not a metric-distance threshold or a uniqueness check. Candidate ordering can affect the fallback.
