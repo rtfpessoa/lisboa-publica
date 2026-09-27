@@ -27,3 +27,5 @@ The internal stop-event boundary can accept explicit occurrences from future val
 ## Verification scope
 
 Go tests cover all eight operator identities, safe joins, repeated visits, missing clocks, service dates, cache serialization and durable PostgreSQL event versions. Browser fixtures cover directions, short destinations, independent times, long paginated journeys, expiry and pauses at desktop/mobile widths. Synthetic events validate the contract and durability, not production source coverage.
+
+Dated acceptance evidence, including the enforced Linux memory workload, is in [vehicle popup validation](research/vehicles-ui-validation/VALIDATION.md).
