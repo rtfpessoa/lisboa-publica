@@ -4186,7 +4186,8 @@
           "source_updated_at": {
             "type": "string",
             "format": "date-time",
-            "nullable": true
+            "nullable": true,
+            "description": "For station board/call responses, the latest original source update among currently usable predictions in the returned results; null when no usable prediction supplies this clock. Collection or rendering does not renew it."
           }
         },
         "required": [
@@ -4219,7 +4220,8 @@
           },
           "count": {
             "type": "integer",
-            "nullable": true
+            "nullable": true,
+            "description": "Number of assembled call results for this direction in the board window; null when overall board evidence is unavailable, stale or loading. Not a count of distinct vehicles or proven operated journeys."
           }
         },
         "required": [

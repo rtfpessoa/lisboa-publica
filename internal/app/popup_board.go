@@ -13,6 +13,7 @@ type stationPopupRead struct {
 	directions         []api.BoardDirection
 	calls              []api.StopCall
 	coverage           api.PopupCoverage
+	arrivals           arrivalSnapshot
 }
 
 // GetStopBoard reads all available line/direction groups in a cached collection.
@@ -34,7 +35,8 @@ func (s *Server) ListStopCalls(ctx context.Context, r api.ListStopCallsRequestOb
 	q := request(ctx).URL.Query()
 	selected := selectBoardCalls(read.calls, q.Get("line_key"), q.Get("direction_key"))
 	page, rows := paginate(selected, read.filter, read.revision)
-	return api.ListStopCalls200JSONResponse{Data: rows, Page: page, Coverage: read.coverage}, nil
+	coverage := s.stationCoverage(read.state, read.operator, rows, read.arrivals)
+	return api.ListStopCalls200JSONResponse{Data: rows, Page: page, Coverage: coverage}, nil
 }
 func (s *Server) readStationPopup(ctx context.Context, stop string) (*stationPopupRead, error) {
 	f, state, rev, err := s.popupFilter(ctx)
@@ -65,8 +67,9 @@ func (r *stationPopupRead) collect(ctx context.Context, s *Server) error {
 		}
 		r.directions = addPopupDirections(dirs, calls, r.state.Static[r.operator], r.operator)
 		r.calls = calls
+		r.arrivals = view
 		r.revision = rev
-		r.coverage = popupArrivalCoverage(s.popupCoverage(r.state, r.operator), view)
+		r.coverage = s.stationCoverage(r.state, r.operator, calls, view)
 	}
 	return err
 }

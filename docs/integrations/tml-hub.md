@@ -122,6 +122,8 @@ The same bounded ETA download feeds CP and the five additional operators; [share
 
 The admission horizon is24hours; the default arrival query is one hour. Interest lasts30seconds for at most32 stops. Per selection, retention is at most256rows/256KiB, within a3MiB TML store; a bounded1MiB result store pins pages. Workspace bounds are512candidates and4096 crosswalk nodes, counting both directions. Prediction rows are not copied into the64 network revisions, persisted, or used as historical observations. Source failures expose planned GTFS fallback when available. Availability indicates partial coverage rather than claiming a complete forecast. [Tests and captured identity fixtures](../../internal/app/arrivals_test.go) establish implementation behavior; old captured payloads do not establish current provider coverage.
 
+Direction-board coverage is a separate projection of the usable evidence assembled for that response. A selected calls page describes its returned results, and a whole board describes all assembled directions. Operator-wide TML availability is not treated as the availability of independent direct Metro waits or valid planned schedules. The source clock reflects contributing original prediction updates, never browser refresh time; absent clocks stay absent. This changes popup presentation without changing TML collection, budgets, source matching or prediction retention. See [station coverage](../../internal/app/popup_station_coverage.go) and [popup behavior](../VEHICLE-POPUPS.md).
+
 ## Usage and storage
 
 | Data | API/UI use | Durable cache | Retained history/derivation |

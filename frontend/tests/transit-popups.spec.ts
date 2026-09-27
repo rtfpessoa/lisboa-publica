@@ -45,7 +45,7 @@ for(const width of [1280,390])test(`station directions, header, short destinatio
  await expect(panel.locator('.transit-call:not(.call-head)')).not.toContainText(['Destino: Aeroporto']);
  await panel.getByRole('button',{name:'Seguinte',exact:true}).click();await expect(panel.locator('.transit-call:not(.call-head)')).toHaveCount(1);
  expect(f.requests.some(u=>u.pathname.endsWith('/board/calls')&&u.searchParams.get('offset')==='25'&&u.searchParams.get('revision')==='fixture-revision')).toBe(true);
- await panel.getByRole('button',{name:/São Sebastião/}).click();await expect(panel.locator('.direction-detail h4')).toContainText('São Sebastião');await expect(panel).toContainText('Sem chegadas ou partidas nas próximas duas horas');
+ await panel.getByRole('button',{name:/São Sebastião/}).click();await expect(panel.locator('.direction-detail h4')).toContainText('São Sebastião');await expect(panel).toContainText('Sem resultados disponíveis para este sentido nas próximas duas horas');
  await panel.getByRole('button',{name:/Odivelas/}).click();await expect(panel.locator('.direction-detail h4')).toContainText('Odivelas');await expect(panel.locator('.transit-call:not(.call-head)')).toContainText('Destino: Campo Grande');
  await panel.getByRole('button',{name:/Sentido não identificado/}).click();await expect(panel.locator('.direction-detail h4')).toContainText('Sentido não identificado');
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
@@ -59,6 +59,6 @@ for(const width of [1280,390])test(`vehicle complete timeline, repeated visits a
  expect(f.requests.filter(u=>u.pathname.endsWith('/journey')).length).toBeLessThan(15);
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
-test('expired station revision restarts selection and storage pause is explicit',async({page})=>{
- const f=await fixture(page);await page.goto('/');await openStation(page);await page.locator('.detail-panel').getByRole('button',{name:/Aeroporto/}).click();f.setExpired();await page.getByRole('button',{name:'Seguinte',exact:true}).click();await expect(page.locator('.direction-detail h4')).toContainText('Aeroporto');await expect(page.locator('.pagination')).toContainText('26 viagens');f.setPaused();await expect(page.locator('.detail-panel')).toContainText('Recolha de tempos reais em pausa',{timeout:15000});
+test('expired station revision preserves selection and storage pause is explicit',async({page})=>{
+ const f=await fixture(page);await page.goto('/');await openStation(page);await page.locator('.detail-panel').getByRole('button',{name:/Aeroporto/}).click();f.setExpired();await page.getByRole('button',{name:'Seguinte',exact:true}).click();await expect(page.locator('.direction-detail h4')).toContainText('Aeroporto');await expect(page.locator('.pagination')).toContainText('26 resultados');await expect(page.locator('.direction-detail .transit-call:not(.call-head)')).toHaveCount(1);expect(f.requests.filter(u=>u.pathname.endsWith('/board/calls')).at(-1)?.searchParams.get('offset')).toBe('25');f.setPaused();await expect(page.locator('.detail-panel')).toContainText('Recolha de tempos reais em pausa',{timeout:15000});
 });

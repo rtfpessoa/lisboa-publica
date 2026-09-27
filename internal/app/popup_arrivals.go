@@ -35,24 +35,6 @@ func (s *Server) popupArrivalSnapshot(ctx context.Context, state *State, op stri
 	return view, "b|" + rev + "|" + token, err
 }
 
-func popupArrivalCoverage(coverage api.PopupCoverage, view arrivalSnapshot) api.PopupCoverage {
-	if view.static == nil {
-		return coverage
-	}
-	coverage.Message = arrivalStatusMessage(view.availability.Status, view.static.Schedule != nil, arrivalHasKind(view.rows, "prediction")) + " Tempos reais anteriores sem fonte comprovada."
-	coverage.SourceUpdatedAt = view.availability.SourceUpdatedAt
-	if view.availability.Status == "loading" && view.static.Schedule == nil {
-		coverage.Status = "loading"
-	}
-	if view.availability.Status == "stale" || view.availability.Status == "error" {
-		coverage.Status = "stale"
-	}
-	if len(view.rows) > 0 && coverage.Status == "unavailable" {
-		coverage.Status = "partial"
-	}
-	return coverage
-}
-
 func appendPopupArrivals(state *State, operator string, f Filter, view arrivalSnapshot, calls []api.StopCall) []api.StopCall {
 	for _, row := range view.rows {
 		if !arrivalInWindow(row, f, time.Now()) {

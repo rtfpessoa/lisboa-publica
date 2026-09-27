@@ -2,10 +2,19 @@ package app
 
 import (
 	"lisboapublica/internal/api"
+	"strings"
 	"time"
 )
 
 func (s *Server) popupCoverage(state *State, operator string) api.PopupCoverage {
+	out := s.popupStaticCoverage(state, operator)
+	if out.Status != "unavailable" {
+		applyPopupPredictionCoverage(&out, predictionsFor(state, operator))
+	}
+	return out
+}
+
+func (s *Server) popupStaticCoverage(state *State, operator string) api.PopupCoverage {
 	out := api.PopupCoverage{Status: "partial", Message: "Horários planeados; tempos reais anteriores sem fonte comprovada.", HistoryCollectionStatus: "unavailable"}
 	if s.Store != nil {
 		out.HistoryCollectionStatus = api.PopupCoverageHistoryCollectionStatus(s.Store.historyCollectionStatus())
@@ -27,7 +36,6 @@ func (s *Server) popupCoverage(state *State, operator string) api.PopupCoverage 
 		out.Status = "stale"
 		out.Message = "Rede desatualizada; horários por confirmar."
 	}
-	applyPopupPredictionCoverage(&out, predictionsFor(state, operator))
 	return out
 }
 
@@ -35,11 +43,19 @@ func applyPopupPredictionCoverage(out *api.PopupCoverage, predictions *CPData) {
 	if predictions == nil {
 		return
 	}
-	out.Message = predictions.Availability.Message + " Tempos reais anteriores sem fonte comprovada."
+	out.Message = popupHistoryMessage(predictions.Availability.Message)
 	if popupPredictionsStale(predictions) {
 		out.Status = "stale"
 		out.Message = "Previsões antigas ou indisponíveis; consulte os horários planeados. Tempos reais anteriores sem fonte comprovada."
 	}
+}
+
+func popupHistoryMessage(message string) string {
+	const limitation = "Tempos reais anteriores sem fonte comprovada."
+	if strings.Contains(strings.ToLower(message), strings.ToLower(limitation)) {
+		return message
+	}
+	return strings.TrimSpace(message) + " " + limitation
 }
 func popupPredictionsStale(predictions *CPData) bool {
 	a := predictions.Availability

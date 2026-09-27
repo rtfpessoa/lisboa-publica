@@ -479,6 +479,7 @@ export type BoardDirection = {
     color: string;
     direction_key: string | null;
     label: string;
+    /** Number of assembled call results for this direction in the board window; null when overall board evidence is unavailable, stale or loading. Not a count of distinct vehicles or proven operated journeys. */
     count: number | null;
 };
 export type PopupCoverage = {
@@ -487,6 +488,7 @@ export type PopupCoverage = {
     actual_arrivals: boolean;
     actual_departures: boolean;
     history_collection_status: "collecting" | "paused" | "unavailable";
+    /** For station board/call responses, the latest original source update among currently usable predictions in the returned results; null when no usable prediction supplies this clock. Collection or rendering does not renew it. */
     source_updated_at: string | null;
 };
 export type StopBoard = {

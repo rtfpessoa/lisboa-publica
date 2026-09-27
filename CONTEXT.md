@@ -16,6 +16,10 @@ Lisbon public transport services and their observed operation.
 
 **Stop**: A place where passengers board or leave a service.
 
+**Station**: A passenger stop encompassing one or more boarding places and their lines and directions.
+
+**Platform**: A boarding place within a station. Separate platforms do not imply separate stations or uniquely identify a train.
+
 **Stop visit**: One occurrence of a passenger stop in the ordered journey. Repeated visits to the same stop are distinct occurrences.
 
 **Actual arrival**: An arrival at a stop visit explicitly reported as having occurred. A prediction or a change of position or stop status does not establish its exact time.

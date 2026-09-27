@@ -351,6 +351,7 @@ func TestArrivalPredictionPagesAreFrozenAndSelectionBound(t *testing.T) {
 
 func TestCMArrivalSourceStatesAndBounds(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
+	until := now.Add(time.Hour)
 	for _, tc := range []struct {
 		name, body, status string
 		httpStatus, total  int
@@ -374,7 +375,7 @@ func TestCMArrivalSourceStatesAndBounds(t *testing.T) {
 			defer upstream.Close()
 			f := NewFetcher(nil, cache, zap.NewNop())
 			f.CM = upstream.URL
-			path := "/api/v1/arrivals?operators=cm&stop_id=cm:S"
+			path := "/api/v1/arrivals?operators=cm&stop_id=cm:S&to=" + url.QueryEscape(until.Format(time.RFC3339))
 			w := securityRequest(handler, "GET", path, "", nil)
 			var first api.ArrivalPage
 			_ = json.Unmarshal(w.Body.Bytes(), &first)
@@ -382,10 +383,20 @@ func TestCMArrivalSourceStatesAndBounds(t *testing.T) {
 				t.Fatal("unknown source presented as empty")
 			}
 			f.RefreshArrivals(context.Background())
+			cache.arrivals.mu.Lock()
+			publication := cache.arrivals.latest["cm:S"].availability
+			cache.arrivals.mu.Unlock()
+			if string(publication.Status) != tc.status {
+				t.Fatalf("wrong publication status: %+v", publication)
+			}
+			expectedStatus := tc.status
+			if tc.status == "ok" && until.After(*publication.CoverageUntil) {
+				expectedStatus = "partial"
+			}
 			w = securityRequest(handler, "GET", path, "", nil)
 			var p api.ArrivalPage
 			_ = json.Unmarshal(w.Body.Bytes(), &p)
-			if w.Code != 200 || p.Availability == nil || string(p.Availability.Status) != tc.status || p.Page.Total != tc.total {
+			if w.Code != 200 || p.Availability == nil || string(p.Availability.Status) != expectedStatus || p.Page.Total != tc.total {
 				t.Fatalf("wrong source state: %d %s", w.Code, w.Body)
 			}
 			if tc.kind != "" && string(p.Data[0].Kind) != tc.kind {
