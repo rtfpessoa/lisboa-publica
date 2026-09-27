@@ -134,7 +134,7 @@ func (r *journeyPopupRead) identifyInstance(t *ScheduledTrip) {
 	r.trip, r.day, r.visits = t, day, visits
 	r.result.Association = "resolved"
 	r.result.Message = ""
-	r.result.Complete = r.data.Schedule.CompleteJourneys && len(t.JourneyTimes) > 0
+	r.result.Complete = r.data.Schedule.CompleteJourneys && len(visits) > 0
 	if !r.result.Complete {
 		r.result.Message = "Percurso parcial: a rede guardada ainda não contém todas as visitas."
 	}
@@ -147,6 +147,9 @@ func (r *journeyPopupRead) instanceDescriptor(t *ScheduledTrip) bool {
 	return r.vehicle.PlanId != nil && *r.vehicle.PlanId == plan && r.vehicle.OperationalDate != nil && !r.data.Schedule.HasFrequencies
 }
 func orderedPopupVisits(visits []StopTime) bool {
+	if len(visits) == 0 {
+		return false
+	}
 	for n := 1; n < len(visits); n++ {
 		if visits[n].Sequence <= visits[n-1].Sequence {
 			return false

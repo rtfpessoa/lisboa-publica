@@ -408,3 +408,23 @@ func TestLocalJourneyVisitsShareRetentionAndSurviveStreamingRestore(t *testing.T
 		t.Fatal("streaming restore changed repeated visits or missing clocks")
 	}
 }
+
+func TestVehicleJourneyCompletenessIndependentOfVisitStorage(t *testing.T) {
+	for _, packed := range []bool{false, true} {
+		s, data, _ := popupFixture(t, "carris", 3)
+		trip := &data.Schedule.Trips[0]
+		trip.Times, trip.JourneyTimes = trip.JourneyTimes, nil
+		if packed {
+			trip.PackedCount = len(trip.Times)
+			trip.PackedTimes = packVisits(trip.Times)
+			trip.Times = nil
+		}
+		journey := popupGET[api.VehicleJourney](t, s, "/api/v1/vehicles/carris:v/journey")
+		if journey.Association != "resolved" || !journey.Complete || len(journey.Data) != 3 {
+			t.Fatalf("complete journey mislabeled for packed=%v: %+v", packed, journey)
+		}
+	}
+	if orderedPopupVisits(nil) {
+		t.Fatal("empty decoded journey accepted")
+	}
+}
