@@ -60,10 +60,21 @@ func (g *gtfsReader) retainTripRoute(trip *ScheduledTrip) {
 	}
 	for _, visit := range trip.Times {
 		g.routeStops[trip.Route][visit.Stop] = true
+		g.retainStopRoute(visit.Stop, trip.Route)
 	}
-	if g.provider.ID == "cm" {
+	if g.provider.Mode == "bus" {
 		trip.PackedCount = len(trip.Times)
 		trip.PackedTimes = packVisits(trip.Times)
 		trip.Times = nil
+	}
+}
+
+func (g *gtfsReader) retainStopRoute(stop, route string) {
+	if g.data.Schedule.StopLines == nil {
+		g.data.Schedule.StopLines = map[string][]string{}
+	}
+	retainStopLine(g.data.Schedule, stop, route)
+	if parent := g.data.Schedule.Parents[stop]; parent != "" {
+		retainStopLine(g.data.Schedule, parent, route)
 	}
 }

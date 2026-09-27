@@ -2,7 +2,7 @@ package app
 
 import "encoding/binary"
 
-// Lossless CM visit storage uses small deltas while retaining each published
+// Lossless road-operator visit storage uses small deltas while retaining each published
 // stop identity, sequence, arrival and departure independently.
 func packVisits(visits []StopTime) []byte {
 	result := []byte{1}

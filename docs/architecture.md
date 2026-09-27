@@ -179,5 +179,5 @@ a cache miss scans the retained local visits without dropping calls.
 
 The route/direction catalog and CM route/plan/agency source metadata are shared across trips.
 Trip identity lookups scan the immutable schedule without retaining a second trip-ID map.
-CM visit deltas are losslessly compressed before geometry ingestion,
+Road-operator visit deltas are losslessly compressed before geometry ingestion,
 and exact GTFS stop-to-line membership narrows station reads before decompression.

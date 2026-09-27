@@ -428,3 +428,26 @@ func TestVehicleJourneyCompletenessIndependentOfVisitStorage(t *testing.T) {
 		t.Fatal("empty decoded journey accepted")
 	}
 }
+
+func TestRoadOperatorParsersRetainCompleteIndependentVisits(t *testing.T) {
+	for _, provider := range providers {
+		if provider.Mode != "bus" {
+			continue
+		}
+		t.Run(provider.ID, func(t *testing.T) {
+			blob := replaceGTFS(t, shapeArchive(t, false), map[string]string{"stop_times.txt": "trip_id,arrival_time,departure_time,stop_id,stop_sequence\nA,25:00:00,25:01:00,S,1\nA,,25:03:00,S,2\nA,25:05:00,,S,3\n"})
+			data, err := readGTFS(blob, provider, "plan", "20260101", "20261231", hubBase, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			trip := &data.Schedule.Trips[0]
+			visits := journeyTimes(trip)
+			if len(trip.Times) != 0 || len(visits) != 3 || visits[0].Arrival != 90000 || visits[1].Arrival != -1 || visits[2].Departure != -1 {
+				t.Fatal("road timetable lost repeated visits or independent clocks")
+			}
+			if !popupStopIncludesRoute(data.Schedule, "S", trip.Route) {
+				t.Fatal("exact published station membership lost")
+			}
+		})
+	}
+}

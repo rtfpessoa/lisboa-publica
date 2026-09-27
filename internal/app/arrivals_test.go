@@ -565,7 +565,8 @@ func TestTMLNewPlanDemandIsNotBlockedByAnOldSelection(t *testing.T) {
 	h := newArrivalHarness(t)
 	next := *h.data
 	next.PlanID = "new-plan"
-	schedule := *h.data.Schedule
+	previous := h.data.Schedule
+	schedule := Schedule{Trips: previous.Trips, Calendars: previous.Calendars, Exceptions: previous.Exceptions, Parents: previous.Parents, StopNames: previous.StopNames, StopLines: previous.StopLines, CompleteJourneys: previous.CompleteJourneys, HasFrequencies: previous.HasFrequencies}
 	schedule.Trips = append([]ScheduledTrip(nil), schedule.Trips...)
 	schedule.Trips[0].Times = append([]StopTime(nil), schedule.Trips[0].Times...)
 	for n := range schedule.Trips[0].Times {
