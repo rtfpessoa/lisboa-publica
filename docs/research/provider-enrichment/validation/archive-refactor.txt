@@ -1,0 +1,11 @@
+=== RUN   TestSnapshotArchiveLosslessAndBounds
+--- PASS: TestSnapshotArchiveLosslessAndBounds (0.00s)
+=== RUN   TestSnapshotCompactionHistoricalEquivalenceAndNativeSavings
+    snapshot_archive_test.go:139: legacy JSON text=53158 stored_before=11791 stored_after=7419 savings=4372
+--- PASS: TestSnapshotCompactionHistoricalEquivalenceAndNativeSavings (0.06s)
+=== RUN   TestSnapshotCompactionScanProgressAndConditionalWrite
+--- PASS: TestSnapshotCompactionScanProgressAndConditionalWrite (0.05s)
+=== RUN   TestSnapshotCompactionGuardAndCancellation
+--- PASS: TestSnapshotCompactionGuardAndCancellation (0.05s)
+PASS
+ok  	lisboapublica/internal/app	1.057s

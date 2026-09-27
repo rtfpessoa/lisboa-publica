@@ -1,0 +1,7 @@
+{"analysis_patterns": ["./internal/api/...", "./internal/app/..."], "base": "baf4fdd00ee3e2d32a0fc4408d609641a0d0378d", "candidate_tree": "bff4968b80c517e6e38b8fca113435a546ab1e37", "checked_languages": ["go"], "coverage_map": {"implementation-simplicity": "incomplete", "maintainability": "incomplete"}, "critical_regressions": [], "go_only": true, "maat_bundle": "cb1c6a244e1972174357b029bd304d4a3c6fb2aa", "reason": "Maat found no structural regression.", "score": 86.0, "score_delta": 0.0, "status": "passed", "suppressed_count": 0, "unchecked_languages": ["typescript"]}
+[main 78e7a80] feat(transit): expose verified published vehicle specifications
+ 13 files changed, 472 insertions(+), 129 deletions(-)
+ create mode 100644 docs/PLAN-provider-enrichment-history.md
+ create mode 100644 docs/research/PROVIDER-ENRICHMENT-HISTORY.md
+ create mode 100644 frontend/src/VehicleSpecifications.tsx
+ create mode 100644 internal/app/provider_specs_test.go

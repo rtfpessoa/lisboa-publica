@@ -1,0 +1,4 @@
+=== RUN   TestSnapshotCompactionHistoricalEquivalenceAndNativeSavings
+--- PASS: TestSnapshotCompactionHistoricalEquivalenceAndNativeSavings (6.32s)
+PASS
+ok  	lisboapublica/internal/app	6.793s

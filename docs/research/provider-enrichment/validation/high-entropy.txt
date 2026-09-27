@@ -1,0 +1,5 @@
+=== RUN   TestSnapshotCompactionHistoricalEquivalenceAndNativeSavings
+    snapshot_archive_test.go:147: legacy JSON text=53158 stored_before=11791 stored_after=7419 savings=4372
+--- PASS: TestSnapshotCompactionHistoricalEquivalenceAndNativeSavings (0.07s)
+PASS
+ok  	lisboapublica/internal/app	0.836s

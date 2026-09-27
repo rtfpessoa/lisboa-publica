@@ -1,0 +1,6 @@
+{"analysis_patterns": ["./internal/app/..."], "base": "78e7a80e0ef5b583ddd6b6ccf5fdac1298d1d429", "candidate_tree": "17a9c3d350f0e86712aa4156d29288a173e5fc93", "checked_languages": ["go"], "coverage_map": {"implementation-simplicity": "incomplete", "maintainability": "incomplete"}, "critical_regressions": [], "go_only": true, "maat_bundle": "cb1c6a244e1972174357b029bd304d4a3c6fb2aa", "reason": "Maat found no structural regression.", "score": 85.0, "score_delta": 0.0, "status": "passed", "suppressed_count": 0, "unchecked_languages": ["typescript"]}
+[main 5e4891c] feat(history): archive beneficial legacy snapshot payloads losslessly
+ 6 files changed, 479 insertions(+), 1 deletion(-)
+ create mode 100644 internal/app/snapshot_archive.go
+ create mode 100644 internal/app/snapshot_archive_test.go
+ create mode 100644 internal/app/snapshot_compaction.go

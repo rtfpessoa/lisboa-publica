@@ -1,0 +1,21 @@
+=== RUN   TestPublishedFleetMetadataCrosswalk
+--- PASS: TestPublishedFleetMetadataCrosswalk (0.04s)
+=== RUN   TestPublishedModelsAndUnknownCodes
+--- PASS: TestPublishedModelsAndUnknownCodes (0.00s)
+=== RUN   TestPublishedSpecificationMetadata
+--- PASS: TestPublishedSpecificationMetadata (0.00s)
+=== RUN   TestPublishedGTFSWheelchairAndCapacity
+--- PASS: TestPublishedGTFSWheelchairAndCapacity (0.00s)
+=== RUN   TestPublishedCMDirectSpecificationsTakePrecedence
+--- PASS: TestPublishedCMDirectSpecificationsTakePrecedence (0.00s)
+=== RUN   TestSnapshotCompactionHistoricalEquivalenceAndNativeSavings
+    snapshot_archive_test.go:139: legacy JSON text=53158 stored_before=11791 stored_after=7419 savings=4372
+--- PASS: TestSnapshotCompactionHistoricalEquivalenceAndNativeSavings (0.06s)
+=== RUN   TestSnapshotCompactionScanProgressAndConditionalWrite
+--- PASS: TestSnapshotCompactionScanProgressAndConditionalWrite (0.07s)
+=== RUN   TestSnapshotCompactionGuardAndCancellation
+--- PASS: TestSnapshotCompactionGuardAndCancellation (0.03s)
+=== RUN   TestPublishedStatusDecodingAndStopJoin
+--- PASS: TestPublishedStatusDecodingAndStopJoin (0.00s)
+PASS
+ok  	lisboapublica/internal/app	1.291s

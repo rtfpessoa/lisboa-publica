@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -97,6 +99,12 @@ func TestSnapshotCompactionHistoricalEquivalenceAndNativeSavings(t *testing.T) {
 	seedArchiveRow(t, s, "large", now.Add(-48*time.Hour), archiveLegacyJSON(t))
 	seedArchiveRow(t, s, "native", now.Add(-47*time.Hour), []byte(`{"source_id":"native","other":"`+strings.Repeat("a", 30000)+`"}`))
 	seedArchiveRow(t, s, "small", now.Add(-46*time.Hour), []byte(`{"source_id":"small","model":null}`))
+	var entropy []byte
+	for n := 0; n < 18; n++ {
+		sum := sha256.Sum256([]byte(fmt.Sprint(n)))
+		entropy = append(entropy, sum[:]...)
+	}
+	seedArchiveRow(t, s, "high-entropy", now.Add(-45*time.Hour), []byte(`{"source_id":"entropy","other":"`+base64.StdEncoding.EncodeToString(entropy)+`"}`))
 	seedArchiveRow(t, s, "hot", now.Add(-time.Hour), archiveLegacyJSON(t))
 	f := Filter{From: now.Add(-3 * 24 * time.Hour), To: now, HourEnd: 24}
 	before := archiveQueryResults(t, s, f)

@@ -1,0 +1,3 @@
+{"analysis_patterns": ["./internal/app/..."], "base": "2a0d61a43447766731c06a3d2ccab69744746c69", "candidate_tree": "1d863729350263f6c3ebc91b76eb7362ba7db6b3", "checked_languages": ["go"], "coverage_map": {"implementation-simplicity": "incomplete", "maintainability": "incomplete"}, "critical_regressions": [], "go_only": true, "maat_bundle": "cb1c6a244e1972174357b029bd304d4a3c6fb2aa", "reason": "Maat found no structural regression.", "score": 85.0, "score_delta": 0.0, "status": "passed", "suppressed_count": 0, "unchecked_languages": ["typescript"]}
+[main baf4fdd] fix(cp): refresh planned fallback and cancel prediction normalization
+ 7 files changed, 175 insertions(+), 49 deletions(-)
