@@ -1,0 +1,22 @@
+npm notice run lisboa-publica@1.0.0 test
+npm notice run playwright test tests/stop-navigation.spec.ts tests/cp-predictions.spec.ts
+
+Running 13 tests using 1 worker
+
+(node:6617) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/cp-predictions.spec.ts:42:31 › CP station arrivals and readable names at 1280px (5.6s)
+  ✓   2 tests/cp-predictions.spec.ts:42:31 › CP station arrivals and readable names at 390px (3.3s)
+  ✓   3 tests/cp-predictions.spec.ts:52:1 › expired predictions remove station badges without removing reported trains (1.9s)
+  ✓   4 tests/cp-predictions.spec.ts:61:1 › all prediction pages load and mismatched planned associations stay separate (3.0s)
+  ✓   5 tests/cp-predictions.spec.ts:67:1 › readable names apply to other operators without technical stop IDs (1.9s)
+  ✓   6 tests/cp-predictions.spec.ts:72:1 › train popup separates published service label, physical identity and upstream errors (8.9s)
+  ✓   7 tests/cp-predictions.spec.ts:82:1 › train with no published operating date never inherits a guessed association (2.6s)
+  ✓   8 tests/cp-predictions.spec.ts:89:1 › prediction window uses exactly one captured clock and retries an expired collection once (1.8s)
+  ✓   9 tests/cp-predictions.spec.ts:98:2 › station prediction failure exposes fresh planned fallback without stale merges (7.8s)
+  ✓  10 tests/stop-navigation.spec.ts:20:31 › nearby stop group and focused arrows at 1280px (3.8s)
+  ✓  11 tests/stop-navigation.spec.ts:20:31 › nearby stop group and focused arrows at 390px (2.8s)
+  ✓  12 tests/stop-navigation.spec.ts:35:1 › map offers overlapping stops as explicit targets (2.7s)
+  ✓  13 tests/stop-navigation.spec.ts:44:1 › a failed refresh never keeps a past ETA in upcoming passages (2.1s)
+
+  13 passed (49.6s)

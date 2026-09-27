@@ -1,0 +1,131 @@
+{
+  "arrivals?operators=cm&stop_id=cm%3A060001&limit=100": {
+    "rows": 6,
+    "predictions": 3,
+    "scheduled": 3,
+    "availability": {
+      "collected_at": "2026-09-27T15:18:59.416873112Z",
+      "coverage_until": "2026-09-27T23:00:00Z",
+      "message": "Dados publicados incompletos para este intervalo.",
+      "planned_status": "ok",
+      "source_url": "https://api.carrismetropolitana.pt/v2/arrivals/by_stop/060001",
+      "status": "partial",
+      "valid_until": "2026-09-27T15:19:29.416873112Z"
+    },
+    "revision_type": "a",
+    "samples": [
+      {
+        "expected_at": "2026-09-27T15:20:21Z",
+        "headsign": "Lisboa (Oriente)",
+        "id": "cm:060001:4701:[K56AM][A2L1N]4701_0_2|1700|1530:1790522400",
+        "kind": "prediction",
+        "observed_at": null,
+        "operator_id": "cm",
+        "route_id": "cm:4701",
+        "route_name": "4701",
+        "scheduled_at": "2026-09-27T15:20:00Z",
+        "source_trip_id": "[K56AM][A2L1N]4701_0_2|1700|1530",
+        "source_url": "https://api.carrismetropolitana.pt/v2/arrivals/by_stop/060001",
+        "stop_id": "cm:060001",
+        "trip_id": "cm:[K56AM][A2L1N]4701_0_2|1700|1530",
+        "valid_until": "2026-09-27T15:19:29.416873112Z"
+      },
+      {
+        "expected_at": null,
+        "headsign": "Vale da Amoreira",
+        "id": "cm:060001:4701::1790523000",
+        "kind": "scheduled",
+        "observed_at": null,
+        "operator_id": "cm",
+        "route_id": "cm:4701",
+        "route_name": "4701",
+        "scheduled_at": "2026-09-27T15:30:00Z",
+        "source_url": "https://api.carrismetropolitana.pt/v2/arrivals/by_stop/060001",
+        "stop_id": "cm:060001",
+        "trip_id": "cm:",
+        "valid_until": "2026-09-27T15:19:29.416873112Z"
+      }
+    ]
+  },
+  "arrivals?operators=cm&stop_id=cm%3A060002&limit=100": {
+    "rows": 0,
+    "predictions": 0,
+    "scheduled": 0,
+    "availability": {
+      "message": "A carregar próximas passagens…",
+      "planned_status": "unavailable",
+      "source_url": "https://api.carrismetropolitana.pt/v2/arrivals/by_stop/060002",
+      "status": "loading"
+    },
+    "revision_type": "a",
+    "samples": []
+  },
+  "arrivals?operators=carris&stop_id=carris%3A1902&limit=100": {
+    "rows": 8,
+    "predictions": 1,
+    "scheduled": 7,
+    "availability": {
+      "collected_at": "2026-09-27T15:19:03.475859923Z",
+      "coverage_until": "2026-09-28T15:19:03.475859923Z",
+      "message": "Previsões publicadas pelo operador.",
+      "planned_status": "ok",
+      "source_updated_at": "2026-09-27T15:17:37Z",
+      "source_url": "https://go.tmlmobilidade.pt/hub/api/v1/realtime/eta/gtfs",
+      "status": "ok",
+      "valid_until": "2026-09-27T15:19:07Z"
+    },
+    "revision_type": "a",
+    "samples": [
+      {
+        "expected_at": null,
+        "headsign": "Restauradores",
+        "id": "carris:20260927:5808_20260606_200_0_12:1902:25",
+        "kind": "scheduled",
+        "observed_at": null,
+        "operator_id": "carris",
+        "plan_id": "82YP2",
+        "route_id": "carris:200_0",
+        "route_name": "744 · Restauradores - Moscavide",
+        "scheduled_at": "2026-09-27T16:21:00+01:00",
+        "service_date": "2026-09-27",
+        "source_trip_id": "carris:5808_20260606_200_0_12",
+        "source_url": "https://go.tmlmobilidade.pt/hub/api/v1/plans",
+        "stop_id": "carris:1902",
+        "stop_sequence": 25,
+        "trip_id": "carris:20260927:5808_20260606_200_0_12"
+      },
+      {
+        "expected_at": null,
+        "headsign": "Rossio",
+        "id": "carris:20260927:41540_20260606_199_0_8:1902:21",
+        "kind": "scheduled",
+        "observed_at": null,
+        "operator_id": "carris",
+        "plan_id": "82YP2",
+        "route_id": "carris:199_0",
+        "route_name": "736 · Rossio - Odivelas",
+        "scheduled_at": "2026-09-27T16:27:00+01:00",
+        "service_date": "2026-09-27",
+        "source_trip_id": "carris:41540_20260606_199_0_8",
+        "source_url": "https://go.tmlmobilidade.pt/hub/api/v1/plans",
+        "stop_id": "carris:1902",
+        "stop_sequence": 21,
+        "trip_id": "carris:20260927:41540_20260606_199_0_8"
+      }
+    ]
+  },
+  "health": {
+    "database": "ok",
+    "status": "ok"
+  },
+  "config": {
+    "dev_auth": false,
+    "google_client_id": null,
+    "history_collection_status": "collecting",
+    "history_resolution_seconds": 300,
+    "history_retention_days": 30,
+    "history_storage_limit_bytes": 5000000000,
+    "live_refresh_seconds": 5,
+    "login_nonce": "rctq31NJxyIqAgdzq3nsiqRgTHdbS26NtoPiJq0ybBU"
+  }
+}

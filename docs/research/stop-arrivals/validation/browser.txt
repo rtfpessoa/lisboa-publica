@@ -1,0 +1,38 @@
+npm notice run lisboa-publica@1.0.0 test
+npm notice run playwright test tests/stop-navigation.spec.ts tests/cp-predictions.spec.ts tests/continuity.spec.ts tests/service-state.spec.ts
+
+Running 28 tests using 1 worker
+
+(node:76858) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/continuity.spec.ts:30:1 › selected CP retains one dimmed marker, truthful counts and no-update detail through gaps (2.5s)
+  ✓   2 tests/continuity.spec.ts:43:1 › healthy repeated reports keep current counts between 90 and 180 seconds (1.4s)
+  ✓   3 tests/continuity.spec.ts:48:1 › failed operator refresh makes cached coverage unknown while retaining positions (1.8s)
+  ✓   4 tests/continuity.spec.ts:58:31 › rail and ferry overlays follow selected operators without live reports at width 1280 (2.1s)
+  ✓   5 tests/continuity.spec.ts:58:31 › rail and ferry overlays follow selected operators without live reports at width 390 (2.2s)
+  -   6 tests/continuity.spec.ts:75:31 › full official geometry remains responsive through operator refresh at width 1280
+  -   7 tests/continuity.spec.ts:75:31 › full official geometry remains responsive through operator refresh at width 390
+  ✓   8 tests/cp-predictions.spec.ts:42:31 › CP station arrivals and readable names at 1280px (3.2s)
+  ✓   9 tests/cp-predictions.spec.ts:42:31 › CP station arrivals and readable names at 390px (2.4s)
+  ✓  10 tests/cp-predictions.spec.ts:52:1 › expired predictions remove station badges without removing reported trains (1.8s)
+  ✓  11 tests/cp-predictions.spec.ts:61:1 › all prediction pages load and mismatched planned associations stay separate (3.0s)
+  ✓  12 tests/cp-predictions.spec.ts:67:1 › readable names apply to other operators without technical stop IDs (2.1s)
+  ✓  13 tests/cp-predictions.spec.ts:72:1 › train popup separates published service label, physical identity and upstream errors (8.8s)
+  ✓  14 tests/cp-predictions.spec.ts:82:1 › train with no published operating date never inherits a guessed association (2.7s)
+  ✓  15 tests/cp-predictions.spec.ts:89:1 › prediction window uses exactly one captured clock and retries an expired collection once (1.9s)
+  ✓  16 tests/cp-predictions.spec.ts:98:2 › station prediction failure exposes fresh planned fallback without stale merges (8.3s)
+  ✓  17 tests/service-state.spec.ts:4:1 › plate presentation respects road modes and raw unknown registrations (1ms)
+  ✓  18 tests/service-state.spec.ts:38:31 › normal stopped bus, formatted plate and fleet agree at 1280px (2.2s)
+  ✓  19 tests/service-state.spec.ts:38:31 › normal stopped bus, formatted plate and fleet agree at 390px (2.0s)
+  ✓  20 tests/service-state.spec.ts:45:1 › last-known stop remains a previous statement and original clocks expire (1.7s)
+  ✓  21 tests/service-state.spec.ts:51:1 › silence without stop state does not imply stopped and Metro state is estimated (3.1s)
+  ✓  22 tests/service-state.spec.ts:56:1 › CP full endpoints are explicitly scheduled with realtime delay unavailable (1.7s)
+  ✓  23 tests/service-state.spec.ts:61:1 › CP endpoint row labels its retained Lisbon times without claiming full journey times (2.5s)
+  ✓  24 tests/service-state.spec.ts:71:31 › published vehicle specifications preserve zero false and unavailable at 1280px (4.1s)
+  ✓  25 tests/service-state.spec.ts:71:31 › published vehicle specifications preserve zero false and unavailable at 390px (2.9s)
+  ✓  26 tests/stop-navigation.spec.ts:20:31 › nearby stop group and focused arrows at 1280px (3.2s)
+  ✓  27 tests/stop-navigation.spec.ts:20:31 › nearby stop group and focused arrows at 390px (2.6s)
+  ✓  28 tests/stop-navigation.spec.ts:34:1 › map offers overlapping stops as explicit targets (2.9s)
+
+  2 skipped
+  26 passed (1.2m)

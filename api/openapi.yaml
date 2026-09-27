@@ -712,7 +712,8 @@
             "$ref": "#/components/parameters/stop_id"
           }
         ],
-        "x-public-read": true
+        "x-public-read": true,
+        "description": "Published predictions and planned arrivals at one stop. Defaults to a one-hour window. Provider collection is shared and bounded; first reads may return loading availability with planned fallback."
       }
     },
     "/api/v1/metrics": {
@@ -1782,7 +1783,7 @@
           "revision": {
             "type": "string",
             "nullable": true,
-            "description": "Endpoint-specific immutable view token. Vehicle v: tokens pin first-page eligibility time for at most five minutes, subject to version eviction; clients must remove positions whose original expiry has passed. CP predictions use schedule tokens and reject the whole pinned result with410 when its earliest included original source expiry passes."
+            "description": "Endpoint-specific immutable view token. Vehicle v: tokens pin first-page eligibility time for at most five minutes, subject to version eviction; clients must remove positions whose original expiry has passed. CP predictions use schedule tokens and reject the whole pinned result with410 when its earliest included original source expiry passes. Arrivals with provider rows use bounded a: result tokens which freeze selectors, interval, rows and availability. Expiry, eviction or static generation changes return410. Planned-only GTFS pages preserve the existing t: network revision behavior."
           }
         },
         "required": [
@@ -2510,6 +2511,28 @@
           },
           "vehicle_ref": {
             "$ref": "#/components/schemas/VehicleReference"
+          },
+          "source_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Original underlying prediction observation time, when published. Collection does not renew it."
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Display expiry. TML predictions expire from their original observation; CM uses bounded collection lifetime because its source update clock is not published."
+          },
+          "vehicle_id": {
+            "type": "string",
+            "description": "Present only for a unique verified vehicle and compatible published operational date. No association is inferred from proximity."
+          },
+          "date_basis": {
+            "type": "string",
+            "enum": [
+              "published",
+              "matched_schedule"
+            ],
+            "description": "Basis of a prediction service date. matched_schedule is uniquely inferred from GTFS and events; it is not an observed vehicle operational date."
           }
         },
         "required": [
@@ -2988,6 +3011,9 @@
           },
           "page": {
             "$ref": "#/components/schemas/Page"
+          },
+          "availability": {
+            "$ref": "#/components/schemas/ArrivalAvailability"
           }
         },
         "required": [
@@ -3678,6 +3704,60 @@
             "description": "Exact published pattern geometry from the frozen revision. Only present on page zero when include_geometry=true; does not change vehicle position."
           }
         }
+      },
+      "ArrivalAvailability": {
+        "type": "object",
+        "required": [
+          "status",
+          "planned_status",
+          "message",
+          "source_url"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "loading",
+              "ok",
+              "partial",
+              "stale",
+              "error",
+              "unavailable"
+            ]
+          },
+          "planned_status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "partial",
+              "unavailable"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "collected_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Most recent original observation among relevant published predictions, or an original stale observation. Absent when the source does not publish this clock."
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "coverage_until": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Prediction and planned timetable availability are independent. An empty unknown/error source is not evidence of no service."
       }
     }
   }

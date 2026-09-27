@@ -78,7 +78,7 @@ export type Page = {
     offset: number;
     total: number;
     has_more: boolean;
-    /** Endpoint-specific immutable view token. Vehicle v: tokens pin first-page eligibility time for at most five minutes, subject to version eviction; clients must remove positions whose original expiry has passed. CP predictions use schedule tokens and reject the whole pinned result with410 when its earliest included original source expiry passes. */
+    /** Endpoint-specific immutable view token. Vehicle v: tokens pin first-page eligibility time for at most five minutes, subject to version eviction; clients must remove positions whose original expiry has passed. CP predictions use schedule tokens and reject the whole pinned result with410 when its earliest included original source expiry passes. Arrivals with provider rows use bounded a: result tokens which freeze selectors, interval, rows and availability. Expiry, eviction or static generation changes return410. Planned-only GTFS pages preserve the existing t: network revision behavior. */
     revision: string | null;
 };
 export type OperatorPage = {
@@ -225,10 +225,30 @@ export type Arrival = {
     /** Published commercial service number, never inferred from an internal ID. */
     service_label?: string;
     vehicle_ref?: VehicleReference;
+    /** Original underlying prediction observation time, when published. Collection does not renew it. */
+    source_updated_at?: string;
+    /** Display expiry. TML predictions expire from their original observation; CM uses bounded collection lifetime because its source update clock is not published. */
+    valid_until?: string;
+    /** Present only for a unique verified vehicle and compatible published operational date. No association is inferred from proximity. */
+    vehicle_id?: string;
+    /** Basis of a prediction service date. matched_schedule is uniquely inferred from GTFS and events; it is not an observed vehicle operational date. */
+    date_basis?: "published" | "matched_schedule";
+};
+export type ArrivalAvailability = {
+    status: "loading" | "ok" | "partial" | "stale" | "error" | "unavailable";
+    planned_status: "ok" | "partial" | "unavailable";
+    message: string;
+    source_url: string;
+    collected_at?: string;
+    /** Most recent original observation among relevant published predictions, or an original stale observation. Absent when the source does not publish this clock. */
+    source_updated_at?: string;
+    valid_until?: string;
+    coverage_until?: string;
 };
 export type ArrivalPage = {
     data: Arrival[];
     page: Page;
+    availability?: ArrivalAvailability;
 };
 export type Metrics = {
     reported_vehicles: number | null;

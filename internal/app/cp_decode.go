@@ -14,11 +14,15 @@ func decodeCPFeed(blob []byte) (*cpFeed, error) {
 }
 
 func decodeCPFeedContext(ctx context.Context, blob []byte) (*cpFeed, error) {
+	return decodeArrivalFeed(ctx, blob, nil)
+}
+
+func decodeArrivalFeed(ctx context.Context, blob []byte, visit func(cpEntity)) (*cpFeed, error) {
 	d, err := cpDecoder(ctx, blob)
 	if err != nil {
 		return nil, err
 	}
-	feed := &cpFeed{}
+	feed := &cpFeed{visit: visit}
 	err = decodeCPWrapper(d, feed)
 	if err == nil {
 		err = completeCPFeed(d, feed)

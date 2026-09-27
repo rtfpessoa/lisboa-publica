@@ -1,12 +1,15 @@
 package app
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"lisboapublica/internal/api"
 	"testing"
 	"time"
 )
 
-func TestLegacyRailFerryCacheRefreshesBeforeTTL(t *testing.T) {
+func TestLegacyStaticEnrichmentRefreshesBeforeTTL(t *testing.T) {
 	cache := NewCache()
 	for _, p := range providers {
 		t.Run(p.ID, func(t *testing.T) {
@@ -16,7 +19,7 @@ func TestLegacyRailFerryCacheRefreshesBeforeTTL(t *testing.T) {
 			op.StaticUpdatedAt = ptr(data.Updated)
 			cache.update(p.ID, data, nil, op)
 			state, _ := cache.state("")
-			legacy := p.Mode == "train" || p.Mode == "ferry"
+			legacy := p.ID != "metro"
 			if reusableStaticCache(p, state) == legacy {
 				t.Fatal("legacy geometry skipped or unrelated cache reloaded")
 			}
@@ -50,6 +53,44 @@ func TestGeometryAttemptRestoresNormalStaticTTL(t *testing.T) {
 				if absent && data.GeometryError == nil {
 					t.Fatal("absence not recorded")
 				}
+			}
+		})
+	}
+}
+
+func TestCMPathAttemptRestoresNormalStaticTTL(t *testing.T) {
+	p, _ := providerByID("cm")
+	for _, test := range []struct {
+		name    string
+		network *StaticData
+	}{
+		{"verified", &StaticData{CMPaths: []CMPath{{ID: "cm:[plan][agency]pattern"}}}},
+		{"no published path", &StaticData{}},
+		{"rejected association", &StaticData{CMPathError: ptr("Ambiguous")}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			now := time.Now().UTC()
+			d := &StaticData{Updated: now}
+			mergeCMNetwork(d, test.network)
+			blob, err := encodeCache(d)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var restored StaticData
+			reader, err := gzip.NewReader(bytes.NewReader(blob))
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = json.NewDecoder(reader).Decode(&restored)
+			reader.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+			cache := NewCache()
+			cache.update("cm", &restored, nil, staticHealth(cache.operator("cm"), &restored))
+			state, _ := cache.state("")
+			if !reusableStaticCache(p, state) {
+				t.Fatal("completed path attempt bypassed normal TTL after restart")
 			}
 		})
 	}

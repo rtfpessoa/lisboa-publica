@@ -1,0 +1,37 @@
+=== RUN   TestProviderContinuityResourceEnvelope
+    continuity_resource_test.go:29: cp_worst_case_distinct_snapshots=64 cp_rows_per_snapshot=110
+    continuity_resource_test.go:33: churn_retained_versions=64 history_pending=20000
+    continuity_resource_test.go:34: arrival_retention_carris_accounted_bytes=3145561
+    continuity_resource_test.go:34: arrival_retention_cm_accounted_bytes=1046204
+    continuity_resource_test.go:34: arrival_result_leases=21 additional_workspace_bytes=3145728
+    continuity_resource_test.go:37: cp_concurrent_decode_bytes=16776905 workers=2
+    continuity_resource_test.go:44: static_providers=8 retained_versions=64 history_pending=20000 heap_bytes=893219592 sys_bytes=1045729784
+    continuity_resource_test.go:47: carris source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:47: cm source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:47: tcb source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:47: mobi source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:47: metro source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:47: cp source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:47: ttsl source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:47: fertagus source=1000 retained=500 ledger=2000
+--- PASS: TestProviderContinuityResourceEnvelope (43.98s)
+PASS
+ok  	lisboapublica/internal/app	44.461s
+       45.86 real       190.67 user         5.86 sys
+          1042939904  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              100812  page reclaims
+                1512  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   8  messages sent
+                 107  messages received
+               71452  signals received
+               25104  voluntary context switches
+              909229  involuntary context switches
+          6358475327  instructions retired
+          3529257264  cycles elapsed
+            36356696  peak memory footprint

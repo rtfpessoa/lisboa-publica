@@ -87,6 +87,8 @@ type StaticData struct {
 	Shapes               []api.RouteShape    `json:"shapes,omitempty"`
 	GeometryUpdated      *time.Time          `json:"geometry_updated,omitempty"`
 	GeometryError        *string             `json:"geometry_error,omitempty"`
+	ArrivalMetadata      bool                `json:"arrival_metadata,omitempty"`
+	HasFrequencies       bool                `json:"has_frequencies,omitempty"`
 	CPJourneyEndpoints   bool                `json:"cp_journey_endpoints,omitempty"`
 	CPPredictionMetadata bool                `json:"cp_prediction_metadata,omitempty"`
 	CPHasFrequencies     bool                `json:"cp_has_frequencies,omitempty"`
@@ -129,6 +131,7 @@ type State struct {
 
 // Cache publishes immutable states and retains recent versions for pagination.
 type Cache struct {
+	arrivals *arrivalStore
 	mu       sync.RWMutex
 	current  *State
 	versions map[string]*State
@@ -137,7 +140,7 @@ type Cache struct {
 
 // NewCache creates an empty collection with all eight providers visible.
 func NewCache() *Cache {
-	c := &Cache{versions: map[string]*State{}}
+	c := &Cache{versions: map[string]*State{}, arrivals: newArrivalStore()}
 	s := &State{Static: map[string]*StaticData{}, Live: map[string]*LiveData{}, Operators: map[string]api.Operator{}}
 	for _, p := range providers {
 		source := hubBase + "/plans"

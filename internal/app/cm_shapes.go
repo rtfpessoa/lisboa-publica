@@ -77,6 +77,9 @@ func mergeCMNetwork(data, network *StaticData) {
 	}
 	data.CMPaths = network.CMPaths
 	data.CMPathError = network.CMPathError
+	if len(data.CMPaths) == 0 && data.CMPathError == nil {
+		data.CMPathError = ptr("Percursos completos verificados indisponíveis neste plano.")
+	}
 	data.GeometryUpdated = ptr(time.Now().UTC())
 	attachCMRouteGeometry(data)
 }

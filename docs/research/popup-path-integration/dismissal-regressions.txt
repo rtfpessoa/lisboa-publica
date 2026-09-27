@@ -1,0 +1,15 @@
+npm notice run lisboa-publica@1.0.0 test
+npm notice run playwright test availability.spec.ts stop-navigation.spec.ts --grep search and detail|nearby stop|map offers|failed refresh
+
+Running 6 tests using 1 worker
+
+(node:53620) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/availability.spec.ts:135:31 › search and detail popups dismiss without losing operator selection at width 1280 (5.8s)
+  ✓  2 tests/availability.spec.ts:135:31 › search and detail popups dismiss without losing operator selection at width 390 (3.3s)
+  ✓  3 tests/stop-navigation.spec.ts:20:31 › nearby stop group and focused arrows at 1280px (2.7s)
+  ✓  4 tests/stop-navigation.spec.ts:20:31 › nearby stop group and focused arrows at 390px (2.1s)
+  ✓  5 tests/stop-navigation.spec.ts:35:1 › map offers overlapping stops as explicit targets (1.9s)
+  ✓  6 tests/stop-navigation.spec.ts:44:1 › a failed refresh never keeps a past ETA in upcoming passages (1.3s)
+
+  6 passed (17.9s)

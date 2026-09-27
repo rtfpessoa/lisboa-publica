@@ -1,0 +1,22 @@
+[
+  {
+    "width": 1280,
+    "nearby_stop_buttons": true,
+    "focused_arrows": true,
+    "alternate": "Gare do Oriente 16-B",
+    "real_arrivals_visible": true,
+    "escape_focus_return": true,
+    "horizontal_overflow": false,
+    "page_errors": []
+  },
+  {
+    "width": 390,
+    "nearby_stop_buttons": true,
+    "focused_arrows": true,
+    "alternate": "Gare do Oriente 16-B",
+    "real_arrivals_visible": true,
+    "escape_focus_return": true,
+    "horizontal_overflow": false,
+    "page_errors": []
+  }
+]

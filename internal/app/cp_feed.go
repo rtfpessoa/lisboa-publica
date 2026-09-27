@@ -26,7 +26,7 @@ const (
 	cpJSONStringBytes      = 4096
 	cpEntityBytes          = 64 * 1024
 	cpEntityObjectDepth    = 3
-	providerCollectorCount = 3
+	providerCollectorCount = 4
 	cpSourceURL            = hubBase + "/realtime/eta/gtfs"
 )
 
@@ -37,6 +37,7 @@ type cpFeed struct {
 		Timestamp      int64  `json:"timestamp"`
 	}
 	Updates []cpUpdate
+	visit   func(cpEntity)
 }
 
 type cpUpdate struct {
@@ -47,6 +48,9 @@ type cpUpdate struct {
 		Route        string `json:"route_id"`
 		Relationship string `json:"schedule_relationship"`
 	} `json:"trip"`
+	Vehicle struct {
+		ID string `json:"id"`
+	} `json:"vehicle"`
 	Timestamp int64          `json:"timestamp"`
 	Stops     []cpStopUpdate `json:"stop_time_update"`
 }
@@ -71,6 +75,9 @@ func decodeCPEntities(d *json.Decoder, feed *cpFeed) error {
 		var entity cpEntity
 		err = d.Decode(&entity)
 		if err == nil {
+			if feed.visit != nil {
+				feed.visit(entity)
+			}
 			err = retainCPEntity(feed, &rows, entity)
 		}
 		if err != nil {
@@ -108,6 +115,9 @@ func retainCPEntity(feed *cpFeed, rows *int, entity cpEntity) error {
 	if !strings.Contains(entity.Update.Trip.ID, "[N18KL]") {
 		return nil
 	}
+	// CP does not use physical vehicle identity; preserve its previous admission
+	// rules and avoid retaining this new field in the CP input snapshot.
+	entity.Update.Vehicle.ID = ""
 	*rows += len(entity.Update.Stops)
 	var err error
 	if len(feed.Updates) >= cpMaxEntities || *rows > cpMaxInputRows || !boundedCPUpdate(entity.Update) {

@@ -1,0 +1,272 @@
+{
+  "captured_at": "2026-09-27T13:58:16Z",
+  "source_eta": "https://go.tmlmobilidade.pt/hub/api/v1/realtime/eta/gtfs",
+  "source_plans": "https://go.tmlmobilidade.pt/hub/api/v1/plans",
+  "header": {
+    "gtfs_realtime_version": "2.0",
+    "incrementality": "FULL_DATASET",
+    "timestamp": 1790517482
+  },
+  "plan": {
+    "_id": "YFKP6",
+    "agency_id": "A3H3M",
+    "agency_code": "8",
+    "active_from": 20260608,
+    "active_until": 20261231,
+    "operation_gtfs_normalized_id": "DSE4X",
+    "hash": "133323b54dbde1ca8c0f9fa40a7ac269a04eee0d8a195153b8dd709378ce1966"
+  },
+  "eta": {
+    "trip": {
+      "trip_id": "[YFKP6][A3H3M]DF_16-COIN-TERM_0_DF_19_1420"
+    },
+    "vehicle": {
+      "id": "408011"
+    },
+    "stop_time_update": [
+      {
+        "stop_sequence": 34,
+        "stop_id": "846862",
+        "arrival": {
+          "time": 1790517385,
+          "delay": 85
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 35,
+        "stop_id": "867273",
+        "arrival": {
+          "time": 1790517385,
+          "delay": 25
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 36,
+        "stop_id": "800291",
+        "arrival": {
+          "time": 1790517385,
+          "delay": -35
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 37,
+        "stop_id": "894941",
+        "arrival": {
+          "time": 1790517385,
+          "delay": -155
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 38,
+        "stop_id": "810902",
+        "arrival": {
+          "time": 1790517385,
+          "delay": -155
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 39,
+        "stop_id": "816343",
+        "arrival": {
+          "time": 1790517385,
+          "delay": -215
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 40,
+        "stop_id": "889438",
+        "arrival": {
+          "time": 1790517385,
+          "delay": -275
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 41,
+        "stop_id": "340073",
+        "arrival": {
+          "time": 1790517385,
+          "delay": -275
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 42,
+        "stop_id": "810527",
+        "arrival": {
+          "time": 1790517385,
+          "delay": -335
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 43,
+        "stop_id": "826386",
+        "arrival": {
+          "time": 1790517385,
+          "delay": -455
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 44,
+        "stop_id": "812831",
+        "arrival": {
+          "time": 1790517385,
+          "delay": -515
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 45,
+        "stop_id": "887460",
+        "arrival": {
+          "time": 1790517197,
+          "delay": -703
+        },
+        "schedule_relationship": "SCHEDULED"
+      }
+    ],
+    "timestamp": 1790517385
+  },
+  "gtfs_trip": {
+    "route_id": "16_16-COIN-TERM",
+    "service_id": "DF / Projeto A _26-1783608301691",
+    "trip_id": "DF_16-COIN-TERM_0_DF_19_1420",
+    "trip_headsign": "16 TERMINAL (VIA PENALVA)",
+    "trip_short_name": "",
+    "direction_id": "0",
+    "block_id": "v_16_1_1",
+    "shape_id": "16_16-COIN-TERM_1",
+    "wheelchair_accessible": "",
+    "bikes_allowed": "",
+    "start_shift_id": "d_16_1_1",
+    "end_shift_id": "d_16_1_1",
+    "pattern_id": "16_16-COIN-TERM_1",
+    "pattern_short_name": "16 TERMINAL (VIA PENALVA)",
+    "demand": ""
+  },
+  "gtfs_route": {
+    "route_id": "16_16-COIN-TERM",
+    "agency_id": "8",
+    "route_short_name": "16",
+    "route_long_name": "Estação de Coina-Terminal (via Penalva)",
+    "route_desc": "",
+    "route_type": "3",
+    "route_url": "",
+    "route_color": "ad8116",
+    "route_text_color": "FFFFFF",
+    "continuous_pickup": "",
+    "continuous_drop_off": "",
+    "route_sort_order": "",
+    "line_id": "16",
+    "line_short_name": "16",
+    "line_long_name": "",
+    "route_origin": "Estação - Coina",
+    "route_destination": "Av. Movimento das Forças Armadas",
+    "route_remarks": "",
+    "contract": "",
+    "path_type": "1",
+    "circular": "0",
+    "school": ""
+  },
+  "gtfs_stop": {
+    "stop_id": "000326",
+    "stop_code": "000326",
+    "stop_name": "EN 10 - 3 - Qtª do Torrão",
+    "stop_desc": "",
+    "stop_lat": "38.63052480028005",
+    "stop_lon": "-9.049869775772093",
+    "zone_id": "",
+    "stop_url": "",
+    "location_type": "0",
+    "parent_station": "",
+    "stop_timezone": "",
+    "wheelchair_boarding": "",
+    "platform_code": "",
+    "tts_stop_name": "",
+    "stop_id_stepp": "",
+    "stop_remarks": "",
+    "zone_shift": "",
+    "entrance_restriction": "",
+    "exit_restriction": "",
+    "slot": "",
+    "signalling": "",
+    "shelter": "",
+    "bench": "",
+    "network_map": "",
+    "schedule": "",
+    "real_time_information": "",
+    "tariff": "",
+    "preservation_state": "",
+    "equipment": "",
+    "observations": "",
+    "region": "",
+    "municipality": "",
+    "municipality_fare_1": "",
+    "municipality_fare_2": ""
+  },
+  "gtfs_stop_time": {
+    "trip_id": "DF_16-COIN-TERM_0_DF_19_1420",
+    "arrival_time": "14:55:00",
+    "departure_time": "14:55:00",
+    "stop_id": "000326",
+    "stop_sequence": "34",
+    "stop_headsign": "",
+    "pickup_type": "0",
+    "drop_off_type": "0",
+    "shape_dist_traveled": "20.9375",
+    "timepoint": "0",
+    "continuous_pickup": "",
+    "continuous_drop_off": "",
+    "location_id": "",
+    "start_pickup_drop_off_window": "",
+    "end_pickup_drop_off_window": "",
+    "pickup_booking_rule_id": "",
+    "drop_off_booking_rule_id": ""
+  },
+  "gtfs_calendar": {
+    "service_id": "DF / Projeto A _26-1783608301691",
+    "monday": "0",
+    "tuesday": "0",
+    "wednesday": "0",
+    "thursday": "0",
+    "friday": "0",
+    "saturday": "0",
+    "sunday": "1",
+    "start_date": "20260610",
+    "end_date": "20261227"
+  },
+  "gtfs_exception": null,
+  "paired_position": {
+    "_id": "a8621e84f0b693bec3a7ff5e1e3fa04f0a29c12e23f6fe515e70e3935d21dc06",
+    "agency_id": "A3H3M",
+    "bearing": 317,
+    "bearing_method": "measured",
+    "calendar_date": "2026-09-27",
+    "created_at": 1790517445000,
+    "current_status": null,
+    "direction_id": "0",
+    "geohash": "eycef0d",
+    "latitude": 38.630684,
+    "license_plate": null,
+    "longitude": -9.049985,
+    "operational_date": 20260927,
+    "pattern_id": "[A3H3M]16_16-COIN-TERM_1",
+    "received_at": 1790517467579,
+    "ride_id": "YFKP6-8-20260927-DF_16-COIN-TERM_0_DF_19_1420",
+    "route_id": "[A3H3M]16_16-COIN-TERM",
+    "route_short_name": "16",
+    "shape_id": "[YFKP6][A3H3M]16_16-COIN-TERM_1",
+    "speed": 4,
+    "stop_id": "000103",
+    "trip_id": "[YFKP6][A3H3M]DF_16-COIN-TERM_0_DF_19_1420",
+    "vehicle_id": "[A3H3M]408011"
+  }
+}

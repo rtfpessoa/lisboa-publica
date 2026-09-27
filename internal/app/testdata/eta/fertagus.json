@@ -1,0 +1,160 @@
+{
+  "captured_at": "2026-09-27T13:58:16Z",
+  "source_eta": "https://go.tmlmobilidade.pt/hub/api/v1/realtime/eta/gtfs",
+  "source_plans": "https://go.tmlmobilidade.pt/hub/api/v1/plans",
+  "header": {
+    "gtfs_realtime_version": "2.0",
+    "incrementality": "FULL_DATASET",
+    "timestamp": 1790517482
+  },
+  "plan": {
+    "_id": "2XUL7",
+    "agency_id": "7NTB1",
+    "agency_code": "15",
+    "active_from": 20260702,
+    "active_until": 20261231,
+    "operation_gtfs_normalized_id": "WVR08",
+    "hash": "6d8e9a24a20f8ded81b13e5d34cd14e20b67ecb46af6374b6429df2d1f7207f5"
+  },
+  "eta": {
+    "trip": {
+      "trip_id": "[2XUL7][7NTB1]3214"
+    },
+    "vehicle": {
+      "id": "14253"
+    },
+    "stop_time_update": [
+      {
+        "stop_sequence": 11,
+        "stop_id": "150912",
+        "arrival": {
+          "time": 1790517462,
+          "delay": -18
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 12,
+        "stop_id": "150913",
+        "arrival": {
+          "time": 1790517623,
+          "delay": -97
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 13,
+        "stop_id": "150914",
+        "arrival": {
+          "time": 1790517771,
+          "delay": -189
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 14,
+        "stop_id": "150915",
+        "arrival": {
+          "time": 1790518029,
+          "delay": -231
+        },
+        "schedule_relationship": "SCHEDULED"
+      }
+    ],
+    "timestamp": 1790517457
+  },
+  "gtfs_trip": {
+    "route_id": "A_0",
+    "pattern_id": "A_0_0",
+    "service_id": "FdS",
+    "trip_id": "3214",
+    "trip_headsign": "Set\u00fabal",
+    "direction_id": "0",
+    "shape_id": "A_0_0",
+    "wheelchair_accessible": "1",
+    "bikes_allowed": "1"
+  },
+  "gtfs_route": {
+    "line_id": "1",
+    "line_short_name": "Fertagus",
+    "line_long_name": "Lisboa - Set\u00fabal",
+    "route_id": "A_0",
+    "agency_id": "15",
+    "route_short_name": "Fertagus",
+    "route_long_name": "Lisboa - Set\u00fabal",
+    "route_type": "2",
+    "path_type": "1",
+    "circular": "0",
+    "school": "0",
+    "route_color": "c74f4f",
+    "route_text_color": "FFFFFF",
+    "continuous_pickup": "1",
+    "continuous_drop_off": "1"
+  },
+  "gtfs_stop": {
+    "stop_id": "FTStop13",
+    "stop_code": "FTStop13",
+    "stop_name": "Venda do Alcaide",
+    "stop_lat": "38.60631",
+    "stop_lon": "-8.88839",
+    "zone_id": "FTStop13",
+    "location_type": "0",
+    "wheelchair_boarding": "1",
+    "public_visible": "1",
+    "region_id": "PT170",
+    "parish_id": "150803",
+    "municipality_id": "1508"
+  },
+  "gtfs_stop_time": {
+    "trip_id": "3214",
+    "arrival_time": "15:02:00",
+    "departure_time": "15:02:00",
+    "stop_id": "FTStop13",
+    "stop_sequence": "12",
+    "pickup_type": "0",
+    "drop_off_type": "0",
+    "continuous_pickup": "1",
+    "continuous_drop_off": "1",
+    "shape_dist_traveled": "45230",
+    "timepoint": "1"
+  },
+  "gtfs_calendar": {
+    "service_id": "FdS",
+    "monday": "0",
+    "tuesday": "0",
+    "wednesday": "0",
+    "thursday": "0",
+    "friday": "0",
+    "saturday": "1",
+    "sunday": "1",
+    "start_date": "20260101",
+    "end_date": "20261231"
+  },
+  "gtfs_exception": null,
+  "paired_position": {
+    "_id": "68c6881cc3d8e776eaed18b3483636365ab62cd7a3e66ebf89719f0aeedbd3c1",
+    "agency_id": "7NTB1",
+    "bearing": null,
+    "bearing_method": "skipped",
+    "calendar_date": "2026-09-27",
+    "created_at": 1790517488655,
+    "current_status": "IN_TRANSIT_TO",
+    "direction_id": "0",
+    "geohash": "eycev0m",
+    "latitude": 38.629986,
+    "license_plate": null,
+    "longitude": -8.913239,
+    "operational_date": 20260927,
+    "pattern_id": "[7NTB1]A_0_0",
+    "received_at": 1790517488725,
+    "ride_id": "2XUL7-15-20260927-3214",
+    "route_id": "[7NTB1]A_0",
+    "route_short_name": "Fertagus",
+    "shape_id": "[2XUL7][7NTB1]A_0_0",
+    "speed": null,
+    "stop_id": null,
+    "trip_id": "[2XUL7][7NTB1]3214",
+    "vehicle_id": "[7NTB1]14253"
+  },
+  "verified_example_event_sequence": 12
+}
