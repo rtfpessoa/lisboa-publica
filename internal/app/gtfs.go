@@ -51,6 +51,7 @@ func (s *StopTime) UnmarshalJSON(b []byte) error {
 type ScheduledTrip struct {
 	ID, Route, Service, Headsign, Shape string
 	Label                               string        `json:",omitempty"`
+	ArrivalTiming                       uint64        `json:"arrival_timing,omitempty"`
 	CPTiming                            *cpTripTiming `json:"cp_timing,omitempty"`
 	Times                               []StopTime
 	Endpoints                           *tripEndpoints `json:"endpoints,omitempty"`

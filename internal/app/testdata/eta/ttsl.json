@@ -1,0 +1,102 @@
+{
+  "captured_at": "2026-09-27T13:58:16Z",
+  "source_eta": "https://go.tmlmobilidade.pt/hub/api/v1/realtime/eta/gtfs",
+  "source_plans": "https://go.tmlmobilidade.pt/hub/api/v1/plans",
+  "header": {
+    "gtfs_realtime_version": "2.0",
+    "incrementality": "FULL_DATASET",
+    "timestamp": 1790517482
+  },
+  "plan": {
+    "_id": "YYS70",
+    "agency_id": "LTP61",
+    "agency_code": "4",
+    "active_from": 20260711,
+    "active_until": 20270701,
+    "operation_gtfs_normalized_id": "8N012",
+    "hash": "a388a1f3cb4f3c6ebde653eb2563abf7b4233d98f80713dbc1c11afab6707259"
+  },
+  "eta": {
+    "trip": {
+      "trip_id": "[YYS70][LTP61]0505A1430D3"
+    },
+    "vehicle": {
+      "id": "79"
+    },
+    "stop_time_update": [
+      {
+        "stop_sequence": 2,
+        "stop_id": "210006",
+        "arrival": {
+          "time": 1790516383,
+          "delay": 103
+        },
+        "schedule_relationship": "SCHEDULED"
+      }
+    ],
+    "timestamp": 1790516383
+  },
+  "gtfs_trip": {
+    "route_id": "5_0",
+    "pattern_id": "5_0_2",
+    "service_id": "05D3",
+    "trip_id": "0505A1430D3",
+    "trip_headsign": "Cacilhas",
+    "direction_id": "1",
+    "shape_id": "5_0_2",
+    "wheelchair_accessible": "1",
+    "bikes_allowed": "1"
+  },
+  "gtfs_route": {
+    "route_id": "5_0",
+    "agency_id": "4",
+    "route_short_name": "CA",
+    "route_long_name": "Cacilhas - Cais do Sodré",
+    "route_type": "4",
+    "route_color": "FAB900",
+    "route_text_color": "000000",
+    "line_id": "5",
+    "line_short_name": "CA",
+    "line_long_name": "Cacilhas - Cais do Sodré",
+    "path_type": "1",
+    "circular": "0",
+    "school": "0"
+  },
+  "gtfs_stop": {
+    "stop_id": "6",
+    "stop_code": "6",
+    "stop_name": "Cacilhas",
+    "stop_lat": "38.688000",
+    "stop_lon": "-9.148000",
+    "wheelchair_boarding": "1",
+    "region_id": "PT170",
+    "parish_id": "150312",
+    "municipality_id": "1503"
+  },
+  "gtfs_stop_time": {
+    "trip_id": "0505A1430D3",
+    "arrival_time": "14:38:00",
+    "departure_time": "14:38:00",
+    "stop_id": "6",
+    "stop_sequence": "2",
+    "stop_headsign": "",
+    "pickup_type": "1",
+    "drop_off_type": "0",
+    "shape_dist_traveled": "1910",
+    "timepoint": "1"
+  },
+  "gtfs_calendar": {
+    "service_id": "05D3",
+    "monday": "0",
+    "tuesday": "0",
+    "wednesday": "0",
+    "thursday": "0",
+    "friday": "0",
+    "saturday": "0",
+    "sunday": "1",
+    "start_date": "20260608",
+    "end_date": "20281231"
+  },
+  "gtfs_exception": null,
+  "paired_position": null
+}

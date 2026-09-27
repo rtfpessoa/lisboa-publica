@@ -24,6 +24,8 @@ func writeStaticCacheJSON(w io.Writer, d *StaticData) error {
 		{"geometry_error", d.GeometryError, d.GeometryError == nil},
 		{"geometry_partial", d.GeometryPartial, !d.GeometryPartial},
 		{"cp_journey_endpoints", d.CPJourneyEndpoints, !d.CPJourneyEndpoints},
+		{"arrival_metadata", d.ArrivalMetadata, !d.ArrivalMetadata},
+		{"has_frequencies", d.HasFrequencies, !d.HasFrequencies},
 		{"cp_prediction_metadata", d.CPPredictionMetadata, !d.CPPredictionMetadata},
 		{"cp_has_frequencies", d.CPHasFrequencies, !d.CPHasFrequencies},
 	}

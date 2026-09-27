@@ -1,0 +1,171 @@
+{
+  "captured_at": "2026-09-27T13:58:16Z",
+  "source_eta": "https://go.tmlmobilidade.pt/hub/api/v1/realtime/eta/gtfs",
+  "source_plans": "https://go.tmlmobilidade.pt/hub/api/v1/plans",
+  "header": {
+    "gtfs_realtime_version": "2.0",
+    "incrementality": "FULL_DATASET",
+    "timestamp": 1790517482
+  },
+  "plan": {
+    "_id": "QQQN3",
+    "agency_id": "HF16N",
+    "agency_code": "21",
+    "active_from": 20260914,
+    "active_until": 20271231,
+    "operation_gtfs_normalized_id": "MZJ37",
+    "hash": "402a5c6f5fc04ef51e9cad193b5b4971bd1c0a518b614233cc8f658f9dc002be"
+  },
+  "eta": {
+    "trip": {
+      "trip_id": "[QQQN3][HF16N]M01-1-034-A-SDF-14h30-ParedeTerminal"
+    },
+    "vehicle": {
+      "id": "4013"
+    },
+    "stop_time_update": [
+      {
+        "stop_sequence": 14,
+        "stop_id": "213173",
+        "arrival": {
+          "time": 1790517502,
+          "delay": 82
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 15,
+        "stop_id": "218416",
+        "arrival": {
+          "time": 1790517607,
+          "delay": 67
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 16,
+        "stop_id": "218549",
+        "arrival": {
+          "time": 1790517661,
+          "delay": 1
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 17,
+        "stop_id": "219840",
+        "arrival": {
+          "time": 1790517794,
+          "delay": -106
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 18,
+        "stop_id": "677289",
+        "arrival": {
+          "time": 1790518001,
+          "delay": -199
+        },
+        "schedule_relationship": "SCHEDULED"
+      }
+    ],
+    "timestamp": 1790517428
+  },
+  "gtfs_trip": {
+    "route_id": "M01_A",
+    "pattern_id": "M01_A_0",
+    "pattern_short_name": "M01_A_0",
+    "service_id": "A-SDF",
+    "trip_id": "M01-1-034-A-SDF-14h30-ParedeTerminal",
+    "trip_headsign": "CascaiShopping",
+    "direction_id": "0",
+    "shape_id": "M01_A_0",
+    "wheelchair_accessible": "",
+    "bikes_allowed": ""
+  },
+  "gtfs_route": {
+    "line_id": "1",
+    "line_short_name": "1",
+    "line_long_name": "Parede Terminal - CascaiShopping via Estoril",
+    "route_id": "M01_A",
+    "agency_id": "21",
+    "route_short_name": "1",
+    "route_long_name": "Parede - CascaiShopping",
+    "route_type": "3",
+    "path_type": "1",
+    "circular": "1",
+    "school": "0",
+    "route_color": "ce5504",
+    "route_text_color": "ffffff",
+    "continuous_pickup": "0",
+    "continuous_drop_off": "0"
+  },
+  "gtfs_stop": {
+    "stop_id": "20077",
+    "stop_code": "20077",
+    "stop_name": "Bairro da Alegria",
+    "stop_lat": "38.721954",
+    "stop_lon": "-9.407229",
+    "zone_id": "",
+    "location_type": "",
+    "parent_station": "",
+    "wheelchair_boarding": "",
+    "platform_code": "",
+    "public_visible": "1",
+    "region_id": "170 - ÁREA METROPOLITANA DE LISBOA",
+    "parish_id": "110508 - Cascais e Estoril",
+    "municipality": "1105"
+  },
+  "gtfs_stop_time": {
+    "trip_id": "M01-1-034-A-SDF-14h30-ParedeTerminal",
+    "arrival_time": "14:57:00",
+    "departure_time": "14:57:00",
+    "stop_id": "20077",
+    "stop_sequence": "14",
+    "pickup_type": "0",
+    "drop_off_type": "0",
+    "continuous_pickup": "",
+    "continuous_drop_off": "",
+    "shape_dist_traveled": "7566.35",
+    "timepoint": "1"
+  },
+  "gtfs_calendar": {
+    "service_id": "A-SDF",
+    "monday": "0",
+    "tuesday": "0",
+    "wednesday": "0",
+    "thursday": "0",
+    "friday": "0",
+    "saturday": "1",
+    "sunday": "1",
+    "start_date": "20250101",
+    "end_date": "20271231"
+  },
+  "gtfs_exception": null,
+  "paired_position": {
+    "_id": "c621ff41733e0ec1ff586ffca68efdb0a255f32b0d007a782897d231941e6d47",
+    "agency_id": "HF16N",
+    "bearing": 348,
+    "bearing_method": "measured",
+    "calendar_date": "2026-09-27",
+    "created_at": 1790517460000,
+    "current_status": "IN_TRANSIT_TO",
+    "direction_id": "0",
+    "geohash": "eyck3bw",
+    "latitude": 38.719807,
+    "license_plate": null,
+    "longitude": -9.406787,
+    "operational_date": 20260927,
+    "pattern_id": "[HF16N]M01_A_0",
+    "received_at": 1790517466449,
+    "ride_id": "QQQN3-21-20260927-M01-1-034-A-SDF-14h30-ParedeTerminal",
+    "route_id": "[HF16N]M01_A",
+    "route_short_name": "1",
+    "shape_id": "[QQQN3][HF16N]M01_A_0",
+    "speed": null,
+    "stop_id": "20077",
+    "trip_id": "[QQQN3][HF16N]M01-1-034-A-SDF-14h30-ParedeTerminal",
+    "vehicle_id": "[HF16N]4013"
+  }
+}

@@ -2,10 +2,13 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"lisboapublica/internal/api"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // ListTrips lists planned departures from one immutable network revision.
@@ -22,20 +25,6 @@ func (s *Server) ListTrips(ctx context.Context, _ api.ListTripsRequestObject) (a
 	}
 	page, data := paginate(out, filter, revision)
 	return api.ListTrips200JSONResponse{Data: data, Page: page}, nil
-}
-
-// ListArrivals lists arrivals at a known stop in the requested immutable revision.
-func (s *Server) ListArrivals(ctx context.Context, _ api.ListArrivalsRequestObject) (api.ListArrivalsResponseObject, error) {
-	filter, state, revision, err := s.scheduleFilter(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out, err := collectScheduledArrivals(ctx, state, filter)
-	if err != nil {
-		return nil, err
-	}
-	page, data := paginate(out, filter, revision)
-	return api.ListArrivals200JSONResponse{Data: data, Page: page}, nil
 }
 
 func (s *Server) scheduleFilter(ctx context.Context) (Filter, *State, string, error) {
@@ -96,12 +85,12 @@ func arrivalsForOperator(ctx context.Context, state *State, filter Filter, opera
 
 func sortArrivals(out []api.Arrival) {
 	sort.Slice(out, func(i, j int) bool {
-		ai, aj := out[i].ScheduledAt, out[j].ScheduledAt
+		ai, aj := out[i].ExpectedAt, out[j].ExpectedAt
 		if ai == nil {
-			ai = out[i].ExpectedAt
+			ai = out[i].ScheduledAt
 		}
 		if aj == nil {
-			aj = out[j].ExpectedAt
+			aj = out[j].ScheduledAt
 		}
 		if ai.Equal(*aj) {
 			return out[i].Id < out[j].Id
@@ -155,4 +144,47 @@ func metroHasStation(data *MetroData, operator, id string) bool {
 		}
 	}
 	return false
+}
+
+func (s *Server) scheduleState(ctx context.Context, f *Filter) (*State, string, error) {
+	rev, err := scheduleRevision(ctx, f)
+	if err != nil {
+		return nil, "", err
+	}
+	state, err := s.Cache.state(rev)
+	if err != nil {
+		return nil, "", err
+	}
+	return state, fmt.Sprintf("t:%s:%d:%d", state.Revision, f.From.UnixNano(), f.To.UnixNano()), nil
+}
+
+func scheduleRevision(ctx context.Context, f *Filter) (string, error) {
+	if f.Revision == "" {
+		return "", nil
+	}
+	parts := strings.Split(f.Revision, ":")
+	if len(parts) != 4 || parts[0] != "t" {
+		return "", fail(http.StatusBadRequest, "revision", "Revisão de horários inválida.")
+	}
+	err := restoreScheduleInterval(ctx, f, parts)
+	return parts[1], err
+}
+
+func restoreScheduleInterval(ctx context.Context, f *Filter, parts []string) error {
+	left, ea := strconv.ParseInt(parts[2], 10, numericBitSize)
+	right, eb := strconv.ParseInt(parts[3], 10, numericBitSize)
+	start, end := time.Unix(0, left).UTC(), time.Unix(0, right).UTC()
+	if ea != nil || eb != nil || !end.After(start) || end.Sub(start) > maximumScheduleWindow {
+		return fail(http.StatusBadRequest, "revision", "Intervalo de horários inválido.")
+	}
+	if !sameScheduleInterval(ctx, f, start, end) {
+		return fail(http.StatusBadRequest, "revision", "O intervalo mudou entre páginas.")
+	}
+	f.From, f.To = start, end
+	return nil
+}
+
+func sameScheduleInterval(ctx context.Context, f *Filter, start, end time.Time) bool {
+	query := request(ctx).URL.Query()
+	return (query.Get("from") == "" || f.From.Equal(start)) && (query.Get("to") == "" || f.To.Equal(end))
 }

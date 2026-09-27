@@ -53,7 +53,7 @@ func TestCPDelayOnlyUsesExactMappingCalendarAndOriginalClock(t *testing.T) {
 		t.Fatalf("safe prediction missing: %v %+v", err, result)
 	}
 	r := result.Rows[0]
-	if r.ServiceDate == nil || r.ServiceDate.Format("2006-01-02") != "2026-09-26" || r.DateBasis == nil || *r.DateBasis != api.MatchedSchedule || r.StopId != "cp:S" || r.StopSequence != 1 || r.SourceTripId != "cp:A_20251214" {
+	if r.ServiceDate == nil || r.ServiceDate.Format("2006-01-02") != "2026-09-26" || r.DateBasis == nil || *r.DateBasis != api.CPPredictionDateBasisMatchedSchedule || r.StopId != "cp:S" || r.StopSequence != 1 || r.SourceTripId != "cp:A_20251214" {
 		t.Fatalf("incorrect join: %+v", r)
 	}
 	if !r.ValidUntil.Equal(now.Add(88*time.Second)) || !r.ExpectedAt.Equal(now.Add(11*time.Minute)) || r.DelaySeconds == nil || *r.DelaySeconds != 60 {

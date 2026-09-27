@@ -74,7 +74,7 @@ test('train popup separates published service label, physical identity and upstr
  await expect.poll(()=>page.evaluate(()=>(window as unknown as {vehicleFeatures:unknown[]}).vehicleFeatures.length)).toBe(1);
  await page.waitForTimeout(300);const box=await page.locator('.map canvas').boundingBox();
  await page.mouse.click(box!.x+box!.width/2,box!.y+box!.height/2);
- const panel=page.locator('.detail-panel');await expect(panel).toContainText('opaque-physical-unit');await expect(panel.locator('.cp-calls')).toContainText('Comboio 123');await expect(panel.locator('.cp-calls')).toContainText('Lisboa Santa Apolónia');
+ const panel=page.locator('.detail-panel');await expect(panel).toContainText('Escolher no mapa');await expect(panel.locator('.map-targets button')).toHaveCount(2);await panel.getByRole('button',{name:'CP · opaque-physical-unit Veículo'}).click();await expect(panel).toContainText('opaque-physical-unit');await expect(panel.locator('.cp-calls')).toContainText('Comboio 123');await expect(panel.locator('.cp-calls')).toContainText('Lisboa Santa Apolónia');
  f.setFailure(true);await page.waitForTimeout(6000);await expect(panel.locator('.cp-calls')).toContainText('Previsões indisponíveis.');await expect(panel.locator('.cp-calls')).toContainText('Comboio 123');
  await page.keyboard.press('Escape');await expect(panel).toHaveCount(0);
 });
@@ -83,7 +83,7 @@ test('train with no published operating date never inherits a guessed associatio
  const f=await fixture(page);f.setMissingDate(true);await page.goto('/');await selectCP(page);
  await expect.poll(()=>page.evaluate(()=>(window as unknown as {vehicleFeatures:unknown[]}).vehicleFeatures.length)).toBe(1);
  await page.waitForTimeout(300);const box=await page.locator('.map canvas').boundingBox();await page.mouse.click(box!.x+box!.width/2,box!.y+box!.height/2);
- await expect(page.locator('.cp-calls')).toContainText('associadas a este serviço indisponíveis');await expect(page.locator('.cp-calls')).not.toContainText('Comboio 123');
+ await page.locator('.map-targets').getByRole('button',{name:'CP · opaque-physical-unit Veículo'}).click();await expect(page.locator('.cp-calls')).toContainText('associadas a este serviço indisponíveis');await expect(page.locator('.cp-calls')).not.toContainText('Comboio 123');
 });
 
 test('prediction window uses exactly one captured clock and retries an expired collection once',async({page})=>{

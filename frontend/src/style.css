@@ -20,3 +20,9 @@
 .route-filter{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#fff3d6;border-radius:6px;font-size:12px}
 
 .traffic-panel .query-status-slot{height:28px}
+
+.stop-navigation {display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0;padding:10px 0;border-block:1px solid #e2e8f0}
+.stop-navigation span {text-align:center;font-size:13px}.stop-navigation small {display:block;font-size:10px;color:#64748b}
+.stop-navigation button {padding:8px 10px;font-size:12px}.stop-navigation button:disabled {opacity:.4;cursor:default}
+.detail-panel:focus-visible {outline:2px solid #176b91;outline-offset:2px}
+.map-targets {display:grid;gap:8px}.map-targets button {display:flex;align-items:center;gap:10px;text-align:left;padding:12px}.map-targets small {display:block;color:#64748b}

@@ -31,6 +31,7 @@ func TestProviderContinuityResourceEnvelope(t *testing.T) {
 		t.Fatal("churn did not saturate pagination retention")
 	}
 	t.Logf("churn_retained_versions=%d history_pending=%d", len(cache.versions), len(store.collector.Pending))
+	arrivalWorkspace := resourceArrivalRetention(t, cache)
 	// Static refresh overlap while a full current network and prior revisions remain retained.
 	loadResourceNetworks(t, cache, f, feeds, true)
 	concurrentCPDecode(t)
@@ -48,6 +49,7 @@ func TestProviderContinuityResourceEnvelope(t *testing.T) {
 	runtime.KeepAlive(cache)
 	runtime.KeepAlive(store)
 	runtime.KeepAlive(cpVersions)
+	runtime.KeepAlive(arrivalWorkspace)
 }
 
 func runContinuityChurn(t *testing.T, cache *Cache, store *Store, base time.Time) {

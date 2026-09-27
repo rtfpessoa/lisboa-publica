@@ -1,0 +1,276 @@
+{
+  "captured_at": "2026-09-27T13:58:16Z",
+  "source_eta": "https://go.tmlmobilidade.pt/hub/api/v1/realtime/eta/gtfs",
+  "source_plans": "https://go.tmlmobilidade.pt/hub/api/v1/plans",
+  "header": {
+    "gtfs_realtime_version": "2.0",
+    "incrementality": "FULL_DATASET",
+    "timestamp": 1790517482
+  },
+  "plan": {
+    "_id": "82YP2",
+    "agency_id": "IA9T6",
+    "agency_code": "1",
+    "active_from": 20260715,
+    "active_until": 20261231,
+    "operation_gtfs_normalized_id": "L83L0",
+    "hash": "1b67c4ed3935a898cbb1495fc2d66d4347ced19c61e51c59bc7df8a5f003cdf4"
+  },
+  "eta": {
+    "trip": {
+      "trip_id": "[82YP2][IA9T6]11040_20260606_77_0_10"
+    },
+    "vehicle": {
+      "id": "572"
+    },
+    "stop_time_update": [
+      {
+        "stop_sequence": 1,
+        "stop_id": "287926",
+        "arrival": {
+          "time": 1790517431,
+          "delay": 1451
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 2,
+        "stop_id": "666441",
+        "arrival": {
+          "time": 1790517480,
+          "delay": 1377
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 3,
+        "stop_id": "484008",
+        "arrival": {
+          "time": 1790517551,
+          "delay": 1319
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 4,
+        "stop_id": "159241",
+        "arrival": {
+          "time": 1790517599,
+          "delay": 1293
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 5,
+        "stop_id": "555593",
+        "arrival": {
+          "time": 1790517690,
+          "delay": 1203
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 6,
+        "stop_id": "443607",
+        "arrival": {
+          "time": 1790517757,
+          "delay": 1173
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 7,
+        "stop_id": "149244",
+        "arrival": {
+          "time": 1790517794,
+          "delay": 1139
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 8,
+        "stop_id": "265433",
+        "arrival": {
+          "time": 1790517856,
+          "delay": 1060
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 9,
+        "stop_id": "497096",
+        "arrival": {
+          "time": 1790517920,
+          "delay": 998
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 10,
+        "stop_id": "893590",
+        "arrival": {
+          "time": 1790518066,
+          "delay": 946
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 11,
+        "stop_id": "995581",
+        "arrival": {
+          "time": 1790518182,
+          "delay": 887
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 12,
+        "stop_id": "753733",
+        "arrival": {
+          "time": 1790518225,
+          "delay": 842
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 13,
+        "stop_id": "458598",
+        "arrival": {
+          "time": 1790518275,
+          "delay": 769
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      {
+        "stop_sequence": 14,
+        "stop_id": "695506",
+        "arrival": {
+          "time": 1790518368,
+          "delay": 768
+        },
+        "schedule_relationship": "SCHEDULED"
+      }
+    ],
+    "timestamp": 1790517431
+  },
+  "gtfs_trip": {
+    "route_id": "77_0",
+    "service_id": "Inverno_DomingoFeriado_20260606",
+    "trip_id": "11040_20260606_77_0_10",
+    "trip_headsign": "P\u00e7. Luis Cam\u00f5es (B. Alto)",
+    "trip_short_name": "",
+    "direction_id": "0",
+    "block_id": "",
+    "shape_id": "77_0_ASC",
+    "wheelchair_accessible": "1",
+    "bikes_allowed": "0",
+    "pattern_id": "77_0_ASC"
+  },
+  "gtfs_route": {
+    "route_id": "77_0",
+    "agency_id": "1",
+    "route_short_name": "12E",
+    "route_long_name": "Martim Moniz - P\u00e7. Luis Cam\u00f5es",
+    "route_desc": "",
+    "route_type": "0",
+    "route_url": "https://www.carris.pt/viaje/carreiras/route_short_name/",
+    "route_color": "F7941E",
+    "route_text_color": "000000",
+    "line_id": "77",
+    "line_short_name": "12E",
+    "line_long_name": "Martim Moniz - P\u00e7. Luis Cam\u00f5es",
+    "route_remarks": "",
+    "path_type": "1",
+    "circular": "0",
+    "school": "0",
+    "continuous_pickup": "0",
+    "continuous_drop_off": "0"
+  },
+  "gtfs_stop": {
+    "stop_id": "13824",
+    "stop_code": "13824",
+    "stop_name": "Lg. Terreirinho",
+    "stop_desc": "",
+    "stop_lat": "38.7160692",
+    "stop_lon": "-9.1330706",
+    "zone_id": "0.0",
+    "stop_url": "",
+    "location_type": "0",
+    "parent_station": "",
+    "stop_timezone": "",
+    "wheelchair_boarding": "0",
+    "stop_short_name": "",
+    "tts_stop_name": "",
+    "level_id": "",
+    "platform_code": "",
+    "public_visible": "1",
+    "has_stop_sign": "3",
+    "has_shelter": "0",
+    "shelter_code": "",
+    "shelter_maintainer": "",
+    "has_bench": "0",
+    "has_network_map": "0",
+    "has_schedules": "3",
+    "has_pip_real_time": "0",
+    "has_tariffs_information": "3",
+    "region_id": "PT170",
+    "parish_id": "",
+    "municipality_id": "1106"
+  },
+  "gtfs_stop_time": {
+    "trip_id": "11040_20260606_77_0_10",
+    "arrival_time": "14:37:12",
+    "departure_time": "14:37:12",
+    "stop_id": "13824",
+    "stop_sequence": "3",
+    "stop_headsign": "",
+    "pickup_type": "0",
+    "drop_off_type": "0",
+    "timepoint": "0",
+    "continuous_pickup": "0",
+    "continuous_drop_off": "0",
+    "zone_1": "",
+    "zone_2": "",
+    "zone_3": "",
+    "shape_dist_traveled": "0.3809902212875854"
+  },
+  "gtfs_calendar": {
+    "service_id": "Inverno_DomingoFeriado_20260606",
+    "monday": "0",
+    "tuesday": "0",
+    "wednesday": "0",
+    "thursday": "0",
+    "friday": "0",
+    "saturday": "0",
+    "sunday": "1",
+    "start_date": "20260606",
+    "end_date": "20261231"
+  },
+  "gtfs_exception": null,
+  "paired_position": {
+    "_id": "a302e705a09350b6fa7ed8a9ddcdbd8ef9089784fad9790ac1763a169b88ebcc",
+    "agency_id": "IA9T6",
+    "bearing": null,
+    "bearing_method": "skipped",
+    "calendar_date": "2026-09-27",
+    "created_at": 1790517431000,
+    "current_status": "IN_TRANSIT_TO",
+    "direction_id": "0",
+    "geohash": "eycs0pg",
+    "latitude": 38.71552,
+    "license_plate": null,
+    "longitude": -9.13597,
+    "operational_date": 20260927,
+    "pattern_id": "[IA9T6]77_0_ASC",
+    "received_at": 1790517468840,
+    "ride_id": "82YP2-1-20260927-11040_20260606_77_0_10",
+    "route_id": "[IA9T6]77_0",
+    "route_short_name": "12E",
+    "shape_id": "[82YP2][IA9T6]77_0_ASC",
+    "speed": null,
+    "stop_id": null,
+    "trip_id": "[82YP2][IA9T6]11040_20260606_77_0_10",
+    "vehicle_id": "[IA9T6]572"
+  },
+  "verified_example_event_sequence": 3
+}

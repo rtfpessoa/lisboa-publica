@@ -16,7 +16,7 @@ func TestLegacyRailFerryCacheRefreshesBeforeTTL(t *testing.T) {
 			op.StaticUpdatedAt = ptr(data.Updated)
 			cache.update(p.ID, data, nil, op)
 			state, _ := cache.state("")
-			legacy := p.Mode == "train" || p.Mode == "ferry"
+			legacy := p.ID != "cm" && p.ID != "metro"
 			if reusableStaticCache(p, state) == legacy {
 				t.Fatal("legacy geometry skipped or unrelated cache reloaded")
 			}

@@ -36,10 +36,7 @@ func readGTFS(blob []byte, p provider, planID, from, until, source string, now t
 		return nil, err
 	}
 	data := &StaticData{CPJourneyEndpoints: p.ID == "cp", Models: map[string]Metadata{}, PlanID: planID, ValidFrom: from, ValidUntil: until, Source: source, Updated: now, Schedule: &Schedule{Calendars: map[string]Calendar{}, Exceptions: map[string]map[string]int{}, Parents: map[string]string{}}}
-	if p.ID == "cp" {
-		data.CPPredictionMetadata = true
-		data.CPHasFrequencies = archive["frequencies.txt"] != nil
-	}
+	data.setArrivalMetadata(p, archive["frequencies.txt"] != nil)
 	reader := &gtfsReader{provider: p, data: data, routes: map[string]*api.RouteDetail{}, stops: map[string]*api.Stop{}, shapes: map[string][]shapePoint{}, trips: map[string]*ScheduledTrip{}, shapeForRoute: map[string]string{}, directions: map[string]*int{}, routeStops: map[string]map[string]bool{}, endpointNames: map[string]string{}}
 	tables := []struct {
 		name  string
@@ -171,7 +168,7 @@ func (g *gtfsReader) stopTime(m map[string]string) error {
 		return fmt.Errorf("invalid stop sequence")
 	}
 	g.rememberEndpoint(t, m["stop_id"], seq)
-	if g.provider.ID == "cp" {
+	if g.provider.ID != "metro" {
 		t.rememberCPTiming(m, seq)
 	}
 	if g.stops[m["stop_id"]] == nil {
@@ -285,25 +282,6 @@ func (g *gtfsReader) vehicle(m map[string]string) error {
 		g.data.Models[id] = metadataRow(m)
 	}
 	return nil
-}
-
-func (g *gtfsReader) connectTrips() {
-	for _, t := range g.trips {
-		if len(t.Times) == 0 {
-			continue
-		}
-		sort.Slice(t.Times, func(i, j int) bool { return t.Times[i].Sequence < t.Times[j].Sequence })
-		g.data.Schedule.Trips = append(g.data.Schedule.Trips, *t)
-		if g.routeStops[t.Route] == nil {
-			g.routeStops[t.Route] = map[string]bool{}
-		}
-		for _, v := range t.Times {
-			g.routeStops[t.Route][v.Stop] = true
-		}
-		if t.Shape != "" && len(g.shapes[t.Shape]) >= 2 && (g.shapeForRoute[t.Route] == "" || t.Shape < g.shapeForRoute[t.Route]) {
-			g.shapeForRoute[t.Route] = t.Shape
-		}
-	}
 }
 
 func (g *gtfsReader) buildRoutes() {
