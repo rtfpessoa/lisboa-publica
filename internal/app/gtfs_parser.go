@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime/debug"
 
 	"sort"
 	"strconv"
@@ -56,6 +57,8 @@ func readGTFS(blob []byte, p provider, planID, from, until, source string, now t
 		}
 	}
 	reader.connectTrips()
+	// Timetable compaction discards large append buffers before geometry adds its workspace.
+	debug.FreeOSMemory()
 	if err := reader.readGeometry(archive); err != nil {
 		return nil, err
 	}
