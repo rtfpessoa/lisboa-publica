@@ -1,0 +1,3 @@
+{"analysis_patterns": ["."], "base": "b87d96dd9dc09c0a6a250e0e941d92935f5c154b", "candidate_tree": "92d2d73c51ee44b715133d0889e190981fccbbe7", "checked_languages": [], "go_only": false, "maat_bundle": "cb1c6a244e1972174357b029bd304d4a3c6fb2aa", "reason": "Candidate changes no supported source or analysis inputs.", "status": "skipped", "unchecked_languages": ["typescript"]}
+[main e38ee4e] fix(ui): keep traffic controls stable during live refresh
+ 6 files changed, 24 insertions(+), 3 deletions(-)

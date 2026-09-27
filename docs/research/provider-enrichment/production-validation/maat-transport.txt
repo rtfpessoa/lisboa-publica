@@ -1,0 +1,3 @@
+{"analysis_patterns": ["./internal/app/..."], "base": "89100d06253690438060513619331696efea03b7", "candidate_tree": "1cd7a0207441359e546cda541dc690577529c7da", "checked_languages": ["go"], "coverage_map": {"implementation-simplicity": "incomplete", "maintainability": "incomplete"}, "critical_regressions": [], "go_only": true, "maat_bundle": "cb1c6a244e1972174357b029bd304d4a3c6fb2aa", "reason": "Maat found no structural regression.", "score": 85.0, "score_delta": 0.0, "status": "passed", "suppressed_count": 0, "unchecked_languages": ["typescript"]}
+[main b87d96d] fix(ingest): isolate caller deadlines from shared source cooldowns
+ 2 files changed, 79 insertions(+), 1 deletion(-)

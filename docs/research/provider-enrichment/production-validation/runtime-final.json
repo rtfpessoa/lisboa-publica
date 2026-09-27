@@ -1,0 +1,24 @@
+{
+  "version": "e38ee4e9a6ae6d1f09a195946715f9c61095238d",
+  "image": "sha256:f0024baabe53723353db5c1d7f24938cb7d45e4c54e129128ee961f9377a30b2",
+  "started_at": "2026-09-27T11:23:54.463234594Z",
+  "healthy": true,
+  "restarts": 0,
+  "oom_killed": false,
+  "memory_current_bytes": 749850624,
+  "memory_peak_bytes": 762437632,
+  "memory_events": {
+    "low": "0",
+    "high": "0",
+    "max": "0",
+    "oom": "0",
+    "oom_kill": "0",
+    "oom_group_kill": "0"
+  },
+  "memory_limit_bytes": 1342177280,
+  "log_levels": {
+    "info": 1
+  },
+  "warning_messages": {},
+  "warning_categories": []
+}

@@ -1,0 +1,7 @@
+BEGIN
+payload_archive|bytea|YES
+storage.sstable.compression_algorithm|snappy
+storage.sstable.compression_algorithm_backup_storage|fastest
+storage.sstable.compression_algorithm_backup_transport|fastest
+512|187.48242187500000000|0
+ROLLBACK

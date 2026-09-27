@@ -1,0 +1,68 @@
+npm notice run lisboa-publica@1.0.0 test
+npm notice run playwright test tests/availability.spec.ts --grep traffic pointer controls
+
+Running 2 tests using 1 worker
+
+(node:66137) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 tests/availability.spec.ts:190:31 › traffic pointer controls stay fixed across loading at 1440px (1.7s)
+(node:66185) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 tests/availability.spec.ts:190:31 › traffic pointer controls stay fixed across loading at 390px (914ms)
+
+
+  1) tests/availability.spec.ts:190:31 › traffic pointer controls stay fixed across loading at 1440px
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 298.0625
+    Received: 270.0625
+
+      195 |  const panel=page.locator('.traffic-panel'),weekdays=page.getByLabel('Excluir fins de semana'),terminals=page.getByLabel('Mostrar terminais');
+      196 |  await expect(panel).toHaveAttribute('aria-busy','true');const before=await weekdays.boundingBox();release();await expect(panel).toHaveAttribute('aria-busy','false');
+    > 197 |  const after=await weekdays.boundingBox();expect(after!.y).toBe(before!.y);
+          |                                                            ^
+      198 |  await weekdays.check();await expect(weekdays).toBeChecked();await terminals.check();await expect(terminals).toBeChecked();
+      199 |  await expect(panel.getByText('Identificação de terminais indisponível nestes feeds.')).toBeVisible();
+      200 | });
+        at /Users/rodrigo.fernandes/dev/lisboapublica/frontend/tests/availability.spec.ts:197:60
+
+    Error Context: test-results/availability-traffic-point-99524-ed-across-loading-at-1440px/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/availability-traffic-point-99524-ed-across-loading-at-1440px/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/availability-traffic-point-99524-ed-across-loading-at-1440px/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) tests/availability.spec.ts:190:31 › traffic pointer controls stay fixed across loading at 390px
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 346.0625
+    Received: 318.0625
+
+      195 |  const panel=page.locator('.traffic-panel'),weekdays=page.getByLabel('Excluir fins de semana'),terminals=page.getByLabel('Mostrar terminais');
+      196 |  await expect(panel).toHaveAttribute('aria-busy','true');const before=await weekdays.boundingBox();release();await expect(panel).toHaveAttribute('aria-busy','false');
+    > 197 |  const after=await weekdays.boundingBox();expect(after!.y).toBe(before!.y);
+          |                                                            ^
+      198 |  await weekdays.check();await expect(weekdays).toBeChecked();await terminals.check();await expect(terminals).toBeChecked();
+      199 |  await expect(panel.getByText('Identificação de terminais indisponível nestes feeds.')).toBeVisible();
+      200 | });
+        at /Users/rodrigo.fernandes/dev/lisboapublica/frontend/tests/availability.spec.ts:197:60
+
+    Error Context: test-results/availability-traffic-point-77e5d-xed-across-loading-at-390px/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/availability-traffic-point-77e5d-xed-across-loading-at-390px/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/availability-traffic-point-77e5d-xed-across-loading-at-390px/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    tests/availability.spec.ts:190:31 › traffic pointer controls stay fixed across loading at 1440px
+    tests/availability.spec.ts:190:31 › traffic pointer controls stay fixed across loading at 390px

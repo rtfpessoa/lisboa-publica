@@ -1,0 +1,8 @@
+--- FAIL: TestCallerCancellationDoesNotCoolDownSharedSource (0.00s)
+    --- FAIL: TestCallerCancellationDoesNotCoolDownSharedSource/canceled (0.00s)
+        upstream_policy_test.go:167: caller deadline paused healthy sibling: upstream source cooling down; retry on next scheduled refresh
+    --- FAIL: TestCallerCancellationDoesNotCoolDownSharedSource/deadline (0.00s)
+        upstream_policy_test.go:167: caller deadline paused healthy sibling: upstream source cooling down; retry on next scheduled refresh
+FAIL
+FAIL	lisboapublica/internal/app	0.762s
+FAIL

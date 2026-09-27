@@ -1,0 +1,275 @@
+{
+  "health": {
+    "database": "ok",
+    "status": "ok"
+  },
+  "config": {
+    "dev_auth": false,
+    "google_client_id": null,
+    "history_collection_status": "collecting",
+    "history_resolution_seconds": 300,
+    "history_retention_days": 30,
+    "history_storage_limit_bytes": 5000000000,
+    "live_refresh_seconds": 5
+  },
+  "operators": [
+    {
+      "id": "carris",
+      "status": "ok",
+      "static_status": "ok",
+      "reported_positions": 217,
+      "estimated_positions": 0,
+      "last_known_positions": 52,
+      "direct_status": null
+    },
+    {
+      "id": "cm",
+      "status": "ok",
+      "static_status": "ok",
+      "reported_positions": 374,
+      "estimated_positions": 0,
+      "last_known_positions": 155,
+      "direct_status": null
+    },
+    {
+      "id": "tcb",
+      "status": "ok",
+      "static_status": "ok",
+      "reported_positions": 12,
+      "estimated_positions": 0,
+      "last_known_positions": 1,
+      "direct_status": null
+    },
+    {
+      "id": "mobi",
+      "status": "ok",
+      "static_status": "ok",
+      "reported_positions": 40,
+      "estimated_positions": 0,
+      "last_known_positions": 8,
+      "direct_status": null
+    },
+    {
+      "id": "metro",
+      "status": "ok",
+      "static_status": "ok",
+      "reported_positions": 0,
+      "estimated_positions": 24,
+      "last_known_positions": 4,
+      "direct_status": "ok"
+    },
+    {
+      "id": "cp",
+      "status": "ok",
+      "static_status": "ok",
+      "reported_positions": 0,
+      "estimated_positions": 0,
+      "last_known_positions": 23,
+      "direct_status": null
+    },
+    {
+      "id": "ttsl",
+      "status": "ok",
+      "static_status": "ok",
+      "reported_positions": 1,
+      "estimated_positions": 0,
+      "last_known_positions": 4,
+      "direct_status": null
+    },
+    {
+      "id": "fertagus",
+      "status": "ok",
+      "static_status": "ok",
+      "reported_positions": 8,
+      "estimated_positions": 0,
+      "last_known_positions": 5,
+      "direct_status": null
+    }
+  ],
+  "vehicles": {
+    "cm": {
+      "page": {
+        "has_more": true,
+        "limit": 100,
+        "offset": 0,
+        "revision": "v:20260927T112434.750586828-52:1790508274776478975",
+        "total": 529
+      },
+      "status_counts": {
+        "IN_TRANSIT_TO": 64,
+        "INCOMING_AT": 23,
+        "STOPPED_AT": 13
+      },
+      "named_stops": 94,
+      "scheduled_service": 0,
+      "original_clock_checks": true,
+      "published_specifications": {
+        "seated_capacity": 88,
+        "total_capacity": 81,
+        "wheelchair_accessible": 25,
+        "contactless": 88,
+        "propulsion": 100
+      },
+      "last_known_rows": 35
+    },
+    "mobi": {
+      "page": {
+        "has_more": false,
+        "limit": 100,
+        "offset": 0,
+        "revision": "v:20260927T112434.804213895-59:1790508275132003103",
+        "total": 48
+      },
+      "status_counts": {
+        "STOPPED_AT": 20,
+        "IN_TRANSIT_TO": 28
+      },
+      "named_stops": 48,
+      "scheduled_service": 0,
+      "original_clock_checks": true,
+      "published_specifications": {
+        "seated_capacity": 18,
+        "total_capacity": 0,
+        "wheelchair_accessible": 18,
+        "contactless": 18,
+        "propulsion": 48
+      },
+      "last_known_rows": 8
+    },
+    "metro": {
+      "page": {
+        "has_more": false,
+        "limit": 100,
+        "offset": 0,
+        "revision": "v:20260927T112434.804213895-59:1790508275360257152",
+        "total": 28
+      },
+      "status_counts": {
+        "IN_TRANSIT_TO": 28
+      },
+      "named_stops": 0,
+      "scheduled_service": 0,
+      "original_clock_checks": true,
+      "published_specifications": {
+        "seated_capacity": 0,
+        "total_capacity": 0,
+        "wheelchair_accessible": 0,
+        "contactless": 0,
+        "propulsion": 0
+      },
+      "last_known_rows": 4
+    },
+    "cp": {
+      "page": {
+        "has_more": false,
+        "limit": 100,
+        "offset": 0,
+        "revision": "v:20260927T112434.804213895-59:1790508275657365499",
+        "total": 23
+      },
+      "status_counts": {
+        "STOPPED_AT": 13,
+        "INCOMING_AT": 2,
+        "IN_TRANSIT_TO": 8
+      },
+      "named_stops": 0,
+      "scheduled_service": 23,
+      "original_clock_checks": true,
+      "published_specifications": {
+        "seated_capacity": 0,
+        "total_capacity": 0,
+        "wheelchair_accessible": 0,
+        "contactless": 0,
+        "propulsion": 0
+      },
+      "last_known_rows": 23
+    }
+  },
+  "cp_trips": {
+    "page": {
+      "has_more": true,
+      "limit": 100,
+      "offset": 0,
+      "revision": "t:20260927T112434.804213895-59:1790508275656665000:1790594675656665000",
+      "total": 592
+    },
+    "with_scheduled_endpoints": 100,
+    "sample_services": [
+      {
+        "destination_name": "Praias do Sado-A",
+        "destination_source_stop_id": "94_91058",
+        "origin_name": "Barreiro",
+        "origin_source_stop_id": "94_95000",
+        "service_date": "2026-09-27",
+        "source_url": "https://go.tmlmobilidade.pt/hub/api/v1/plans"
+      },
+      {
+        "destination_name": "Lisboa Rossio",
+        "destination_source_stop_id": "94_59006",
+        "origin_name": "Mira Sintra - Melecas",
+        "origin_source_stop_id": "94_62042",
+        "service_date": "2026-09-27",
+        "source_url": "https://go.tmlmobilidade.pt/hub/api/v1/plans"
+      },
+      {
+        "destination_name": "Guarda",
+        "destination_source_stop_id": "94_49007",
+        "origin_name": "Lisboa Santa Apolonia",
+        "origin_source_stop_id": "94_30007",
+        "service_date": "2026-09-27",
+        "source_url": "https://go.tmlmobilidade.pt/hub/api/v1/plans"
+      }
+    ]
+  },
+  "cp_predictions": {
+    "availability": {
+      "collected_at": "2026-09-27T11:24:32.211576084Z",
+      "excluded_updates": 156,
+      "message": "Cobertura parcial: algumas atualizações estão antigas ou não podem ser associadas com segurança.",
+      "published_at": "2026-09-27T11:24:20Z",
+      "source_url": "https://go.tmlmobilidade.pt/hub/api/v1/realtime/eta/gtfs",
+      "status": "partial"
+    },
+    "page": {
+      "has_more": true,
+      "limit": 20,
+      "offset": 0,
+      "revision": "t:20260927T112436.073083062-60:1790508276182031849:1790515476182031849",
+      "total": 80
+    },
+    "original_clock_checks": true,
+    "human_names": true,
+    "sample_calls": [
+      {
+        "stop_name": "Lisboa Oriente",
+        "destination_name": "Lisboa Oriente",
+        "service_label": "18448",
+        "date_basis": "matched_schedule"
+      },
+      {
+        "stop_name": "Monte Abraao",
+        "destination_name": "Lisboa Oriente",
+        "service_label": "18452",
+        "date_basis": "matched_schedule"
+      },
+      {
+        "stop_name": "Alhandra",
+        "destination_name": "Lisboa Santa Apolonia",
+        "service_label": "16020",
+        "date_basis": "matched_schedule"
+      }
+    ]
+  },
+  "unauthenticated_keys_status": 401,
+  "root": {
+    "status": 200,
+    "headers": {
+      "Content-Security-Policy": "frame-ancestors 'none'",
+      "Strict-Transport-Security": "max-age=31536000",
+      "X-Frame-Options": "DENY",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=(self)"
+    }
+  }
+}
