@@ -38,3 +38,6 @@ The [popup and selective-path integration validation](VALIDATION-popup-path-inte
 [Direction boards and independent journey times](VEHICLE-POPUPS.md) describe station selection, full visit pagination, source evidence and current actual-event limitations. Canonical matching, history and integration references above remain authoritative for their respective topics.
 
 Dated delivery evidence for [Metro published routes](research/metro-published-route-2026-09-27.md) and [durable reporting state](research/vehicle-reporting-state-2026-09-27.md) records investigated source behavior and performed checks; use the canonical references for current application behavior.
+
+[Station popup rollout verification](research/station-popup-stability-2026-09-27/VALIDATION.md)
+records the normal Maat repair, browser/Go checks and exact-main deployment on 2026-09-27.

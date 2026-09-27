@@ -1,0 +1,29 @@
+{
+  "version": "383bae74ff7856b04790482a2f17fcce83f64bcb",
+  "image": "sha256:c2d9050892bca3fb811a1054580bd53e9b7e8f25eb52ed83bcd80c1ea8d1f670",
+  "rollback_image": "sha256:226158274d2e18996bf8f0a2c394fa90bc74b8b95817b45baedee95d2b5747af",
+  "health": "ok",
+  "database": "ok",
+  "runtime_environment": "unchanged",
+  "runtime_limits": "unchanged",
+  "other_containers_unchanged": true,
+  "artifact_hashes_match": true,
+  "public_frontend_hash_matches": true,
+  "restart_count": 0,
+  "protected_backup": "/root/lisboa-station-popup-rollout/383bae74ff78-main",
+  "public_url": "https://lisboapublica.rtfpessoa.xyz",
+  "checked_date": "2026-09-27",
+  "artifact_sha256": "8464d19569fa23b107e7a1701ed034e4cf50506083e969164eb01a430fd266d9",
+  "server_sha256": "76788e9ead5eb28a0c80a5b0d0c29e5d4d923e9af2164230874fe7966e98cc4c",
+  "frontend_index_sha256": "9d051fd258cae4c6841840c0cd815b386d89974069e37be5568cec016dc978d2",
+  "source": "exact Git commit; no experimental Metro source overlay",
+  "public_station_smoke": {
+    "station": "Marqu\u00eas de Pombal",
+    "search_entries": 1,
+    "line_sections": 2,
+    "platforms_in_nearby_navigation": 0,
+    "provisional_coverage_labels": false,
+    "history_disclaimer_occurrences": 1
+  },
+  "compose_image_override": "/root/lisboa-station-popup-rollout/383bae74ff78-main/image.override.json"
+}

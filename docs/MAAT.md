@@ -35,3 +35,13 @@ A integração de chegadas e seleção de paragens passa o gate normal Go: a can
 The 24-hour vehicle retention/permanent-fact commits pass the normal pinned Go regression gate: CM clock correction `f25e88d` scored **89/delta0**; the complete vehicle change `a18a774` scored **90/delta0**, with no critical regressions and **zero suppressions**. Two blocked vehicle candidates were repaired by separating fact acceptance, registration transitions, field projection, database scanning/recovery and publication responsibilities, without changing clocks, workload or thresholds. Postgres full race, focused fact race, vet, deterministic generation and the TypeScript production build pass after extraction. TypeScript remains unchecked by Maat; the absolute95 target is not claimed. See [dated validation](research/vehicle-position-retention-2026-09-27/VALIDATION.md).
 
 The universal ten-minute position display policy commit `5d3ee7f` passes the normal pinned Go regression gate at **90/delta0**, with no critical regressions and **zero suppressions**. No structural repair, gate change or suppression was necessary. TypeScript remains unchecked by Maat; its production build and 40 distinct browser cases passed separately (two optional official-geometry cases skipped). Full Go race tests, vet, deterministic generation, 154 local documentation links and whitespace checks passed. This change uses a five-minute warning for all eight operators and ten-minute expiry from original source clocks, including disconnected clients; it replaces the earlier 24-hour display policy. The absolute95 target remains unresolved.
+
+
+The station popup commit `383bae7` passes the normal pinned Go regression gate at **90/delta0**,
+with no structural regressions and **zero suppressions**.
+The first candidate was blocked for station-coverage complexity, logical operators and maintainability;
+evidence presentation and collector availability were separated without changing coverage rules or clocks.
+Full Go/race, vet, generation consistency and the TypeScript build passed;
+49 distinct relevant browser cases passed across targeted runs.
+TypeScript remains unchecked by Maat, and the absolute95 target remains unresolved.
+See [dated verification](research/station-popup-stability-2026-09-27/VALIDATION.md).

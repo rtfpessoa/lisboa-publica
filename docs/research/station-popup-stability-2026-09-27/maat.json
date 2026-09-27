@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "checked_languages": [
+    "go"
+  ],
+  "unchecked_languages": [
+    "typescript"
+  ],
+  "score": 90,
+  "score_delta": 0,
+  "critical_regressions": [],
+  "suppressions": 0,
+  "bundle": "cb1c6a244e1972174357b029bd304d4a3c6fb2aa",
+  "commit": "383bae74ff7856b04790482a2f17fcce83f64bcb",
+  "repairs": [
+    "Separated evidence-based station coverage from requested-stop availability."
+  ],
+  "normal_git_hook": true,
+  "absolute_threshold_95_met": false
+}
