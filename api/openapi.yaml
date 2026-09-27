@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Lisboa Pública API",
+    "title": "Lisboa P\u00fablica API",
     "version": "1.0.0",
     "description": "Provider-backed Lisbon transit. apiKey scopes use x-required-scopes; all data lists are paginated. Live revisions expire with410; snapshot revisions freeze committed ingestion membership. Scheduled and estimated data are explicitly classified. Dashboard reads are public for now and rate-limited; supplied API keys still enforce x-required-scopes. Key management requires a Google session. Expensive reads share two fail-fast slots and a 15-second operation deadline (503 busy/timeout). Schedule and historical grouped lists reject over 100000 results with 400 result_limit instead of truncation; narrow operators, route or time window. Busy503 responses include Retry-After."
   },
@@ -562,6 +562,9 @@
           },
           {
             "$ref": "#/components/parameters/route_id"
+          },
+          {
+            "$ref": "#/components/parameters/stop_id"
           }
         ],
         "x-public-read": true
@@ -1491,6 +1494,105 @@
         ],
         "x-public-read": true
       }
+    },
+    "/api/v1/vehicles/{vehicle_id}/calls": {
+      "get": {
+        "operationId": "getVehicleCalls",
+        "summary": "Read cached visits of a frozen vehicle/service",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleCallsPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "parameters": [
+          {
+            "name": "vehicle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          {
+            "name": "reference",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 2048
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 20
+            }
+          },
+          {
+            "$ref": "#/components/parameters/offset"
+          },
+          {
+            "name": "revision",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "description": "Opaque calls revision. Whole collection expires at earliest included CP source expiry."
+          },
+          {
+            "name": "include_geometry",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "Opt in to exact CM pattern geometry on page zero only. Cache reads only."
+          }
+        ],
+        "x-public-read": true
+      }
     }
   },
   "components": {
@@ -2241,6 +2343,19 @@
             "type": "boolean",
             "nullable": true,
             "description": "Optional published equipment value. Some upstream schemas default false when unspecified; false does not prove equipment absence or working availability."
+          },
+          "service_label": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "Published commercial service number, never inferred from an internal ID."
+          },
+          "vehicle_ref": {
+            "$ref": "#/components/schemas/VehicleReference"
+          },
+          "pattern_id": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "Provider-published pattern identity, qualified by operator and original plan/agency. Does not establish operating day or schedule."
           }
         },
         "required": [
@@ -2303,6 +2418,11 @@
           },
           "scheduled_service": {
             "$ref": "#/components/schemas/ScheduledEndpoints"
+          },
+          "service_label": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "Published commercial service number, never inferred from an internal ID."
           }
         },
         "required": [
@@ -2382,6 +2502,14 @@
           "route_name": {
             "type": "string",
             "nullable": true
+          },
+          "service_label": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "Published commercial service number, never inferred from an internal ID."
+          },
+          "vehicle_ref": {
+            "$ref": "#/components/schemas/VehicleReference"
           }
         },
         "required": [
@@ -3317,6 +3445,9 @@
           },
           "source_url": {
             "type": "string"
+          },
+          "vehicle_ref": {
+            "$ref": "#/components/schemas/VehicleReference"
           }
         },
         "required": [
@@ -3407,6 +3538,146 @@
           "page",
           "availability"
         ]
+      },
+      "VehicleReference": {
+        "type": "object",
+        "required": [
+          "vehicle_id",
+          "reference"
+        ],
+        "properties": {
+          "vehicle_id": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        },
+        "description": "Response-only frozen navigation reference. Binds cache revision, original observation and exact published service. Not an authorization credential."
+      },
+      "VehicleCall": {
+        "type": "object",
+        "required": [
+          "id",
+          "stop_id",
+          "stop_name",
+          "kind",
+          "source_url"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "stop_id": {
+            "type": "string"
+          },
+          "stop_name": {
+            "type": "string"
+          },
+          "stop": {
+            "$ref": "#/components/schemas/Stop"
+          },
+          "stop_sequence": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "predicted",
+              "scheduled",
+              "published_route"
+            ]
+          },
+          "scheduled_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expected_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source_updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "delay_seconds": {
+            "type": "integer"
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "stop_plan_id": {
+            "type": "string",
+            "description": "Published static plan of this stop, response-only navigation provenance."
+          },
+          "stop_static_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Static network revision timestamp; revalidate the target catalog before opening a station."
+          }
+        }
+      },
+      "VehicleCallsPage": {
+        "type": "object",
+        "required": [
+          "vehicle",
+          "data",
+          "page",
+          "availability",
+          "coverage",
+          "progress"
+        ],
+        "properties": {
+          "vehicle": {
+            "$ref": "#/components/schemas/Vehicle"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VehicleCall"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "available",
+              "partial",
+              "plan_mismatch",
+              "unidentified_service",
+              "next_stop_only",
+              "unavailable"
+            ]
+          },
+          "coverage": {
+            "type": "string",
+            "enum": [
+              "regional_subset",
+              "complete_published_route"
+            ]
+          },
+          "progress": {
+            "type": "string",
+            "enum": [
+              "known",
+              "unknown"
+            ]
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Earliest expiry of the whole pinned CP prediction result, including rows on later pages."
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/RouteShape",
+            "description": "Exact published pattern geometry from the frozen revision. Only present on page zero when include_geometry=true; does not change vehicle position."
+          }
+        }
       }
     }
   }

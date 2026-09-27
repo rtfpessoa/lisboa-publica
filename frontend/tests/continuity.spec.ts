@@ -33,9 +33,9 @@ test('selected CP retains one dimmed marker, truthful counts and no-update detai
  const count=()=>page.evaluate(()=>(window as unknown as {vehicleFeatures:unknown[]}).vehicleFeatures.length);
  await expect.poll(count).toBe(1);await expect(page.locator('.live-metrics .metric').first()).toContainText('1');
  fixture.setPhase('missing');await page.clock.fastForward(6000);await expect(page.locator('.live-metrics')).toContainText('posições anteriores');await expect(page.locator('.live-metrics .metric').first()).toContainText('0');await expect.poll(count).toBe(1);
- const map=page.locator('.map canvas');await expect(map).toBeVisible();const box=await map.boundingBox();await page.mouse.click(box!.x+box!.width/2,box!.y+box!.height/2);await expect(page.locator('.detail-panel')).toContainText('Última posição reportada');await expect(page.locator('.detail-panel')).toContainText('Publicado');
+ const map=page.locator('.map canvas');await expect(map).toBeVisible();const box=await map.boundingBox();await page.mouse.click(box!.x+box!.width/2,box!.y+box!.height/2);await expect(page.locator('.detail-panel')).toContainText('Última posição conhecida');await expect(page.locator('.detail-panel')).toContainText('Publicado');
  fixture.setPhase('error');await page.clock.fastForward(300000);await expect(page.locator('.detail-panel')).toContainText('Sem atualização');await expect(page.locator('.live-metrics .metric').first()).toContainText('—');await expect(page.getByRole('button',{name:'CP',exact:true})).toHaveAttribute('aria-pressed','true');
- await page.clock.fastForward(3300000);await expect.poll(count).toBe(0);await expect(page.locator('.detail-panel')).toContainText('Posição anterior expirada');
+ await page.clock.fastForward(3300000);await expect.poll(count).toBe(0);await expect(page.locator('.detail-panel')).toContainText('Posição expirada');
  fixture.setPhase('recovery',fixture.epoch+3610000);await page.clock.fastForward(10000);await expect.poll(count).toBe(1);await expect(page.locator('.detail-panel')).not.toContainText('expirada');expect(errors).toEqual([]);
 });
 

@@ -1,0 +1,24 @@
+npm notice run lisboa-publica@1.0.0 test
+npm notice run playwright test popup-navigation.spec.ts
+
+Running 15 tests using 1 worker
+
+(node:80967) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 tests/popup-navigation.spec.ts:38:99 › train station to vehicle to next stop uses frozen references (7.2s)
+  ✓   2 tests/popup-navigation.spec.ts:38:99 › metro station to vehicle to next stop uses frozen references (4.9s)
+  ✓   3 tests/popup-navigation.spec.ts:38:99 › ferry station to vehicle to next stop uses frozen references (6.2s)
+  ✓   4 tests/popup-navigation.spec.ts:38:99 › bus station to vehicle to next stop uses frozen references (5.8s)
+  ✓   5 tests/popup-navigation.spec.ts:46:24 › overlapping station and train have independent touch targets at DPR 1 (4.7s)
+  ✓   6 tests/popup-navigation.spec.ts:46:24 › overlapping station and train have independent touch targets at DPR 2 (5.4s)
+  ✓   7 tests/popup-navigation.spec.ts:54:1 › expired or changed station link keeps origin and never jumps to latest ID (4.0s)
+  ✓   8 tests/popup-navigation.spec.ts:57:1 › closing origin cancels delayed navigation without reopening details (5.3s)
+  ✓   9 tests/popup-navigation.spec.ts:60:1 › presentation collisions preserve all dense targets and original positions (11ms)
+  ✓  10 tests/popup-navigation.spec.ts:65:1 › names, original-clock age and service identity remain unambiguous (2ms)
+  ✓  11 tests/popup-navigation.spec.ts:71:1 › same service new observation rebinds remaining calls without showing passed stops (3.4s)
+  ✓  12 tests/popup-navigation.spec.ts:75:1 › frozen calls cannot navigate a stop replaced by a different static plan (4.2s)
+  ✓  13 tests/popup-navigation.spec.ts:78:34 › station failed refresh qualifies cached references and expires them (true) (4.2s)
+  ✓  14 tests/popup-navigation.spec.ts:78:34 › station failed refresh qualifies cached references and expires them (false) (4.6s)
+  ✓  15 tests/popup-navigation.spec.ts:81:1 › dense chooser heartbeat preserves a lower focused target (2.4s)
+
+  15 passed (1.1m)

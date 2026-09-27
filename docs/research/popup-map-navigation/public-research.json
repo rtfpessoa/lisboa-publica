@@ -1,0 +1,741 @@
+{
+  "captured_at": "2026-09-27T12:14:31.242929+00:00",
+  "vehicle_samples": [
+    {
+      "operator": "carris",
+      "sample_rows": 100,
+      "total": 273,
+      "last_known": 19,
+      "field_presence": {
+        "trip_id": 100,
+        "plan_id": 100,
+        "operational_date": 100,
+        "stop_id": 82,
+        "current_status": 100,
+        "model": 100,
+        "license_plate": 100,
+        "typology": 100,
+        "propulsion": 100,
+        "seated_capacity": 0,
+        "total_capacity": 0,
+        "wheelchair_accessible": 0,
+        "contactless": 0,
+        "speed_kmh": 74
+      },
+      "identity_samples": [
+        {
+          "id": "carris:1703",
+          "source_id": "1703",
+          "trip_id": "carris:2935_20260606_123_0_11",
+          "plan_id": "82YP2",
+          "operational_date": "2026-09-27",
+          "stop_id": "carris:5805",
+          "current_status": "IN_TRANSIT_TO"
+        },
+        {
+          "id": "carris:1710",
+          "source_id": "1710",
+          "trip_id": "carris:2953_20260606_123_0_12",
+          "plan_id": "82YP2",
+          "operational_date": "2026-09-27",
+          "stop_id": "carris:1612",
+          "current_status": "IN_TRANSIT_TO"
+        }
+      ]
+    },
+    {
+      "operator": "cm",
+      "sample_rows": 100,
+      "total": 542,
+      "last_known": 36,
+      "field_presence": {
+        "trip_id": 100,
+        "plan_id": 0,
+        "operational_date": 0,
+        "stop_id": 97,
+        "current_status": 100,
+        "model": 100,
+        "license_plate": 100,
+        "typology": 100,
+        "propulsion": 100,
+        "seated_capacity": 100,
+        "total_capacity": 100,
+        "wheelchair_accessible": 22,
+        "contactless": 100,
+        "speed_kmh": 63
+      },
+      "identity_samples": [
+        {
+          "id": "cm:[A2L1N]12059",
+          "source_id": "[A2L1N]12059",
+          "trip_id": "cm:[K56AM][A2L1N]4621_0_2|1700|1155",
+          "plan_id": null,
+          "operational_date": null,
+          "stop_id": "cm:090165",
+          "current_status": "INCOMING_AT"
+        },
+        {
+          "id": "cm:[A2L1N]12061",
+          "source_id": "[A2L1N]12061",
+          "trip_id": "cm:[K56AM][A2L1N]4621_0_1|1700|1200",
+          "plan_id": null,
+          "operational_date": null,
+          "stop_id": "cm:140074",
+          "current_status": "INCOMING_AT"
+        }
+      ]
+    },
+    {
+      "operator": "tcb",
+      "sample_rows": 13,
+      "total": 13,
+      "last_known": 1,
+      "field_presence": {
+        "trip_id": 13,
+        "plan_id": 13,
+        "operational_date": 13,
+        "stop_id": 12,
+        "current_status": 0,
+        "model": 0,
+        "license_plate": 0,
+        "typology": 0,
+        "propulsion": 0,
+        "seated_capacity": 0,
+        "total_capacity": 0,
+        "wheelchair_accessible": 0,
+        "contactless": 0,
+        "speed_kmh": 7
+      },
+      "identity_samples": [
+        {
+          "id": "tcb:407854",
+          "source_id": "407854",
+          "trip_id": "tcb:DF_150-TERM_0_DF_64_1325",
+          "plan_id": "YFKP6",
+          "operational_date": "2026-09-27",
+          "stop_id": "tcb:000369",
+          "current_status": null
+        },
+        {
+          "id": "tcb:407856",
+          "source_id": "407856",
+          "trip_id": "tcb:DF_149-TERM_0_DF_67_1325",
+          "plan_id": "YFKP6",
+          "operational_date": "2026-09-27",
+          "stop_id": "tcb:000369",
+          "current_status": null
+        }
+      ]
+    },
+    {
+      "operator": "mobi",
+      "sample_rows": 47,
+      "total": 47,
+      "last_known": 13,
+      "field_presence": {
+        "trip_id": 47,
+        "plan_id": 47,
+        "operational_date": 47,
+        "stop_id": 47,
+        "current_status": 47,
+        "model": 47,
+        "license_plate": 47,
+        "typology": 47,
+        "propulsion": 47,
+        "seated_capacity": 19,
+        "total_capacity": 0,
+        "wheelchair_accessible": 19,
+        "contactless": 19,
+        "speed_kmh": 34
+      },
+      "identity_samples": [
+        {
+          "id": "mobi:1001",
+          "source_id": "1001",
+          "trip_id": "mobi:M10-1-025-A-SDF-13h15-GrupoDesportiv",
+          "plan_id": "QQQN3",
+          "operational_date": "2026-09-27",
+          "stop_id": "mobi:20949",
+          "current_status": "STOPPED_AT"
+        },
+        {
+          "id": "mobi:1004",
+          "source_id": "1004",
+          "trip_id": "mobi:M19-2-024-A-SDF-12h35-EstorilEstacao",
+          "plan_id": "QQQN3",
+          "operational_date": "2026-09-27",
+          "stop_id": "mobi:20200",
+          "current_status": "IN_TRANSIT_TO"
+        }
+      ]
+    },
+    {
+      "operator": "metro",
+      "sample_rows": 28,
+      "total": 28,
+      "last_known": 2,
+      "field_presence": {
+        "trip_id": 28,
+        "plan_id": 28,
+        "operational_date": 28,
+        "stop_id": 0,
+        "current_status": 28,
+        "model": 0,
+        "license_plate": 0,
+        "typology": 0,
+        "propulsion": 0,
+        "seated_capacity": 0,
+        "total_capacity": 0,
+        "wheelchair_accessible": 0,
+        "contactless": 0,
+        "speed_kmh": 0
+      },
+      "identity_samples": [
+        {
+          "id": "metro:001A",
+          "source_id": "001A",
+          "trip_id": "metro:A_2_10.A14",
+          "plan_id": "RSRHS",
+          "operational_date": "2026-09-27",
+          "stop_id": null,
+          "current_status": "IN_TRANSIT_TO"
+        },
+        {
+          "id": "metro:002A",
+          "source_id": "002A",
+          "trip_id": "metro:A_2_10.A14",
+          "plan_id": "RSRHS",
+          "operational_date": "2026-09-27",
+          "stop_id": null,
+          "current_status": "IN_TRANSIT_TO"
+        }
+      ]
+    },
+    {
+      "operator": "cp",
+      "sample_rows": 29,
+      "total": 29,
+      "last_known": 29,
+      "field_presence": {
+        "trip_id": 29,
+        "plan_id": 29,
+        "operational_date": 29,
+        "stop_id": 0,
+        "current_status": 29,
+        "model": 0,
+        "license_plate": 0,
+        "typology": 0,
+        "propulsion": 0,
+        "seated_capacity": 0,
+        "total_capacity": 0,
+        "wheelchair_accessible": 0,
+        "contactless": 0,
+        "speed_kmh": 0
+      },
+      "identity_samples": [
+        {
+          "id": "cp:16019",
+          "source_id": "16019",
+          "trip_id": "cp:16019_20251214",
+          "plan_id": "76XA2",
+          "operational_date": "2026-09-27",
+          "stop_id": null,
+          "current_status": "IN_TRANSIT_TO"
+        },
+        {
+          "id": "cp:16020",
+          "source_id": "16020",
+          "trip_id": "cp:16020_20251214",
+          "plan_id": "76XA2",
+          "operational_date": "2026-09-27",
+          "stop_id": null,
+          "current_status": "IN_TRANSIT_TO"
+        }
+      ]
+    },
+    {
+      "operator": "ttsl",
+      "sample_rows": 6,
+      "total": 6,
+      "last_known": 2,
+      "field_presence": {
+        "trip_id": 6,
+        "plan_id": 6,
+        "operational_date": 6,
+        "stop_id": 6,
+        "current_status": 6,
+        "model": 0,
+        "license_plate": 0,
+        "typology": 0,
+        "propulsion": 0,
+        "seated_capacity": 0,
+        "total_capacity": 0,
+        "wheelchair_accessible": 0,
+        "contactless": 0,
+        "speed_kmh": 4
+      },
+      "identity_samples": [
+        {
+          "id": "ttsl:39",
+          "source_id": "39",
+          "trip_id": "ttsl:0105A1300D1",
+          "plan_id": "YYS70",
+          "operational_date": "2026-09-27",
+          "stop_id": "ttsl:2",
+          "current_status": "IN_TRANSIT_TO"
+        },
+        {
+          "id": "ttsl:5",
+          "source_id": "5",
+          "trip_id": "ttsl:0908A1300D1",
+          "plan_id": "YYS70",
+          "operational_date": "2026-09-27",
+          "stop_id": "ttsl:9",
+          "current_status": "IN_TRANSIT_TO"
+        }
+      ]
+    },
+    {
+      "operator": "fertagus",
+      "sample_rows": 13,
+      "total": 13,
+      "last_known": 5,
+      "field_presence": {
+        "trip_id": 13,
+        "plan_id": 13,
+        "operational_date": 13,
+        "stop_id": 0,
+        "current_status": 13,
+        "model": 0,
+        "license_plate": 0,
+        "typology": 0,
+        "propulsion": 0,
+        "seated_capacity": 0,
+        "total_capacity": 0,
+        "wheelchair_accessible": 0,
+        "contactless": 0,
+        "speed_kmh": 7
+      },
+      "identity_samples": [
+        {
+          "id": "fertagus:14235",
+          "source_id": "14235",
+          "trip_id": "fertagus:3205",
+          "plan_id": "2XUL7",
+          "operational_date": "2026-09-27",
+          "stop_id": null,
+          "current_status": "IN_TRANSIT_TO"
+        },
+        {
+          "id": "fertagus:14236",
+          "source_id": "14236",
+          "trip_id": "fertagus:3262",
+          "plan_id": "2XUL7",
+          "operational_date": "2026-09-27",
+          "stop_id": null,
+          "current_status": "IN_TRANSIT_TO"
+        }
+      ]
+    }
+  ],
+  "operator_modes": [
+    {
+      "id": "carris",
+      "mode": "bus",
+      "plan_id": "82YP2",
+      "status": "ok"
+    },
+    {
+      "id": "cm",
+      "mode": "bus",
+      "plan_id": null,
+      "status": "ok"
+    },
+    {
+      "id": "tcb",
+      "mode": "bus",
+      "plan_id": "YFKP6",
+      "status": "ok"
+    },
+    {
+      "id": "mobi",
+      "mode": "bus",
+      "plan_id": "QQQN3",
+      "status": "ok"
+    },
+    {
+      "id": "metro",
+      "mode": "metro",
+      "plan_id": "RSRHS",
+      "status": "ok"
+    },
+    {
+      "id": "cp",
+      "mode": "train",
+      "plan_id": "76XA2",
+      "status": "ok"
+    },
+    {
+      "id": "ttsl",
+      "mode": "ferry",
+      "plan_id": "YYS70",
+      "status": "ok"
+    },
+    {
+      "id": "fertagus",
+      "mode": "train",
+      "plan_id": "2XUL7",
+      "status": "ok"
+    }
+  ],
+  "cp_routes": [
+    {
+      "id": "cp:AP_0",
+      "short_name": "AP",
+      "long_name": "Lisboa Santa Apolónia - Porto Campanhã",
+      "color": "#7b9a40"
+    },
+    {
+      "id": "cp:AP_1",
+      "short_name": "AP",
+      "long_name": "Faro - Porto Campanhã",
+      "color": "#7b9a40"
+    },
+    {
+      "id": "cp:AP_2",
+      "short_name": "AP",
+      "long_name": "Lisboa Santa Apolónia - Braga",
+      "color": "#7b9a40"
+    },
+    {
+      "id": "cp:AZAMBUJA_0",
+      "short_name": "Azambuja",
+      "long_name": "Azambuja - Lisboa Santa Apolónia",
+      "color": "#FF0000"
+    },
+    {
+      "id": "cp:AZAMBUJA_1",
+      "short_name": "Azambuja",
+      "long_name": "Sintra - Alverca",
+      "color": "#FF0000"
+    },
+    {
+      "id": "cp:AZAMBUJA_2",
+      "short_name": "Azambuja",
+      "long_name": "Alcântara-Terra - Castanheira do Ribatejo",
+      "color": "#FF0000"
+    },
+    {
+      "id": "cp:AZAMBUJA_3",
+      "short_name": "Azambuja",
+      "long_name": "Alcântara-Terra - Azambuja",
+      "color": "#FF0000"
+    },
+    {
+      "id": "cp:AZAMBUJA_4",
+      "short_name": "Azambuja",
+      "long_name": "Alcântara-Terra - Alverca",
+      "color": "#FF0000"
+    },
+    {
+      "id": "cp:CASCAIS_0",
+      "short_name": "Cascais",
+      "long_name": "Algés - Cais do Sodré",
+      "color": "#FFA500"
+    },
+    {
+      "id": "cp:CASCAIS_1",
+      "short_name": "Cascais",
+      "long_name": "Caxias - Cais do Sodré",
+      "color": "#FFA500"
+    },
+    {
+      "id": "cp:CASCAIS_2",
+      "short_name": "Cascais",
+      "long_name": "Oeiras - Cais do Sodré",
+      "color": "#FFA500"
+    },
+    {
+      "id": "cp:CASCAIS_3",
+      "short_name": "Cascais",
+      "long_name": "São Pedro do Estoril - Cais do Sodré",
+      "color": "#FFA500"
+    },
+    {
+      "id": "cp:CASCAIS_4",
+      "short_name": "Cascais",
+      "long_name": "Cascais - Cais do Sodré",
+      "color": "#FFA500"
+    },
+    {
+      "id": "cp:CASCAIS_5",
+      "short_name": "Cascais",
+      "long_name": "Cascais - Algés",
+      "color": "#FFA500"
+    },
+    {
+      "id": "cp:IC_0",
+      "short_name": "IC",
+      "long_name": "Lisboa Santa Apolónia - Porto Campanhã",
+      "color": "#33703c"
+    },
+    {
+      "id": "cp:IC_1",
+      "short_name": "IC",
+      "long_name": "Valença - Lisboa Santa Apolónia",
+      "color": "#33703c"
+    },
+    {
+      "id": "cp:IC_2",
+      "short_name": "IC",
+      "long_name": "Lisboa Santa Apolónia - Guimarães",
+      "color": "#33703c"
+    },
+    {
+      "id": "cp:IC_3",
+      "short_name": "IC",
+      "long_name": "Lisboa Santa Apolónia - Braga",
+      "color": "#33703c"
+    },
+    {
+      "id": "cp:IC_4",
+      "short_name": "IC",
+      "long_name": "Guarda - Lisboa Santa Apolónia",
+      "color": "#33703c"
+    },
+    {
+      "id": "cp:IC_5",
+      "short_name": "IC",
+      "long_name": "Abrantes - Lisboa Santa Apolónia",
+      "color": "#33703c"
+    },
+    {
+      "id": "cp:IC_6",
+      "short_name": "IC",
+      "long_name": "Faro - Lisboa Oriente",
+      "color": "#33703c"
+    },
+    {
+      "id": "cp:IC_7",
+      "short_name": "IC",
+      "long_name": "Évora - Lisboa Oriente",
+      "color": "#33703c"
+    },
+    {
+      "id": "cp:IR_13",
+      "short_name": "IR",
+      "long_name": "Tomar - Lisboa Santa Apolónia",
+      "color": "#3c70b3"
+    },
+    {
+      "id": "cp:IR_14",
+      "short_name": "IR",
+      "long_name": "Mira Sintra-Meleças - Lisboa Santa Apolónia",
+      "color": "#3c70b3"
+    },
+    {
+      "id": "cp:IR_17",
+      "short_name": "IR",
+      "long_name": "Caldas da Rainha - Mira Sintra-Meleças",
+      "color": "#3c70b3"
+    },
+    {
+      "id": "cp:IR_8",
+      "short_name": "IR",
+      "long_name": "Lisboa Santa Apolónia - Porto Campanhã",
+      "color": "#3c70b3"
+    },
+    {
+      "id": "cp:R_16",
+      "short_name": "R",
+      "long_name": "Entroncamento - Lisboa Santa Apolónia",
+      "color": "#de833c"
+    },
+    {
+      "id": "cp:R_17",
+      "short_name": "R",
+      "long_name": "Tomar - Lisboa Santa Apolónia",
+      "color": "#de833c"
+    },
+    {
+      "id": "cp:R_18",
+      "short_name": "R",
+      "long_name": "Mouriscas-A - Lisboa Santa Apolónia",
+      "color": "#de833c"
+    },
+    {
+      "id": "cp:R_19",
+      "short_name": "R",
+      "long_name": "Mira Sintra-Meleças - Lisboa Santa Apolónia",
+      "color": "#de833c"
+    },
+    {
+      "id": "cp:R_20",
+      "short_name": "R",
+      "long_name": "Lisboa Oriente - Braga",
+      "color": "#de833c"
+    },
+    {
+      "id": "cp:R_21",
+      "short_name": "R",
+      "long_name": "Entroncamento - Lisboa Oriente",
+      "color": "#de833c"
+    },
+    {
+      "id": "cp:R_35",
+      "short_name": "R",
+      "long_name": "Granja - Lisboa Santa Apolónia",
+      "color": "#de833c"
+    },
+    {
+      "id": "cp:R_37",
+      "short_name": "R",
+      "long_name": "Guarda - Lisboa Santa Apolónia",
+      "color": "#de833c"
+    },
+    {
+      "id": "cp:R_4",
+      "short_name": "R",
+      "long_name": "Lisboa Santa Apolónia - Porto Campanhã",
+      "color": "#de833c"
+    },
+    {
+      "id": "cp:R_43",
+      "short_name": "R",
+      "long_name": "Caldas da Rainha - Mira Sintra-Meleças",
+      "color": "#de833c"
+    },
+    {
+      "id": "cp:SADO_0",
+      "short_name": "Sado",
+      "long_name": "Barreiro - Setúbal",
+      "color": "#0000FF"
+    },
+    {
+      "id": "cp:SADO_1",
+      "short_name": "Sado",
+      "long_name": "Barreiro - Praias do Sado-A",
+      "color": "#0000FF"
+    },
+    {
+      "id": "cp:SINTRA_0",
+      "short_name": "Sintra",
+      "long_name": "Azambuja - Lisboa Oriente",
+      "color": "#008000"
+    },
+    {
+      "id": "cp:SINTRA_1",
+      "short_name": "Sintra",
+      "long_name": "Sintra - Lisboa Oriente",
+      "color": "#008000"
+    },
+    {
+      "id": "cp:SINTRA_2",
+      "short_name": "Sintra",
+      "long_name": "Alverca - Lisboa Oriente",
+      "color": "#008000"
+    },
+    {
+      "id": "cp:SINTRA_3",
+      "short_name": "Sintra",
+      "long_name": "Castanheira do Ribatejo - Lisboa Oriente",
+      "color": "#008000"
+    },
+    {
+      "id": "cp:SINTRA_4",
+      "short_name": "Sintra",
+      "long_name": "Sintra - Lisboa Rossio",
+      "color": "#008000"
+    },
+    {
+      "id": "cp:SINTRA_5",
+      "short_name": "Sintra",
+      "long_name": "Mira Sintra-Meleças - Lisboa Rossio",
+      "color": "#008000"
+    }
+  ],
+  "metro_routes": [
+    {
+      "id": "metro:1_0",
+      "short_name": "Az",
+      "long_name": "Azul",
+      "color": "#6699cc"
+    },
+    {
+      "id": "metro:2_0",
+      "short_name": "Am",
+      "long_name": "Amarela",
+      "color": "#ffcc00"
+    },
+    {
+      "id": "metro:2_1",
+      "short_name": "Am",
+      "long_name": "Amarela",
+      "color": "#ffcc00"
+    },
+    {
+      "id": "metro:3_0",
+      "short_name": "Vd",
+      "long_name": "Verde",
+      "color": "#00cc99"
+    },
+    {
+      "id": "metro:4_0",
+      "short_name": "Vm",
+      "long_name": "Vermelha",
+      "color": "#ff3366"
+    }
+  ],
+  "hub_position_fields": {
+    "rows": 667,
+    "nonempty": {
+      "_id": 667,
+      "agency_id": 667,
+      "bearing": 571,
+      "bearing_method": 667,
+      "calendar_date": 667,
+      "created_at": 667,
+      "current_status": 645,
+      "direction_id": 667,
+      "geohash": 667,
+      "latitude": 667,
+      "longitude": 667,
+      "operational_date": 667,
+      "pattern_id": 667,
+      "received_at": 667,
+      "ride_id": 667,
+      "route_id": 667,
+      "route_short_name": 667,
+      "shape_id": 667,
+      "speed": 378,
+      "stop_id": 650,
+      "trip_id": 667,
+      "vehicle_id": 667
+    },
+    "sample_keys": [
+      "_id",
+      "agency_id",
+      "bearing",
+      "bearing_method",
+      "calendar_date",
+      "created_at",
+      "current_status",
+      "direction_id",
+      "geohash",
+      "latitude",
+      "license_plate",
+      "longitude",
+      "operational_date",
+      "pattern_id",
+      "received_at",
+      "ride_id",
+      "route_id",
+      "route_short_name",
+      "shape_id",
+      "speed",
+      "stop_id",
+      "trip_id",
+      "vehicle_id"
+    ]
+  }
+}

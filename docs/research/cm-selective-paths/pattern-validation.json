@@ -1,0 +1,61 @@
+{
+  "agencies": [
+    {
+      "agency": "LA77N",
+      "plan": "VNWG3",
+      "exact_trips": 47070,
+      "patterns": 474,
+      "ambiguous_patterns": 0,
+      "unambiguous_patterns": 474,
+      "ordered_visits": 18369,
+      "stop_time_rows": 1766396,
+      "duplicate_trip_sequences": 0,
+      "minimal_json_bytes": 259081,
+      "validation": "Every trip matches its pattern sequence and stop IDs; duplicate/missing/extra visits rejected; ordering independent"
+    },
+    {
+      "agency": "BNA17",
+      "plan": "PCN1R",
+      "exact_trips": 62938,
+      "patterns": 558,
+      "ambiguous_patterns": 0,
+      "unambiguous_patterns": 558,
+      "ordered_visits": 19565,
+      "stop_time_rows": 2252651,
+      "duplicate_trip_sequences": 0,
+      "minimal_json_bytes": 275647,
+      "validation": "Every trip matches its pattern sequence and stop IDs; duplicate/missing/extra visits rejected; ordering independent"
+    },
+    {
+      "agency": "YA15B",
+      "plan": "ZN3JG",
+      "exact_trips": 42438,
+      "patterns": 298,
+      "ambiguous_patterns": 0,
+      "unambiguous_patterns": 298,
+      "ordered_visits": 10231,
+      "stop_time_rows": 1258043,
+      "duplicate_trip_sequences": 0,
+      "minimal_json_bytes": 144451,
+      "validation": "Every trip matches its pattern sequence and stop IDs; duplicate/missing/extra visits rejected; ordering independent"
+    },
+    {
+      "agency": "A2L1N",
+      "plan": "K56AM",
+      "exact_trips": 113738,
+      "patterns": 291,
+      "ambiguous_patterns": 0,
+      "unambiguous_patterns": 291,
+      "ordered_visits": 9121,
+      "stop_time_rows": 3445620,
+      "duplicate_trip_sequences": 0,
+      "minimal_json_bytes": 128892,
+      "validation": "Every trip matches its pattern sequence and stop IDs; duplicate/missing/extra visits rejected; ordering independent"
+    }
+  ],
+  "vehicle_sample_rows": 389,
+  "vehicle_sample_with_pattern": 389,
+  "vehicle_sample_verified_pattern": 389,
+  "seconds": 37.39,
+  "scope": "Cached official GTFS and earlier public vehicle sample; not a live availability or runtime memory guarantee"
+}

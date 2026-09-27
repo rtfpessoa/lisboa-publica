@@ -1,12 +1,18 @@
 package app
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/pprof"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,6 +28,10 @@ func TestProviderContinuityResourceEnvelope(t *testing.T) {
 	f, closeFixture := officialCMFetcher(t, cache, manifest)
 	defer closeFixture()
 	loadResourceNetworks(t, cache, f, feeds, false)
+	var candidate *cmPathCandidate
+	if os.Getenv("MEASURE_CM_PATH_CANDIDATE") == "1" {
+		candidate = measureCMPaths(t, feeds)
+	}
 	store := &Store{HistoryInterval: staticRefreshInterval, collector: newHistoryCollector()}
 	base := time.Now().Add(-time.Hour)
 	// Reproduce one-hour extreme churn, saturating both caps and all retained versions.
@@ -33,6 +43,11 @@ func TestProviderContinuityResourceEnvelope(t *testing.T) {
 	t.Logf("churn_retained_versions=%d history_pending=%d", len(cache.versions), len(store.collector.Pending))
 	// Static refresh overlap while a full current network and prior revisions remain retained.
 	loadResourceNetworks(t, cache, f, feeds, true)
+	if candidate != nil {
+		next := measureCMPaths(t, feeds)
+		runtime.KeepAlive(next)
+	}
+	concurrentNavigationReads(t, cache)
 	concurrentCPDecode(t)
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
@@ -45,9 +60,22 @@ func TestProviderContinuityResourceEnvelope(t *testing.T) {
 		d := state.Live[p.ID]
 		t.Logf("%s source=%d retained=%d ledger=%d", p.ID, len(d.Vehicles), len(d.LastKnown), len(d.Continuity))
 	}
+	if path := os.Getenv("RESOURCE_HEAP_PROFILE"); path != "" {
+		f, err := os.Create(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			t.Fatal(err)
+		}
+		if err := f.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
 	runtime.KeepAlive(cache)
 	runtime.KeepAlive(store)
 	runtime.KeepAlive(cpVersions)
+	runtime.KeepAlive(candidate)
 }
 
 func runContinuityChurn(t *testing.T, cache *Cache, store *Store, base time.Time) {
@@ -65,6 +93,10 @@ func publishContinuityChurn(t *testing.T, cache *Cache, store *Store, p provider
 	op.Status = api.OperatorStatusOk
 	op.Error = nil
 	rows := churnVehicles(p, tick, now)
+	if p.ID == "cm" {
+		resourceCMPatterns(rows, state.Static["cm"].CMPaths[0])
+	}
+
 	d, dist := nextLive(state.Live[p.ID], op, rows, now)
 	if len(d.LastKnown) > maxLastKnown || len(d.Continuity) > maxContinuityIDs {
 		t.Fatal("unbounded continuity")
@@ -76,6 +108,14 @@ func publishContinuityChurn(t *testing.T, cache *Cache, store *Store, p provider
 		if err != nil || int64(len(update.Live)+len(update.Health))*storageWriteOverhead > maximumWriteBytes {
 			t.Fatal("live cache admission", err)
 		}
+	}
+}
+
+// Every CM source row carries its own pattern string, matching the native feed.
+func resourceCMPatterns(rows []api.Vehicle, path CMPath) {
+	for i := range rows {
+		rows[i].PatternId = ptr(strings.Clone(path.ID))
+		rows[i].RouteId = ptr(strings.Clone(path.Line))
 	}
 }
 
@@ -144,6 +184,9 @@ func publishResourceCM(t *testing.T, cache *Cache, f *Fetcher, network *StaticDa
 		t.Fatal(err)
 	}
 	cm.Shapes, cm.Models = network.Shapes, network.Models
+	cm.CMPaths = network.CMPaths
+	sort.Slice(cm.CMPaths, func(i, j int) bool { return cm.CMPaths[i].ID < cm.CMPaths[j].ID })
+	verifyResourceCMPaths(t, cm)
 	cm.GeometryUpdated = ptr(time.Now())
 	attachCMRouteGeometry(cm)
 	op := staticHealth(cache.operator("cm"), cm)
@@ -151,4 +194,38 @@ func publishResourceCM(t *testing.T, cache *Cache, f *Fetcher, network *StaticDa
 		t.Fatal("CM geometry admission")
 	}
 	cache.update("cm", cm, nil, op)
+}
+
+func verifyResourceCMPaths(t *testing.T, d *StaticData) {
+	t.Helper()
+	visits := 0
+	for _, path := range d.CMPaths {
+		visits += len(path.Visits)
+	}
+	if len(d.CMPaths) != 1621 || visits != 57286 {
+		t.Fatalf("production CM index incomplete: %d patterns / %d visits", len(d.CMPaths), visits)
+	}
+	encoded, err := encodeCache(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var restored StaticData
+	reader, err := gzip.NewReader(bytes.NewReader(encoded))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = json.NewDecoder(reader).Decode(&restored); err != nil {
+		t.Fatal(err)
+	}
+	if err = reader.Close(); err != nil {
+		t.Fatal(err)
+	}
+	restoredVisits := 0
+	for _, path := range restored.CMPaths {
+		restoredVisits += len(path.Visits)
+	}
+	if len(restored.CMPaths) != 1621 || restoredVisits != 57286 {
+		t.Fatal("production CM index lost in serialization")
+	}
+	t.Logf("production_CM_patterns=%d visits=%d gzip_bytes=%d", len(restored.CMPaths), restoredVisits, len(encoded))
 }

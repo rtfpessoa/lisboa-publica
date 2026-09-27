@@ -185,7 +185,7 @@ func (g *gtfsReader) stopTime(m map[string]string) error {
 	if e != nil {
 		return e
 	}
-	t.Times = append(t.Times, StopTime{g.stops[m["stop_id"]].SourceId, a, dep, seq})
+	t.Times = append(t.Times, StopTime{g.stops[m["stop_id"]].SourceId, int32(a), int32(dep), seq})
 	return nil
 }
 
@@ -282,7 +282,13 @@ func (g *gtfsReader) vehicle(m map[string]string) error {
 		if g.provider.ID == "mobi" {
 			id = strings.TrimPrefix(id, g.provider.Code+"-")
 		}
-		g.data.Models[id] = metadataRow(m)
+		metadata := metadataRow(m)
+		// Legacy Mobi vehicles.txt publishes physical-unit seat specifications.
+		// Do not apply this legacy field to other providers or schema versions.
+		if g.provider.ID == "mobi" && m["agency_id"] == "21" {
+			metadata.SeatedCapacity = capacityText(m["available_seats"])
+		}
+		g.data.Models[id] = metadata
 	}
 	return nil
 }
@@ -293,6 +299,13 @@ func (g *gtfsReader) connectTrips() {
 			continue
 		}
 		sort.Slice(t.Times, func(i, j int) bool { return t.Times[i].Sequence < t.Times[j].Sequence })
+		// Retained static revisions need the visits, not unused append capacity.
+		// Copy only after validation/sorting; values and visit order stay unchanged.
+		if cap(t.Times) > len(t.Times) {
+			visits := make([]StopTime, len(t.Times))
+			copy(visits, t.Times)
+			t.Times = visits
+		}
 		g.data.Schedule.Trips = append(g.data.Schedule.Trips, *t)
 		if g.routeStops[t.Route] == nil {
 			g.routeStops[t.Route] = map[string]bool{}

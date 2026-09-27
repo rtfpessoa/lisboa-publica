@@ -1,0 +1,30 @@
+[
+  {
+    "operator": "cm-LA77N",
+    "patterns": 474,
+    "representative_stop_refs": 18369,
+    "max_stops": 92,
+    "source_stop_times_bytes": 114815615
+  },
+  {
+    "operator": "cm-BNA17",
+    "patterns": 558,
+    "representative_stop_refs": 19565,
+    "max_stops": 104,
+    "source_stop_times_bytes": 138882175
+  },
+  {
+    "operator": "cm-YA15B",
+    "patterns": 298,
+    "representative_stop_refs": 10231,
+    "max_stops": 93,
+    "source_stop_times_bytes": 94533246
+  },
+  {
+    "operator": "cm-A2L1N",
+    "patterns": 291,
+    "representative_stop_refs": 9121,
+    "max_stops": 95,
+    "source_stop_times_bytes": 233666530
+  }
+]

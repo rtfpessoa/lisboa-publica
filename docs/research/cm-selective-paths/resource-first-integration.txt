@@ -1,0 +1,36 @@
+=== RUN   TestProviderContinuityResourceEnvelope
+    continuity_resource_test.go:184: production_CM_patterns=1621 visits=57286 gzip_bytes=2590740
+    continuity_resource_test.go:38: cp_worst_case_distinct_snapshots=64 cp_rows_per_snapshot=110
+    continuity_resource_test.go:42: churn_retained_versions=64 history_pending=20000
+    continuity_resource_test.go:184: production_CM_patterns=1621 visits=57286 gzip_bytes=2590635
+    continuity_resource_test.go:49: concurrent_vehicle_pages=2 calls_from_frozen_refs=2 complete_CM_paths=2 pinned_CM_pages=2 geometry_opt_in=verified cancelled_calls=verified
+    continuity_resource_test.go:50: cp_concurrent_decode_bytes=16776905 workers=2
+    continuity_resource_test.go:57: static_providers=8 retained_versions=64 history_pending=20000 heap_bytes=699012168 sys_bytes=1011883512
+    continuity_resource_test.go:60: carris source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:60: cm source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:60: tcb source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:60: mobi source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:60: metro source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:60: cp source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:60: ttsl source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:60: fertagus source=1000 retained=500 ledger=2000
+--- PASS: TestProviderContinuityResourceEnvelope (79.29s)
+PASS
+       80.20 real        93.88 user         1.44 sys
+          1025572864  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               63057  page reclaims
+                   4  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   8  messages sent
+                 150  messages received
+                6341  signals received
+                 681  voluntary context switches
+              138541  involuntary context switches
+       1355756013634  instructions retired
+        295349788149  cycles elapsed
+           932201768  peak memory footprint

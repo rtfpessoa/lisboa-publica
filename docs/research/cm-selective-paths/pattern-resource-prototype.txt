@@ -1,0 +1,44 @@
+=== RUN   TestProviderContinuityResourceEnvelope
+    continuity_resource_test.go:28: cm_pattern_agency=LA77N exact_trips_validated=47070 patterns=474 verified_patterns=474 stop_refs=18369
+    continuity_resource_test.go:28: cm_pattern_agency=BNA17 exact_trips_validated=62938 patterns=558 verified_patterns=558 stop_refs=19565
+    continuity_resource_test.go:28: cm_pattern_agency=YA15B exact_trips_validated=42438 patterns=298 verified_patterns=298 stop_refs=10231
+    continuity_resource_test.go:28: cm_pattern_agency=A2L1N exact_trips_validated=113738 patterns=291 verified_patterns=291 stop_refs=9121
+    continuity_resource_test.go:28: cm_pattern_cache_variants=1621 json_bytes=1960791
+    continuity_resource_test.go:38: cp_worst_case_distinct_snapshots=64 cp_rows_per_snapshot=110
+    continuity_resource_test.go:42: churn_retained_versions=64 history_pending=20000
+    continuity_resource_test.go:46: cm_pattern_agency=LA77N exact_trips_validated=47070 patterns=474 verified_patterns=474 stop_refs=18369
+    continuity_resource_test.go:46: cm_pattern_agency=BNA17 exact_trips_validated=62938 patterns=558 verified_patterns=558 stop_refs=19565
+    continuity_resource_test.go:46: cm_pattern_agency=YA15B exact_trips_validated=42438 patterns=298 verified_patterns=298 stop_refs=10231
+    continuity_resource_test.go:46: cm_pattern_agency=A2L1N exact_trips_validated=113738 patterns=291 verified_patterns=291 stop_refs=9121
+    continuity_resource_test.go:46: cm_pattern_cache_variants=1621 json_bytes=1960791
+    continuity_resource_test.go:53: concurrent_vehicle_pages=2 calls_from_frozen_refs=2 cancelled_read=verified
+    continuity_resource_test.go:54: cp_concurrent_decode_bytes=16776905 workers=2
+    continuity_resource_test.go:61: static_providers=8 retained_versions=64 history_pending=20000 heap_bytes=734352144 sys_bytes=1008115192
+    continuity_resource_test.go:64: carris source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:64: cm source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:64: tcb source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:64: mobi source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:64: metro source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:64: cp source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:64: ttsl source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:64: fertagus source=1000 retained=500 ledger=2000
+--- PASS: TestProviderContinuityResourceEnvelope (57.21s)
+PASS
+       57.49 real        77.88 user         1.00 sys
+          1020084224  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               62720  page reclaims
+                   0  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   8  messages sent
+                 106  messages received
+                4884  signals received
+                 647  voluntary context switches
+               69378  involuntary context switches
+       1315609993661  instructions retired
+        285647131069  cycles elapsed
+           917177544  peak memory footprint

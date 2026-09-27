@@ -1,0 +1,30 @@
+[
+  {
+    "agency": "LA77N",
+    "trips": 47070,
+    "distinct_versions": 474,
+    "retained_stop_refs": 18369,
+    "raw_json_bytes": 1613781
+  },
+  {
+    "agency": "BNA17",
+    "trips": 62938,
+    "distinct_versions": 558,
+    "retained_stop_refs": 19565,
+    "raw_json_bytes": 1802821
+  },
+  {
+    "agency": "YA15B",
+    "trips": 42438,
+    "distinct_versions": 298,
+    "retained_stop_refs": 10231,
+    "raw_json_bytes": 1582644
+  },
+  {
+    "agency": "A2L1N",
+    "trips": 113738,
+    "distinct_versions": 291,
+    "retained_stop_refs": 9121,
+    "raw_json_bytes": 2912892
+  }
+]

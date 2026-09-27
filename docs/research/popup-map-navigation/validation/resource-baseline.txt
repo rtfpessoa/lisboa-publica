@@ -1,0 +1,33 @@
+=== RUN   TestProviderContinuityResourceEnvelope
+    continuity_resource_test.go:29: cp_worst_case_distinct_snapshots=64 cp_rows_per_snapshot=110
+    continuity_resource_test.go:33: churn_retained_versions=64 history_pending=20000
+    continuity_resource_test.go:36: cp_concurrent_decode_bytes=16776905 workers=2
+    continuity_resource_test.go:43: static_providers=8 retained_versions=64 history_pending=20000 heap_bytes=944131040 sys_bytes=1155527192
+    continuity_resource_test.go:46: carris source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:46: cm source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:46: tcb source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:46: mobi source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:46: metro source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:46: cp source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:46: ttsl source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:46: fertagus source=1000 retained=500 ledger=2000
+--- PASS: TestProviderContinuityResourceEnvelope (80.68s)
+PASS
+       81.72 real        85.63 user         1.51 sys
+          1169866752  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               71824  page reclaims
+                   0  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   8  messages sent
+                  89  messages received
+                6831  signals received
+                 695  voluntary context switches
+              138536  involuntary context switches
+       1144350871130  instructions retired
+        229312296505  cycles elapsed
+          1113032048  peak memory footprint

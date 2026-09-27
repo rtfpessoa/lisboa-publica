@@ -66,6 +66,7 @@ func enrichScheduledService(v *api.Vehicle, data *StaticData) {
 	for _, trip := range data.Schedule.Trips {
 		if *v.TripId == qualify(v.OperatorId, trip.ID) && *v.RouteId == qualify(v.OperatorId, trip.Route) && data.Schedule.active(trip.Service, day) {
 			v.ScheduledService = trip.scheduledEndpoints(data.Source, day)
+			v.ServiceLabel = optional(cleanCPLabel(trip.Label))
 			break
 		}
 	}
@@ -90,5 +91,9 @@ func (f *Fetcher) captureHubService(v *api.Vehicle, raw hubPosition, trip string
 	v.OperationalDate = publishedServiceDate(raw.OperationalDate)
 	data := f.currentStatic(v.OperatorId)
 	enrichStopReference(v, data, v.PlanId != nil && data != nil && *v.PlanId == data.PlanID && trip != raw.Trip)
+	if v.OperatorId == "metro" {
+		state, _ := f.Cache.state("")
+		resolveMetroVehicleStop(v, state)
+	}
 	enrichScheduledService(v, data)
 }

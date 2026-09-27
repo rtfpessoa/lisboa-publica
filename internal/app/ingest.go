@@ -385,6 +385,7 @@ type cmPosition struct {
 	ID          string   `json:"id"`
 	Line        string   `json:"line_id"`
 	Trip        string   `json:"trip_id"`
+	Pattern     string   `json:"pattern_id"`
 	Lat         float64  `json:"lat"`
 	Lon         float64  `json:"lon"`
 	At          int64    `json:"timestamp"`
@@ -427,6 +428,7 @@ func (f *Fetcher) cmVehicle(p provider, r cmPosition, at, now time.Time) api.Veh
 	if r.Trip != "" {
 		v.TripId = ptr(qualify(p.ID, r.Trip))
 	}
+	v.PatternId = publishedCMPattern(r.Pattern)
 	v.SeatedCapacity, v.TotalCapacity = publishedCapacity(r.Seats), publishedCapacity(r.Capacity)
 	v.WheelchairAccessible, v.Contactless = r.Wheelchair, r.Contactless
 	v.CurrentStatus = publishedStopStatus(r.Status)

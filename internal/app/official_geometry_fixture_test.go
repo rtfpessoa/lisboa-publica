@@ -62,6 +62,7 @@ func loadOfficialGeometry(t *testing.T, feed officialGeometryFeed) *StaticData {
 
 func mergeCMFixture(network, data *StaticData) {
 	network.Shapes = append(network.Shapes, data.Shapes...)
+	network.CMPaths = append(network.CMPaths, data.CMPaths...)
 	for id, metadata := range data.Models {
 		network.Models[id] = metadata
 	}

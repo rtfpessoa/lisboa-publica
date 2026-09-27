@@ -35,6 +35,9 @@ func (s *Server) ListArrivals(ctx context.Context, _ api.ListArrivalsRequestObje
 		return nil, err
 	}
 	page, data := paginate(out, filter, revision)
+	if err := attachArrivalVehicles(ctx, state, data); err != nil {
+		return nil, err
+	}
 	return api.ListArrivals200JSONResponse{Data: data, Page: page}, nil
 }
 

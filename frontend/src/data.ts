@@ -9,6 +9,21 @@ export function passengerName(operator:string,value:string|null|undefined,fallba
  if(!name)return fallback;
  return operator==='cp'?name.replace(/\bSanta Apolonia\b/gi,'Santa Apolónia'):name;
 }
+const cpCategories:Record<string,string>={AP:'Alfa Pendular',IC:'Intercidades',R:'Regional',IR:'InterRegional'};
+const metroNames:Record<string,string>={Az:'Azul',Am:'Amarela',Vd:'Verde',Vm:'Vermelha'};
+export function routeName(operator:string,value:string|null|undefined){
+ const name=passengerName(operator,value,'');
+ if(operator==='metro')return metroNames[name]?`Linha ${metroNames[name]}`:['Azul','Amarela','Verde','Vermelha'].includes(name)?`Linha ${name}`:name;
+ if(operator==='cp'){const parts=name.split(' · ');parts[0]=cpCategories[parts[0]]??parts[0];return parts.join(' · ')}
+ return name;
+}
+export function observationAge(value:string,now:number){
+ const stamp=Date.parse(value);if(!Number.isFinite(stamp)||stamp>now+30000)return 'hora não confirmada';
+ const minutes=Math.floor(Math.max(0,now-stamp)/60000);
+ return minutes===0?'agora':minutes<60?`há ${minutes} min`:`há ${Math.floor(minutes/60)} h`;
+}
+export function observationTime(value:string,now:number){return Number.isFinite(Date.parse(value))?`${time(value)} · ${observationAge(value,now)}`:'Hora não confirmada'}
+export function sameVehicleService(a:Vehicle,b:Vehicle){return a.id===b.id&&a.operator_id===b.operator_id&&a.plan_id===b.plan_id&&a.trip_id===b.trip_id&&a.operational_date===b.operational_date&&(a.pattern_id??null)===(b.pattern_id??null)}
 export const errorText=(e:unknown)=>{const v=e as {data?:{message?:string},message?:string};return v?.data?.message||v?.message||'Não foi possível carregar os dados.'};
 export function today(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Lisbon',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
 export function nextDay(date:string,delta=1){const d=new Date(date+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+delta);return d.toISOString().slice(0,10)}

@@ -528,7 +528,7 @@ func TestSpecScopePolicy(t *testing.T) {
 		}
 	}
 	sort.Strings(ids)
-	if len(ids) != 25 {
+	if len(ids) != 26 {
 		t.Fatalf("unexpected operation count%d", len(ids))
 	}
 }
@@ -576,7 +576,7 @@ func TestScheduleRevisionAndLegacyCache(t *testing.T) {
 	d := fixtureStatic("carris", now)
 	base := serviceStart(now.In(lisbon))
 	secs := int(now.Sub(base).Seconds()) + 10
-	d.Schedule.Trips[0].Times = []StopTime{{Stop: "S", Arrival: secs, Departure: secs, Sequence: 1}, {Stop: "S", Arrival: secs + 60, Departure: secs + 60, Sequence: 2}}
+	d.Schedule.Trips[0].Times = []StopTime{{Stop: "S", Arrival: int32(secs), Departure: int32(secs), Sequence: 1}, {Stop: "S", Arrival: int32(secs + 60), Departure: int32(secs + 60), Sequence: 2}}
 	cache.update("carris", d, nil, op)
 	server, e := NewServer(store, cache, Options{Origin: "http://localhost", Environment: "development", PublicReads: true, RateLimit: 1000}, zap.NewNop())
 	if e != nil {

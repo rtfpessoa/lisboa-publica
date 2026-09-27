@@ -1,0 +1,2 @@
+npm notice run lisboa-publica@1.0.0 generate
+npm notice run oazapfts ../api/openapi.yaml src/api.ts --optimistic

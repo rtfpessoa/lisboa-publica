@@ -20,7 +20,7 @@ func (s *Server) ListCpPredictions(ctx context.Context, _ api.ListCpPredictionsR
 		return nil, err
 	}
 	trip := request(ctx).URL.Query().Get("trip_id")
-	response, err := cpPage(state, filter, trip, revision)
+	response, err := cpPage(ctx, state, filter, trip, revision)
 	return response, err
 }
 
@@ -35,7 +35,7 @@ func (s *Server) cpReadState(ctx context.Context, filter *Filter) (*State, strin
 	return state, revision, err
 }
 
-func cpPage(state *State, filter Filter, trip, revision string) (api.ListCpPredictionsResponseObject, error) {
+func cpPage(ctx context.Context, state *State, filter Filter, trip, revision string) (api.ListCpPredictionsResponseObject, error) {
 	rows, availability, expiry := cpRead(state, filter, trip)
 	if !expiry.IsZero() && !time.Now().Before(expiry) {
 		if filter.Revision != "" {
@@ -44,6 +44,9 @@ func cpPage(state *State, filter Filter, trip, revision string) (api.ListCpPredi
 		rows, availability = []api.CPPrediction{}, staleCPAvailability(availability)
 	}
 	page, data := paginate(rows, filter, revision)
+	if err := attachPredictionVehicles(ctx, state, data); err != nil {
+		return nil, err
+	}
 	return api.ListCpPredictions200JSONResponse{Data: data, Page: page, Availability: availability}, nil
 }
 

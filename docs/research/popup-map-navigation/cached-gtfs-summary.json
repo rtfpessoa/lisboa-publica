@@ -1,0 +1,1005 @@
+[
+  {
+    "operator": "cp",
+    "cached_official_plan": "76XA2",
+    "routes": [],
+    "routes.txt": {
+      "rows": 123,
+      "present_fields": {
+        "agency_id": 123,
+        "line_id": 123,
+        "line_short_name": 123,
+        "line_long_name": 123,
+        "route_id": 123,
+        "route_short_name": 123,
+        "route_long_name": 123,
+        "route_type": 123,
+        "route_color": 123,
+        "route_text_color": 123
+      },
+      "samples": [
+        {
+          "route_id": "AP_0",
+          "route_short_name": "AP",
+          "route_long_name": "Lisboa Santa Apolónia - Porto Campanhã",
+          "route_color": "7b9a40"
+        },
+        {
+          "route_id": "AP_1",
+          "route_short_name": "AP",
+          "route_long_name": "Faro - Porto Campanhã",
+          "route_color": "7b9a40"
+        },
+        {
+          "route_id": "AP_2",
+          "route_short_name": "AP",
+          "route_long_name": "Lisboa Santa Apolónia - Braga",
+          "route_color": "7b9a40"
+        },
+        {
+          "route_id": "IC_0",
+          "route_short_name": "IC",
+          "route_long_name": "Lisboa Santa Apolónia - Porto Campanhã",
+          "route_color": "33703c"
+        },
+        {
+          "route_id": "IC_1",
+          "route_short_name": "IC",
+          "route_long_name": "Valença - Lisboa Santa Apolónia",
+          "route_color": "33703c"
+        },
+        {
+          "route_id": "IC_2",
+          "route_short_name": "IC",
+          "route_long_name": "Lisboa Santa Apolónia - Guimarães",
+          "route_color": "33703c"
+        },
+        {
+          "route_id": "IC_3",
+          "route_short_name": "IC",
+          "route_long_name": "Lisboa Santa Apolónia - Braga",
+          "route_color": "33703c"
+        },
+        {
+          "route_id": "IC_4",
+          "route_short_name": "IC",
+          "route_long_name": "Guarda - Lisboa Santa Apolónia",
+          "route_color": "33703c"
+        },
+        {
+          "route_id": "IC_5",
+          "route_short_name": "IC",
+          "route_long_name": "Abrantes - Lisboa Santa Apolónia",
+          "route_color": "33703c"
+        },
+        {
+          "route_id": "IC_6",
+          "route_short_name": "IC",
+          "route_long_name": "Faro - Lisboa Oriente",
+          "route_color": "33703c"
+        },
+        {
+          "route_id": "IC_7",
+          "route_short_name": "IC",
+          "route_long_name": "Évora - Lisboa Oriente",
+          "route_color": "33703c"
+        },
+        {
+          "route_id": "IC_8",
+          "route_short_name": "IC",
+          "route_long_name": "Abrantes - Guarda",
+          "route_color": "33703c"
+        },
+        {
+          "route_id": "IC_9",
+          "route_short_name": "IC",
+          "route_long_name": "Covilhã - Abrantes",
+          "route_color": "33703c"
+        },
+        {
+          "route_id": "IC_10",
+          "route_short_name": "IC",
+          "route_long_name": "Beja - Casa Branca",
+          "route_color": "33703c"
+        },
+        {
+          "route_id": "IC_11",
+          "route_short_name": "IC",
+          "route_long_name": "Évora - Beja",
+          "route_color": "33703c"
+        },
+        {
+          "route_id": "IR_0",
+          "route_short_name": "IR",
+          "route_long_name": "Valença - Porto São Bento",
+          "route_color": "3c70b3"
+        },
+        {
+          "route_id": "IR_1",
+          "route_short_name": "IR",
+          "route_long_name": "Mosteirô - Porto São Bento",
+          "route_color": "3c70b3"
+        },
+        {
+          "route_id": "IR_2",
+          "route_short_name": "IR",
+          "route_long_name": "Porto São Bento - Régua",
+          "route_color": "3c70b3"
+        },
+        {
+          "route_id": "IR_3",
+          "route_short_name": "IR",
+          "route_long_name": "Pocinho - Porto São Bento",
+          "route_color": "3c70b3"
+        },
+        {
+          "route_id": "IR_4",
+          "route_short_name": "IR",
+          "route_long_name": "Valença - Porto Campanhã",
+          "route_color": "3c70b3"
+        },
+        {
+          "route_id": "IR_5",
+          "route_short_name": "IR",
+          "route_long_name": "Mosteirô - Porto Campanhã",
+          "route_color": "3c70b3"
+        },
+        {
+          "route_id": "IR_6",
+          "route_short_name": "IR",
+          "route_long_name": "Porto Campanhã - Régua",
+          "route_color": "3c70b3"
+        },
+        {
+          "route_id": "IR_7",
+          "route_short_name": "IR",
+          "route_long_name": "Porto Campanhã - Pocinho",
+          "route_color": "3c70b3"
+        },
+        {
+          "route_id": "IR_8",
+          "route_short_name": "IR",
+          "route_long_name": "Lisboa Santa Apolónia - Porto Campanhã",
+          "route_color": "3c70b3"
+        },
+        {
+          "route_id": "IR_9",
+          "route_short_name": "IR",
+          "route_long_name": "Valença - Figueira da Foz",
+          "route_color": "3c70b3"
+        },
+        {
+          "route_id": "IR_10",
+          "route_short_name": "IR",
+          "route_long_name": "Mosteirô - Régua",
+          "route_color": "3c70b3"
+        },
+        {
+          "route_id": "IR_11",
+          "route_short_name": "IR",
+          "route_long_name": "Pocinho - Régua",
+          "route_color": "3c70b3"
+        },
+        {
+          "route_id": "IR_12",
+          "route_short_name": "IR",
+          "route_long_name": "Pinhão - Porto São Bento",
+          "route_color": "3c70b3"
+        },
+        {
+          "route_id": "IR_13",
+          "route_short_name": "IR",
+          "route_long_name": "Tomar - Lisboa Santa Apolónia",
+          "route_color": "3c70b3"
+        },
+        {
+          "route_id": "IR_14",
+          "route_short_name": "IR",
+          "route_long_name": "Mira Sintra-Meleças - Lisboa Santa Apolónia",
+          "route_color": "3c70b3"
+        }
+      ]
+    },
+    "trips.txt": {
+      "rows": 2226,
+      "present_fields": {
+        "route_id": 2226,
+        "service_id": 2226,
+        "trip_id": 2226,
+        "trip_headsign": 2226,
+        "trip_short_name": 2226,
+        "direction_id": 2226,
+        "shape_id": 2226,
+        "wheelchair_accessible": 2226,
+        "bikes_allowed": 2226,
+        "pattern_id": 2226
+      },
+      "samples": [
+        {
+          "trip_short_name": "10540",
+          "trip_headsign": "Abrantes"
+        },
+        {
+          "trip_short_name": "10541",
+          "trip_headsign": "Guarda"
+        },
+        {
+          "trip_short_name": "10542",
+          "trip_headsign": "Abrantes"
+        },
+        {
+          "trip_short_name": "10543",
+          "trip_headsign": "Guarda"
+        },
+        {
+          "trip_short_name": "10544",
+          "trip_headsign": "Abrantes"
+        }
+      ]
+    }
+  },
+  {
+    "operator": "ttsl",
+    "cached_official_plan": "YYS70",
+    "routes": [],
+    "routes.txt": {
+      "rows": 5,
+      "present_fields": {
+        "route_id": 5,
+        "agency_id": 5,
+        "route_short_name": 5,
+        "route_long_name": 5,
+        "route_type": 5,
+        "route_color": 5,
+        "route_text_color": 5,
+        "line_id": 5,
+        "line_short_name": 5,
+        "line_long_name": 5,
+        "path_type": 5,
+        "circular": 5,
+        "school": 5
+      },
+      "samples": []
+    },
+    "trips.txt": {
+      "rows": 938,
+      "present_fields": {
+        "route_id": 938,
+        "pattern_id": 938,
+        "service_id": 938,
+        "trip_id": 938,
+        "trip_headsign": 938,
+        "direction_id": 938,
+        "shape_id": 938,
+        "wheelchair_accessible": 938,
+        "bikes_allowed": 938
+      },
+      "samples": []
+    },
+    "vehicles.txt": {
+      "rows": 0,
+      "present_fields": {},
+      "samples": []
+    }
+  },
+  {
+    "operator": "fertagus",
+    "cached_official_plan": "2XUL7",
+    "routes": [],
+    "routes.txt": {
+      "rows": 3,
+      "present_fields": {
+        "line_id": 3,
+        "line_short_name": 3,
+        "line_long_name": 3,
+        "route_id": 3,
+        "agency_id": 3,
+        "route_short_name": 3,
+        "route_long_name": 3,
+        "route_type": 3,
+        "path_type": 3,
+        "circular": 3,
+        "school": 3,
+        "route_color": 3,
+        "route_text_color": 3,
+        "continuous_pickup": 3,
+        "continuous_drop_off": 3
+      },
+      "samples": []
+    },
+    "trips.txt": {
+      "rows": 260,
+      "present_fields": {
+        "route_id": 260,
+        "pattern_id": 260,
+        "service_id": 260,
+        "trip_id": 260,
+        "trip_headsign": 260,
+        "direction_id": 260,
+        "shape_id": 260,
+        "wheelchair_accessible": 260,
+        "bikes_allowed": 260
+      },
+      "samples": []
+    },
+    "vehicles.txt": {
+      "rows": 18,
+      "present_fields": {
+        "vehicle_id": 18,
+        "agency_id": 18,
+        "license_plate": 18,
+        "make": 18,
+        "model": 18,
+        "owner": 18,
+        "registration_date": 18,
+        "available_seats": 18,
+        "available_standing": 18,
+        "typology": 18,
+        "propulsion": 18,
+        "emission": 18,
+        "climatization": 18,
+        "wheelchair": 18,
+        "lowered_floor": 18,
+        "ramp": 18,
+        "kneeling": 18,
+        "static_information": 18,
+        "onboard_monitor": 18,
+        "front_display": 18,
+        "rear_display": 18,
+        "side_display": 18,
+        "internal_sound": 18,
+        "external_sound": 18,
+        "consumption_meter": 18,
+        "bicycles": 18,
+        "passenger_counting": 18,
+        "video_surveillance": 18
+      },
+      "samples": []
+    }
+  },
+  {
+    "operator": "carris",
+    "cached_official_plan": "82YP2",
+    "routes": [],
+    "routes.txt": {
+      "rows": 174,
+      "present_fields": {
+        "route_id": 174,
+        "agency_id": 174,
+        "route_short_name": 174,
+        "route_long_name": 174,
+        "route_type": 174,
+        "route_url": 174,
+        "route_color": 174,
+        "route_text_color": 174,
+        "line_id": 174,
+        "line_short_name": 174,
+        "line_long_name": 174,
+        "path_type": 174,
+        "circular": 174,
+        "school": 174,
+        "continuous_pickup": 174,
+        "continuous_drop_off": 174
+      },
+      "samples": []
+    },
+    "trips.txt": {
+      "rows": 165820,
+      "present_fields": {
+        "route_id": 165820,
+        "service_id": 165820,
+        "trip_id": 165820,
+        "trip_headsign": 165820,
+        "direction_id": 165820,
+        "shape_id": 165820,
+        "wheelchair_accessible": 165820,
+        "bikes_allowed": 165820,
+        "pattern_id": 165820
+      },
+      "samples": []
+    },
+    "vehicles.txt": {
+      "rows": 841,
+      "present_fields": {
+        "vehicle_id": 841,
+        "license_plate": 781,
+        "make": 841,
+        "model": 841,
+        "typology": 841,
+        "propulsion": 841,
+        "agency_id": 841,
+        "owner": 841,
+        "registration_date": 841,
+        "available_seats": 841,
+        "available_standing": 841,
+        "emission": 841,
+        "climatization": 841,
+        "wheelchair": 841,
+        "lowered_floor": 841,
+        "ramp": 841,
+        "kneeling": 841,
+        "static_information": 841,
+        "onboard_monitor": 841,
+        "front_display": 841,
+        "rear_display": 841,
+        "side_display": 841,
+        "internal_sound": 841,
+        "external_sound": 841,
+        "consumption_meter": 841,
+        "bicycles": 841,
+        "passenger_counting": 841,
+        "video_surveillance": 841
+      },
+      "samples": []
+    }
+  },
+  {
+    "operator": "tcb",
+    "cached_official_plan": "YFKP6",
+    "routes": [],
+    "routes.txt": {
+      "rows": 76,
+      "present_fields": {
+        "route_id": 76,
+        "agency_id": 76,
+        "route_short_name": 76,
+        "route_long_name": 76,
+        "route_type": 76,
+        "route_color": 76,
+        "route_text_color": 76,
+        "line_id": 76,
+        "line_short_name": 76,
+        "route_origin": 76,
+        "route_destination": 76,
+        "path_type": 76,
+        "circular": 76
+      },
+      "samples": []
+    },
+    "trips.txt": {
+      "rows": 3247,
+      "present_fields": {
+        "route_id": 3247,
+        "service_id": 3247,
+        "trip_id": 3247,
+        "trip_headsign": 3247,
+        "direction_id": 3247,
+        "block_id": 3247,
+        "shape_id": 3247,
+        "start_shift_id": 3247,
+        "end_shift_id": 3247,
+        "pattern_id": 3247,
+        "pattern_short_name": 3247,
+        "wheelchair_accessible": 943,
+        "bikes_allowed": 943
+      },
+      "samples": []
+    },
+    "vehicles.txt": {
+      "rows": 0,
+      "present_fields": {},
+      "samples": []
+    }
+  },
+  {
+    "operator": "mobi",
+    "cached_official_plan": "QQQN3",
+    "routes": [],
+    "routes.txt": {
+      "rows": 99,
+      "present_fields": {
+        "line_id": 99,
+        "line_short_name": 99,
+        "line_long_name": 99,
+        "route_id": 99,
+        "agency_id": 99,
+        "route_short_name": 99,
+        "route_long_name": 99,
+        "route_type": 99,
+        "path_type": 99,
+        "circular": 99,
+        "school": 99,
+        "route_color": 99,
+        "route_text_color": 99,
+        "continuous_pickup": 99,
+        "continuous_drop_off": 99
+      },
+      "samples": []
+    },
+    "trips.txt": {
+      "rows": 3821,
+      "present_fields": {
+        "route_id": 3821,
+        "pattern_id": 3821,
+        "pattern_short_name": 3821,
+        "service_id": 3821,
+        "trip_id": 3821,
+        "trip_headsign": 3821,
+        "direction_id": 3821,
+        "shape_id": 3821
+      },
+      "samples": []
+    },
+    "vehicles.txt": {
+      "rows": 164,
+      "present_fields": {
+        "vehicle_id": 164,
+        "agency_id": 164,
+        "license_plate": 164,
+        "make": 164,
+        "model": 164,
+        "owner": 164,
+        "registration_date": 164,
+        "available_seats": 164,
+        "available_standing": 164,
+        "typology": 164,
+        "propulsion": 164,
+        "emission": 164,
+        "climatization": 164,
+        "wheelchair": 164,
+        "lowered_floor": 164,
+        "ramp": 164,
+        "kneeling": 164,
+        "static_information": 164,
+        "onboard_monitor": 164,
+        "front_display": 164,
+        "rear_display": 164,
+        "side_display": 164,
+        "internal_sound": 164,
+        "external_sound": 164,
+        "consumption_meter": 164,
+        "bicycles": 164,
+        "passenger_counting": 164,
+        "video_surveillance": 164,
+        "num_carriages": 164
+      },
+      "samples": []
+    }
+  },
+  {
+    "operator": "metro",
+    "cached_official_plan": "RSRHS",
+    "routes": [],
+    "routes.txt": {
+      "rows": 5,
+      "present_fields": {
+        "line_id": 5,
+        "route_id": 5,
+        "line_long_name": 5,
+        "line_short_name": 5,
+        "agency_id": 5,
+        "route_short_name": 5,
+        "route_long_name": 5,
+        "route_type": 5,
+        "path_type": 5,
+        "circular": 5,
+        "school": 5,
+        "route_color": 5,
+        "route_text_color": 5,
+        "continuous_pickup": 5,
+        "continuous_drop_off": 5
+      },
+      "samples": [
+        {
+          "route_id": "1_0",
+          "route_short_name": "Az",
+          "route_long_name": "Azul",
+          "route_color": "6699cc"
+        },
+        {
+          "route_id": "2_0",
+          "route_short_name": "Am",
+          "route_long_name": "Amarela",
+          "route_color": "ffcc00"
+        },
+        {
+          "route_id": "2_1",
+          "route_short_name": "Am",
+          "route_long_name": "Amarela",
+          "route_color": "ffcc00"
+        },
+        {
+          "route_id": "3_0",
+          "route_short_name": "Vd",
+          "route_long_name": "Verde",
+          "route_color": "00cc99"
+        },
+        {
+          "route_id": "4_0",
+          "route_short_name": "Vm",
+          "route_long_name": "Vermelha",
+          "route_color": "ff3366"
+        }
+      ]
+    },
+    "trips.txt": {
+      "rows": 2527,
+      "present_fields": {
+        "route_id": 2527,
+        "service_id": 2527,
+        "trip_id": 2527,
+        "trip_headsign": 2527,
+        "direction_id": 2527,
+        "shape_id": 2527,
+        "wheelchair_accessible": 2527,
+        "bikes_allowed": 2527,
+        "pattern_id": 2527
+      },
+      "samples": []
+    },
+    "vehicles.txt": {
+      "rows": 113,
+      "present_fields": {
+        "vehicle_id": 113,
+        "agency_id": 113,
+        "license_plate": 113,
+        "make": 113,
+        "model": 113,
+        "owner": 113,
+        "registration_date": 113,
+        "available_seats": 113,
+        "available_standing": 113,
+        "typology": 113,
+        "propulsion": 113,
+        "emission": 113,
+        "climatization": 113,
+        "wheelchair": 113,
+        "lowered_floor": 113,
+        "ramp": 113,
+        "kneeling": 113,
+        "static_information": 113,
+        "onboard_monitor": 113,
+        "front_display": 113,
+        "rear_display": 113,
+        "side_display": 113,
+        "internal_sound": 113,
+        "external_sound": 113,
+        "consumption_meter": 113,
+        "bicycles": 113,
+        "passenger_counting": 113,
+        "video_surveillance": 113
+      },
+      "samples": []
+    }
+  },
+  {
+    "operator": "cm-LA77N",
+    "cached_official_plan": "VNWG3",
+    "routes": [],
+    "routes.txt": {
+      "rows": 271,
+      "present_fields": {
+        "line_id": 271,
+        "line_short_name": 271,
+        "line_long_name": 271,
+        "route_id": 271,
+        "agency_id": 271,
+        "route_origin": 271,
+        "route_destination": 271,
+        "route_short_name": 271,
+        "route_long_name": 271,
+        "path_type": 271,
+        "route_type": 271,
+        "circular": 271,
+        "route_color": 271,
+        "route_text_color": 271
+      },
+      "samples": []
+    },
+    "trips.txt": {
+      "rows": 47070,
+      "present_fields": {
+        "route_id": 47070,
+        "pattern_id": 47070,
+        "pattern_short_name": 47070,
+        "service_id": 47070,
+        "trip_id": 47070,
+        "trip_headsign": 47070,
+        "direction_id": 47070,
+        "block_id": 47070,
+        "start_shift_id": 47070,
+        "end_shift_id": 47070,
+        "shape_id": 47070
+      },
+      "samples": []
+    },
+    "vehicles.txt": {
+      "rows": 414,
+      "present_fields": {
+        "vehicle_id": 414,
+        "agency_id": 414,
+        "start_date": 414,
+        "license_plate": 414,
+        "make": 414,
+        "model": 414,
+        "owner": 414,
+        "registration_date": 414,
+        "available_seats": 414,
+        "available_standing": 414,
+        "typology": 414,
+        "vclass": 414,
+        "propulsion": 414,
+        "emission": 414,
+        "new_seminew": 414,
+        "ecological": 414,
+        "climatization": 414,
+        "wheelchair": 414,
+        "corridor": 414,
+        "lowered_floor": 414,
+        "ramp": 414,
+        "folding_system": 414,
+        "kneeling": 414,
+        "static_information": 414,
+        "onboard_monitor": 414,
+        "front_display": 414,
+        "rear_display": 414,
+        "side_display": 414,
+        "internal_sound": 414,
+        "external_sound": 414,
+        "consumption_meter": 414,
+        "bicycles": 414,
+        "passenger_counting": 414,
+        "video_surveillance": 414
+      },
+      "samples": []
+    }
+  },
+  {
+    "operator": "cm-BNA17",
+    "cached_official_plan": "PCN1R",
+    "routes": [],
+    "routes.txt": {
+      "rows": 349,
+      "present_fields": {
+        "line_id": 349,
+        "line_short_name": 349,
+        "line_long_name": 349,
+        "route_id": 349,
+        "agency_id": 349,
+        "route_origin": 253,
+        "route_destination": 349,
+        "route_short_name": 349,
+        "route_long_name": 349,
+        "route_type": 349,
+        "path_type": 349,
+        "circular": 349,
+        "route_color": 349,
+        "route_text_color": 349
+      },
+      "samples": []
+    },
+    "trips.txt": {
+      "rows": 62938,
+      "present_fields": {
+        "route_id": 62938,
+        "service_id": 62938,
+        "trip_id": 62938,
+        "trip_headsign": 62938,
+        "trip_short_name": 20916,
+        "direction_id": 62938,
+        "block_id": 62865,
+        "shape_id": 62938,
+        "wheelchair_accessible": 62935,
+        "bikes_allowed": 62935,
+        "start_shift_id": 62865,
+        "end_shift_id": 62865,
+        "pattern_id": 62938,
+        "pattern_short_name": 62938
+      },
+      "samples": []
+    },
+    "vehicles.txt": {
+      "rows": 545,
+      "present_fields": {
+        "vehicle_id": 545,
+        "agency_id": 545,
+        "start_date": 545,
+        "license_plate": 545,
+        "make": 545,
+        "model": 545,
+        "owner": 545,
+        "registration_date": 545,
+        "available_seats": 545,
+        "available_standing": 545,
+        "typology": 545,
+        "vclass": 538,
+        "propulsion": 545,
+        "emission": 545,
+        "new_seminew": 545,
+        "ecological": 545,
+        "climatization": 545,
+        "wheelchair": 545,
+        "corridor": 545,
+        "lowered_floor": 545,
+        "ramp": 545,
+        "folding_system": 545,
+        "kneeling": 545,
+        "static_information": 545,
+        "onboard_monitor": 545,
+        "front_display": 545,
+        "rear_display": 545,
+        "side_display": 545,
+        "internal_sound": 545,
+        "external_sound": 545,
+        "consumption_meter": 545,
+        "bicycles": 545,
+        "passenger_counting": 545,
+        "video_surveillance": 545,
+        "reserve": 545
+      },
+      "samples": []
+    }
+  },
+  {
+    "operator": "cm-YA15B",
+    "cached_official_plan": "ZN3JG",
+    "routes": [],
+    "routes.txt": {
+      "rows": 155,
+      "present_fields": {
+        "line_id": 155,
+        "line_short_name": 155,
+        "line_long_name": 155,
+        "route_id": 155,
+        "agency_id": 155,
+        "route_origin": 155,
+        "route_destination": 155,
+        "route_short_name": 155,
+        "route_long_name": 155,
+        "route_type": 155,
+        "path_type": 155,
+        "circular": 155,
+        "route_color": 155,
+        "route_text_color": 155,
+        "continuous_pickup": 155,
+        "continuous_drop_off": 155,
+        "contract": 17,
+        "route_remarks": 4
+      },
+      "samples": []
+    },
+    "trips.txt": {
+      "rows": 42438,
+      "present_fields": {
+        "route_id": 42438,
+        "pattern_id": 42438,
+        "pattern_short_name": 42438,
+        "service_id": 42438,
+        "trip_id": 42438,
+        "trip_headsign": 42438,
+        "direction_id": 42438,
+        "block_id": 42438,
+        "start_shift_id": 42438,
+        "end_shift_id": 42438,
+        "shape_id": 42438,
+        "demand": 42438
+      },
+      "samples": []
+    },
+    "vehicles.txt": {
+      "rows": 356,
+      "present_fields": {
+        "vehicle_id": 356,
+        "agency_id": 356,
+        "start_date": 356,
+        "license_plate": 356,
+        "make": 356,
+        "model": 356,
+        "owner": 356,
+        "registration_date": 356,
+        "available_seats": 356,
+        "available_standing": 356,
+        "typology": 356,
+        "vclass": 356,
+        "propulsion": 356,
+        "emission": 356,
+        "new_seminew": 356,
+        "ecological": 356,
+        "climatization": 356,
+        "wheelchair": 356,
+        "corridor": 356,
+        "lowered_floor": 356,
+        "ramp": 356,
+        "folding_system": 356,
+        "kneeling": 356,
+        "static_information": 356,
+        "onboard_monitor": 356,
+        "front_display": 356,
+        "rear_display": 356,
+        "side_display": 356,
+        "internal_sound": 356,
+        "external_sound": 356,
+        "consumption_meter": 356,
+        "bicycles": 356,
+        "passenger_counting": 356,
+        "video_surveillance": 356
+      },
+      "samples": []
+    }
+  },
+  {
+    "operator": "cm-A2L1N",
+    "cached_official_plan": "K56AM",
+    "routes": [],
+    "routes.txt": {
+      "rows": 175,
+      "present_fields": {
+        "line_id": 175,
+        "line_short_name": 175,
+        "line_long_name": 175,
+        "line_type": 175,
+        "route_id": 175,
+        "agency_id": 175,
+        "route_origin": 175,
+        "route_destination": 175,
+        "route_short_name": 175,
+        "route_long_name": 175,
+        "route_type": 175,
+        "path_type": 175,
+        "circular": 175,
+        "school": 175,
+        "route_color": 175,
+        "route_text_color": 175,
+        "continuous_pickup": 175,
+        "continuous_drop_off": 175
+      },
+      "samples": []
+    },
+    "trips.txt": {
+      "rows": 113738,
+      "present_fields": {
+        "route_id": 113738,
+        "pattern_id": 113738,
+        "pattern_short_name": 113738,
+        "service_id": 113738,
+        "trip_id": 113738,
+        "offer_trip_id": 113738,
+        "trip_headsign": 113738,
+        "direction_id": 113738,
+        "block_id": 113738,
+        "shape_id": 113738
+      },
+      "samples": []
+    },
+    "vehicles.txt": {
+      "rows": 302,
+      "present_fields": {
+        "vehicle_id": 302,
+        "agency_id": 302,
+        "start_date": 302,
+        "license_plate": 302,
+        "make": 302,
+        "model": 302,
+        "owner": 302,
+        "registration_date": 302,
+        "available_seats": 302,
+        "available_standing": 302,
+        "typology": 302,
+        "vclass": 302,
+        "propulsion": 302,
+        "emission": 302,
+        "new_seminew": 302,
+        "ecological": 302,
+        "climatization": 302,
+        "wheelchair": 302,
+        "corridor": 302,
+        "lowered_floor": 302,
+        "ramp": 302,
+        "folding_system": 302,
+        "kneeling": 302,
+        "static_information": 302,
+        "onboard_monitor": 302,
+        "front_display": 302,
+        "rear_display": 302,
+        "side_display": 302,
+        "internal_sound": 302,
+        "external_sound": 302,
+        "consumption_meter": 302,
+        "bicycles": 302,
+        "passenger_counting": 302,
+        "video_surveillance": 302
+      },
+      "samples": []
+    }
+  }
+]

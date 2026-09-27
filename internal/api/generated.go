@@ -393,6 +393,93 @@ func (e VehiclePositionKind) Valid() bool {
 	}
 }
 
+// Defines values for VehicleCallKind.
+const (
+	VehicleCallKindPredicted      VehicleCallKind = "predicted"
+	VehicleCallKindPublishedRoute VehicleCallKind = "published_route"
+	VehicleCallKindScheduled      VehicleCallKind = "scheduled"
+)
+
+// Valid indicates whether the value is a known member of the VehicleCallKind enum.
+func (e VehicleCallKind) Valid() bool {
+	switch e {
+	case VehicleCallKindPredicted:
+		return true
+	case VehicleCallKindPublishedRoute:
+		return true
+	case VehicleCallKindScheduled:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VehicleCallsPageAvailability.
+const (
+	VehicleCallsPageAvailabilityAvailable           VehicleCallsPageAvailability = "available"
+	VehicleCallsPageAvailabilityNextStopOnly        VehicleCallsPageAvailability = "next_stop_only"
+	VehicleCallsPageAvailabilityPartial             VehicleCallsPageAvailability = "partial"
+	VehicleCallsPageAvailabilityPlanMismatch        VehicleCallsPageAvailability = "plan_mismatch"
+	VehicleCallsPageAvailabilityUnavailable         VehicleCallsPageAvailability = "unavailable"
+	VehicleCallsPageAvailabilityUnidentifiedService VehicleCallsPageAvailability = "unidentified_service"
+)
+
+// Valid indicates whether the value is a known member of the VehicleCallsPageAvailability enum.
+func (e VehicleCallsPageAvailability) Valid() bool {
+	switch e {
+	case VehicleCallsPageAvailabilityAvailable:
+		return true
+	case VehicleCallsPageAvailabilityNextStopOnly:
+		return true
+	case VehicleCallsPageAvailabilityPartial:
+		return true
+	case VehicleCallsPageAvailabilityPlanMismatch:
+		return true
+	case VehicleCallsPageAvailabilityUnavailable:
+		return true
+	case VehicleCallsPageAvailabilityUnidentifiedService:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VehicleCallsPageCoverage.
+const (
+	CompletePublishedRoute VehicleCallsPageCoverage = "complete_published_route"
+	RegionalSubset         VehicleCallsPageCoverage = "regional_subset"
+)
+
+// Valid indicates whether the value is a known member of the VehicleCallsPageCoverage enum.
+func (e VehicleCallsPageCoverage) Valid() bool {
+	switch e {
+	case CompletePublishedRoute:
+		return true
+	case RegionalSubset:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VehicleCallsPageProgress.
+const (
+	Known   VehicleCallsPageProgress = "known"
+	Unknown VehicleCallsPageProgress = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the VehicleCallsPageProgress enum.
+func (e VehicleCallsPageProgress) Valid() bool {
+	switch e {
+	case Known:
+		return true
+	case Unknown:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Sort.
 const (
 	SortDistance  Sort = "distance"
@@ -513,22 +600,28 @@ type ApiKeyPage struct {
 
 // Arrival defines model for Arrival.
 type Arrival struct {
-	ExpectedAt   *time.Time          `json:"expected_at"`
-	Headsign     string              `json:"headsign"`
-	Id           string              `json:"id"`
-	Kind         ArrivalKind         `json:"kind"`
-	ObservedAt   *time.Time          `json:"observed_at"`
-	OperatorId   string              `json:"operator_id"`
-	PlanId       *string             `json:"plan_id,omitempty"`
-	RouteId      string              `json:"route_id"`
-	RouteName    *string             `json:"route_name,omitempty"`
-	ScheduledAt  *time.Time          `json:"scheduled_at"`
-	ServiceDate  *openapi_types.Date `json:"service_date,omitempty"`
-	SourceTripId *string             `json:"source_trip_id,omitempty"`
-	SourceUrl    string              `json:"source_url"`
-	StopId       string              `json:"stop_id"`
-	StopSequence *int                `json:"stop_sequence,omitempty"`
-	TripId       string              `json:"trip_id"`
+	ExpectedAt  *time.Time          `json:"expected_at"`
+	Headsign    string              `json:"headsign"`
+	Id          string              `json:"id"`
+	Kind        ArrivalKind         `json:"kind"`
+	ObservedAt  *time.Time          `json:"observed_at"`
+	OperatorId  string              `json:"operator_id"`
+	PlanId      *string             `json:"plan_id,omitempty"`
+	RouteId     string              `json:"route_id"`
+	RouteName   *string             `json:"route_name,omitempty"`
+	ScheduledAt *time.Time          `json:"scheduled_at"`
+	ServiceDate *openapi_types.Date `json:"service_date,omitempty"`
+
+	// ServiceLabel Published commercial service number, never inferred from an internal ID.
+	ServiceLabel *string `json:"service_label,omitempty"`
+	SourceTripId *string `json:"source_trip_id,omitempty"`
+	SourceUrl    string  `json:"source_url"`
+	StopId       string  `json:"stop_id"`
+	StopSequence *int    `json:"stop_sequence,omitempty"`
+	TripId       string  `json:"trip_id"`
+
+	// VehicleRef Response-only frozen navigation reference. Binds cache revision, original observation and exact published service. Not an authorization credential.
+	VehicleRef *VehicleReference `json:"vehicle_ref,omitempty"`
 }
 
 // ArrivalKind defines model for Arrival.Kind.
@@ -562,6 +655,9 @@ type CPPrediction struct {
 	StopName        string                 `json:"stop_name"`
 	StopSequence    int                    `json:"stop_sequence"`
 	ValidUntil      time.Time              `json:"valid_until"`
+
+	// VehicleRef Response-only frozen navigation reference. Binds cache revision, original observation and exact published service. Not an authorization credential.
+	VehicleRef *VehicleReference `json:"vehicle_ref,omitempty"`
 }
 
 // CPPredictionDateBasis defines model for CPPrediction.DateBasis.
@@ -947,6 +1043,9 @@ type Trip struct {
 
 	// ScheduledService Published full journey endpoints, scheduled only; source IDs can lie outside the retained Lisbon stop network.
 	ScheduledService *ScheduledEndpoints `json:"scheduled_service,omitempty"`
+
+	// ServiceLabel Published commercial service number, never inferred from an internal ID.
+	ServiceLabel *string `json:"service_label,omitempty"`
 }
 
 // TripKind defines model for Trip.Kind.
@@ -1000,6 +1099,9 @@ type Vehicle struct {
 	OperationalDate *string `json:"operational_date,omitempty"`
 	OperatorId      string  `json:"operator_id"`
 
+	// PatternId Provider-published pattern identity, qualified by operator and original plan/agency. Does not establish operating day or schedule.
+	PatternId *string `json:"pattern_id,omitempty"`
+
 	// PlanId Observed source trip plan, retained independently of the active static plan.
 	PlanId       *string             `json:"plan_id"`
 	PositionKind VehiclePositionKind `json:"position_kind"`
@@ -1013,8 +1115,11 @@ type Vehicle struct {
 	ScheduledService *ScheduledEndpoints `json:"scheduled_service,omitempty"`
 
 	// SeatedCapacity Optional published vehicle specification, not live free places or occupancy. Exact source identity only.
-	SeatedCapacity *int   `json:"seated_capacity,omitempty"`
-	SourceId       string `json:"source_id"`
+	SeatedCapacity *int `json:"seated_capacity,omitempty"`
+
+	// ServiceLabel Published commercial service number, never inferred from an internal ID.
+	ServiceLabel *string `json:"service_label,omitempty"`
+	SourceId     string  `json:"source_id"`
 
 	// SourceStopId Original stop reference; does not establish the current vehicle location.
 	SourceStopId *string  `json:"source_stop_id,omitempty"`
@@ -1033,6 +1138,9 @@ type Vehicle struct {
 	// Typology Published source code or string; code schemes differ by provider/feed version. Metadata recorded with the observation, not a depot assignment.
 	Typology *string `json:"typology"`
 
+	// VehicleRef Response-only frozen navigation reference. Binds cache revision, original observation and exact published service. Not an authorization credential.
+	VehicleRef *VehicleReference `json:"vehicle_ref,omitempty"`
+
 	// WheelchairAccessible Optional published equipment value. Some upstream schemas default false when unspecified; false does not prove equipment absence or working availability.
 	WheelchairAccessible *bool `json:"wheelchair_accessible,omitempty"`
 }
@@ -1043,10 +1151,65 @@ type VehicleCurrentStatus string
 // VehiclePositionKind defines model for Vehicle.PositionKind.
 type VehiclePositionKind string
 
+// VehicleCall defines model for VehicleCall.
+type VehicleCall struct {
+	DelaySeconds    *int            `json:"delay_seconds,omitempty"`
+	ExpectedAt      *time.Time      `json:"expected_at,omitempty"`
+	Id              string          `json:"id"`
+	Kind            VehicleCallKind `json:"kind"`
+	ScheduledAt     *time.Time      `json:"scheduled_at,omitempty"`
+	SourceUpdatedAt *time.Time      `json:"source_updated_at,omitempty"`
+	SourceUrl       string          `json:"source_url"`
+	Stop            *Stop           `json:"stop,omitempty"`
+	StopId          string          `json:"stop_id"`
+	StopName        string          `json:"stop_name"`
+
+	// StopPlanId Published static plan of this stop, response-only navigation provenance.
+	StopPlanId   *string `json:"stop_plan_id,omitempty"`
+	StopSequence *int    `json:"stop_sequence,omitempty"`
+
+	// StopStaticUpdatedAt Static network revision timestamp; revalidate the target catalog before opening a station.
+	StopStaticUpdatedAt *time.Time `json:"stop_static_updated_at,omitempty"`
+}
+
+// VehicleCallKind defines model for VehicleCall.Kind.
+type VehicleCallKind string
+
+// VehicleCallsPage defines model for VehicleCallsPage.
+type VehicleCallsPage struct {
+	Availability VehicleCallsPageAvailability `json:"availability"`
+	Coverage     VehicleCallsPageCoverage     `json:"coverage"`
+	Data         []VehicleCall                `json:"data"`
+
+	// Geometry Variant of an official GTFS shape. Coordinates are longitude, latitude; official vertices simplified to at most2 metres perpendicular deviation, preserving endpoints. IDs include operator and plan provenance.
+	Geometry *RouteShape              `json:"geometry,omitempty"`
+	Page     Page                     `json:"page"`
+	Progress VehicleCallsPageProgress `json:"progress"`
+
+	// ValidUntil Earliest expiry of the whole pinned CP prediction result, including rows on later pages.
+	ValidUntil *time.Time `json:"valid_until,omitempty"`
+	Vehicle    Vehicle    `json:"vehicle"`
+}
+
+// VehicleCallsPageAvailability defines model for VehicleCallsPage.Availability.
+type VehicleCallsPageAvailability string
+
+// VehicleCallsPageCoverage defines model for VehicleCallsPage.Coverage.
+type VehicleCallsPageCoverage string
+
+// VehicleCallsPageProgress defines model for VehicleCallsPage.Progress.
+type VehicleCallsPageProgress string
+
 // VehiclePage defines model for VehiclePage.
 type VehiclePage struct {
 	Data []Vehicle `json:"data"`
 	Page Page      `json:"page"`
+}
+
+// VehicleReference Response-only frozen navigation reference. Binds cache revision, original observation and exact published service. Not an authorization credential.
+type VehicleReference struct {
+	Reference string `json:"reference"`
+	VehicleId string `json:"vehicle_id"`
 }
 
 // From defines model for from.
@@ -1281,6 +1444,20 @@ type ListVehiclesParams struct {
 	Revision  *Revision  `form:"revision,omitempty" json:"revision,omitempty"`
 	Operators *Operators `form:"operators,omitempty" json:"operators,omitempty"`
 	RouteId   *RouteId   `form:"route_id,omitempty" json:"route_id,omitempty"`
+	StopId    *StopId    `form:"stop_id,omitempty" json:"stop_id,omitempty"`
+}
+
+// GetVehicleCallsParams defines parameters for GetVehicleCalls.
+type GetVehicleCallsParams struct {
+	Reference *string `form:"reference,omitempty" json:"reference,omitempty"`
+	Limit     *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset    *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Revision Opaque calls revision. Whole collection expires at earliest included CP source expiry.
+	Revision *string `form:"revision,omitempty" json:"revision,omitempty"`
+
+	// IncludeGeometry Opt in to exact CM pattern geometry on page zero only. Cache reads only.
+	IncludeGeometry *bool `form:"include_geometry,omitempty" json:"include_geometry,omitempty"`
 }
 
 // DevelopmentLoginJSONRequestBody defines body for DevelopmentLogin for application/json ContentType.
@@ -1369,6 +1546,9 @@ type ServerInterface interface {
 	// ListVehicles listVehicles
 	// (GET /api/v1/vehicles)
 	ListVehicles(w http.ResponseWriter, r *http.Request, params ListVehiclesParams)
+	// GetVehicleCalls Read cached visits of a frozen vehicle/service
+	// (GET /api/v1/vehicles/{vehicle_id}/calls)
+	GetVehicleCalls(w http.ResponseWriter, r *http.Request, vehicleId string, params GetVehicleCallsParams)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -3120,8 +3300,115 @@ func (siw *ServerInterfaceWrapper) ListVehicles(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// ------------- Optional query parameter "stop_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "stop_id", r.URL.Query(), &params.StopId, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "stop_id"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "stop_id", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListVehicles(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetVehicleCalls operation middleware
+func (siw *ServerInterfaceWrapper) GetVehicleCalls(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "vehicle_id" -------------
+	var vehicleId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "vehicle_id", r.PathValue("vehicle_id"), &vehicleId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "vehicle_id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetVehicleCallsParams
+
+	// ------------- Optional query parameter "reference" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "reference", r.URL.Query(), &params.Reference, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "reference"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "reference", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "revision" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "revision", r.URL.Query(), &params.Revision, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "revision"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "revision", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "include_geometry" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "include_geometry", r.URL.Query(), &params.IncludeGeometry, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "include_geometry"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include_geometry", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetVehicleCalls(w, r, vehicleId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3276,6 +3563,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/traffic", wrapper.ListTraffic)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/trips", wrapper.ListTrips)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/vehicles", wrapper.ListVehicles)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/vehicles/{vehicle_id}/calls", wrapper.GetVehicleCalls)
 
 	return m
 }
@@ -4430,6 +4718,54 @@ func (response ListVehiclesdefaultJSONResponse) VisitListVehiclesResponse(w http
 	return err
 }
 
+type GetVehicleCallsRequestObject struct {
+	VehicleId string `json:"vehicle_id"`
+	Params    GetVehicleCallsParams
+}
+
+type GetVehicleCallsResponseObject interface {
+	VisitGetVehicleCallsResponse(w http.ResponseWriter) error
+}
+
+type GetVehicleCalls200JSONResponse VehicleCallsPage
+
+func (response GetVehicleCalls200JSONResponse) VisitGetVehicleCallsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetVehicleCallsdefaultResponseHeaders struct {
+	RetryAfter *string
+}
+
+type GetVehicleCallsdefaultJSONResponse struct {
+	Body       Error
+	Headers    GetVehicleCallsdefaultResponseHeaders
+	StatusCode int
+}
+
+func (response GetVehicleCallsdefaultJSONResponse) VisitGetVehicleCallsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// ListArrivals listArrivals
@@ -4507,6 +4843,9 @@ type StrictServerInterface interface {
 	// ListVehicles listVehicles
 	// (GET /api/v1/vehicles)
 	ListVehicles(ctx context.Context, request ListVehiclesRequestObject) (ListVehiclesResponseObject, error)
+	// GetVehicleCalls Read cached visits of a frozen vehicle/service
+	// (GET /api/v1/vehicles/{vehicle_id}/calls)
+	GetVehicleCalls(ctx context.Context, request GetVehicleCallsRequestObject) (GetVehicleCallsResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -5203,109 +5542,148 @@ func (sh *strictHandler) ListVehicles(w http.ResponseWriter, r *http.Request, pa
 	}
 }
 
+// GetVehicleCalls operation middleware
+func (sh *strictHandler) GetVehicleCalls(w http.ResponseWriter, r *http.Request, vehicleId string, params GetVehicleCallsParams) {
+	var request GetVehicleCallsRequestObject
+
+	request.VehicleId = vehicleId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetVehicleCalls(ctx, request.(GetVehicleCallsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetVehicleCalls")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetVehicleCallsResponseObject); ok {
+		if err := validResponse.VisitGetVehicleCallsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"7H1bc9w2uuBfQXH3YaaKakm2nMpIT46cybrGjlWWN1vZlKsLTX7djREJ0ADYcselP3Zezx87hRsJkiCb",
+	"lLp1kpyeh4lbJHH58N1v+BYlLC8YBSpFdPktKjDHOUjg+teSs1z9l9DoMvpSAt9GcURxDtGleRZHIllD",
+	"jvXLjOdYRpdRiiWcSJJDFEdyW6iXheSErqKHhzhas5LPgaZ941bP/bFTWOIyk9Hli4s4yvFXkpe5/UGo",
+	"+XFeTUaohBXwejYhMZeD85k3gjOe+RO+9CY8C06YkZz0zmUeBqc5P/MnenV25s0U3hpbLgX0TmWf7tzS",
+	"+Zn+3859sQI4loyL3gmrF5pzioSTQhKmPrlmeY5PBCgsk5Ai9w16+0bMIr2qd0BXch1dvjg7C2HPl77p",
+	"vzSm9QY6fxEciMOGCL2q9iI/FPhLCShhWQaJ+hty7yKF86jAK5i5P10hDqUAxCjKsASun4oZuk3WkJYZ",
+	"VN8KhDPB0JID/A5IroFwpGgE3ROasnuEaYoKDikxU0JGVmRBMiK3M/Tj14JwSL2xOMiS04vzMwW1EDiq",
+	"7U2ECislzEkvcVbPe4btOTXB+ulPPwuiaZRhIecCQO0CqMLN3yJRAKjpUyIkponmMZwUIoobry8Jr39s",
+	"YE2STL2asxSy6HNwjZIVAzt3j6dtXLK+8SR7DPO8B7hL8VbMGc22fUM3X/JnsQMuGMsA0+jh4cE91WT9",
+	"uiD/Aj0sTlOi8BBnN1wRqSQgosslzgTEUeH96VuUcFC0PMdy7D7iCDRCi0nfmKPp/NnsOfCAw4bdQRra",
+	"tto0K8zyiYRc/8MhGAecXkqOqdCsWv9cEyEZ3wYQp/oD5hxvLWf5UipyVYNphNFLrOaMfYg1QFGvuZ6H",
+	"Lf4NiVTzmMO5wSuYeEAplrix0//NYRldRv/rtBb9pxYLTs0s3X3FUWFnHvpar64NAz2//T64Mc7JBmcT",
+	"dwVfC0h24B0tswwvMoguJS8hcHZrwKkgKxpEoB6EuyM09fFFWE6vTrpm4EFUYQsBfPPENTuZOe9ZX5Fh",
+	"ap/tHMtn9z0PHX3tHKuCw5N2pwBEEpirjzqjTBkgwwvIusL9plxkRKwhRQnLc+AJwRmy3yBa5gvgMaKw",
+	"AY4IXQJXYldLfUwRoRI4xRl6+6alrJy/+D60FFbyBOZKPI09EPtJybPgkXgyKvxMwJcSaDJ0YpVSZwRn",
+	"33BWZs41tQ9T/S/m1Y+wBK4nD3JBH29jT5x6KoVbj0eYLbyy5Bc3yL9JWA0gDvCbg3NSM82zstLrm5ua",
+	"A00U40bdnSjI1cP5AgvSEKGFIzJNJVId4Nwdo1r3TjJIIcPbuYCE0VSMw+UUhCQUq93Oe3WCMUJjrByY",
+	"wIefwnf/NHx2LG8bYjqOcot0skr5VM7ZD+82X+3i3gZnJJ2XVJJs/IIPzGAd+nXg3sN7ayA0MDBAWO2z",
+	"byFTgym0wddh500+3qT7ED7ETUbVhP1O1u/zx9cbTDJsTOxD8Mqd9ABfk6xMIbXbE2HcykEIKy66LMbx",
+	"2aexgl2Ug2XZYO8Zw6l6GEfsTksjLgnW0JdYW9nAOeNhK9vHWjtyvcfO4TY2GIDYpAN/hMDHLRwZItJe",
+	"3HqIpykO/kAH0x7i5t6CsGN0SVZTVSTYzHEp1x4qeWb3irFVBvMkI0DlWJ3YGt/z2iE37+Kke6jRssCl",
+	"0MpHSe0uM4g+DwzNQbCsNEPXSseQ/9X/VgLVnyqfS5iI3bvq//EK5toPPF9sLdVXdEuo/O6in2a9ETOy",
+	"0aKDg1j7a25aO+9YgjOk3vXdmQlOgSYQI8okwsiQENJDURACrUrMMZUA2soZBELGVoTOKWuKxh5675x+",
+	"XKNLc6he6A4e2TCchxCpB55BqtDOm+luMqdfeFbj98brXhmRQaN6b36qHH99a8Z4oae1P85bDEYRDflS",
+	"gn2s8K99jk1/VghIb2DzTh3nRBi1sKntXvVh9d0u4eKPFVrij1pGTZX7aVgQ9wvp1qr0CPX7oYX9MwOQ",
+	"VuObzHylEZ7GIz7ObrJ+9Pld3lQhWLnIBvQH4yuJHhqu9qfaVBmePFJGEqAC5kVmLZmd8sTEAMa8udPE",
+	"Y0IfzbztE+RQMC61CAIhSY5lw6nrjcBZUWbhOFTtqrIcWiEPYhyZz6/Mby3xQaCULJfA0WKLCs42JAV+",
+	"ugRI0Qa4Gn6G3oPESgNAHBLGU0jRPZFrFYlCxn2iVXwnFFIo1H+FcsLkQOVsjCbpzIkmw9rhMa90uB4g",
+	"y23BMrba/vkBNMIrVkHCoWkbwdtI14p0+SEwn7LjNm/wD8uDcQMjd3GnQ3vQ/Lme1Y32E7AcJN9esw1w",
+	"O0lzH0NW2S6u0VVeayW1tqF81bW2sUI8ZIS3ZBpitj21VkVqWOFDEuwnrec9RgFIOKRA9U5b4ervXn5/",
+	"sWvd3tehZf0fwJlcT1yRQpUFFrDjJEcautVowfUZ5e2GESonrnJRJncwxW37ZKFfibW59WP1WD5OEu54",
+	"TUf153f5+lHLaYHbQiM0eXDh/vRN2Ow6pkNzQH+uZ+WA/4LtLSQcpiLiHWzHR5hFNcMw+ahBq7dDq30P",
+	"kpNE/Cm05TDh7J7ZinmKC7FmT/D2uZS+sdr1BuaJJwbb+VzmCWJLlJScA5VIMokzESNCUyiAKo6cbdUL",
+	"xjglyiPh6VM676v24uRFBhIaXsVdTpwgi9kNUD8BrDPm0/iRy/sZB2Nvf/MlgWyq+ux/r8+rmao3cpwW",
+	"zT2ZdQY0zhYKx36Sms0m1VlRAYC0MXFw130sgr0jNKDLNVA6ZJTar4Lif4TNr793b8eN6XpXeltpFi0F",
+	"aQ3J3RP9/Wo9YrQIqgEXQL0hNXhyWKGkifY4lxxSF1uYGknw4OOHFby1uP2HQP/BotD0cJD5JqBncUjk",
+	"HJyvaXfg23wwEThjh326pRBH4/dSswtnso7kzEPOoTvK7mlzwKHE5cZXkpc0UQvqCrJPa0ALVlJl9adE",
+	"FBneIpYTKWwibgaoUNyKlQJVk8+iOBDj0MzIIFwPO9nAXk4it95IhyILG0uTnKmFcUw0YwXe4xDujXhT",
+	"JsMP9pK/Nik/zUmhiRik6IckE+jOfjBwbO6NDmWyO89qNzPGVYj0c/9c+0CBPazGxM+dVrhzxlaqwyM8",
+	"XjZ6YJimxeL2ATSpyPNBNE8hBMsugbXTw+rMCG/v7USCAOaFOZollxrYDdxrc/SWSAhx5h5G18PJhsSY",
+	"774aFGfdIg0iJaS+xu40L+0TJVR7RdXRglAvKnw9VYU0pzb33FY1zND/B84QESp90p0CgryQW8RBlJl0",
+	"7lSn+SNCN0CV0TtDtwVAigRWTwSywX9UHUKTETdFctjKGpYU2uE64f0RCWASJowXtGOGPzHKt4XQ7ted",
+	"m3fCDGPfHHQheubCRLvCba1zOh3whnY3hjgO7cJpz/esbhw3+XNt8lk394hNrbGY54xDODulKt0L0HpV",
+	"azfsSGhy0h9pWjBC5YkoICFLkiCS56VUAhNtCNwjye6AzpCNcaDNpfmLQAWhSJvLJ2r7fjWYKRpbMo6w",
+	"RDkTEi1VekdOaClBxEiUGkBIMhfZQrAxyURXyKReCJSXQiIOOdtAzUXR/ZoJQIyTFVFZ7royZYvWWKAC",
+	"CwHpDF3feDVqApUCkMvncytXdWwczBLWoMZUujOhFFLL8rUIuTg/Q/droEjr2JhnBIREhJoEr3oRNrJn",
+	"16LXIUbFIrUbKnRgHevclGRW9ZLmw7jGFe+EQ2j4EdM7Neefwfn4yFTmkU78J2U17zMAEIisepmujezW",
+	"kDwa7dIaQIdDc1w7zbMy3I8KcHvzjfRZ+Yyu+tFkn8VPYs24HMDIwawEm0P9FBdrJ+LfirvWy/OhUltO",
+	"1RLqbfee2huQ2FhsOMs+LKPL33agl/ooeojb/seVjYw3tl39o0u3HQ7Uk4X2oovGPecXhmW1ri4EPjsY",
+	"HJwkLcyemSBv17gIhGZ+wZxgKlXgRdleyyXRpW4/ffrnLRLqkxm6ZoynhGIJAmEOSCEZkWUKsapl1/+6",
+	"qr/cKLAkIJAgeZGRJVF2H3NayAuk4A8CFcALoClJygxzlMKG2LSZgoOuE6ArBFYvEjNV+O+kft0NQNfC",
+	"Z5jqTB2giv92TbxdXleVIjPICTzJ9YxoPfjwMfWoB6tD0liyq1Knx7s/vYJnkgivltY67EbhoOOTnUoY",
+	"EwZouFwG+IdPZjfBZCA/PjqKU3TyiwJMYzrr0Ss8YMFAtc0QjFy/i9TZPGKi16lO5luWWYb+zUpOYVuz",
+	"iriyNFKk+hpcOdNAcZAEU5QRQKyUgqRgvVMSE2V1vCNiwShS4hJRkPeM33W5yajyQf8li0tDdWXGiOkf",
+	"zj4fMVK7Wq9lZn4tMpIQibQLU7vGDJs3XyH1pxj9+uuvv568f3/y5s1scv1c27sTXHhzw4PQCleV+dTZ",
+	"2HEQ4SQrJkrz3riSHMnlM0ZHvvl4BRbzCaUxB0i4naakOvXU+K11JL/egb++viM8tFKm5nhWnewTx0pj",
+	"ekwW3zPip5+A0+Px2oGoOwz2yQa6j0K+Ad5Y6S6AHxqbGof7vFhFpnK7/fY2+fzITiQU0nkKBeay5AHR",
+	"VakNqHpJWRRKfmv3Zy3Ftfi2gScr0TEHfKXjRxQSEAJzkm3Nt74KYaSSEnrj8rHcsm2Pur4FY9PfwS03",
+	"w/tZrScYxy95WI93S55bobqTZ3Z1uT9SY5VJloJnD3TRsXnWFv37yO/wvIU8r6T6vwKmZjqpUs1OsZMp",
+	"6zTFnJCxIgcqg/wCcuuD2ks/sIEGGZ2ayWmOObPObt+uRquuGhQh2D6ufm8BmNtQwiOc+4/r4JIwKnEi",
+	"MxAi1ArRrBxVhfhIwUkfsbI2SpihW5YDKgshOeAcWYxEtokf0vs0kZ6S2jAYpFf27ykDoVmidvR4Y+OF",
+	"AJroYi5lrymnkV+vPhAB8uJ5NiPZy9npY1kFZysOQiAOGZYqnqY8W5qLmwSFHLAoFctSITO1wqtQHgJS",
+	"nrGt98TM7Gc43376cHPz45v5609RHL39+frD+7c//+R+zT99fP3z7dtP808fRqX19TB8QnGiNmHxoHWk",
+	"LrLmKVaoyErRiCNeqfRtkmjXYIaTO+VGpHAPXBmT2MCkWG+Fzg2x89lzGZlYXiWzBM6lnWkXu+QPKzJc",
+	"qnlu8v578vCqGeZN9tKazM5Rpf2lgNOMUIgRo4BUUgvCSwkcsQDkYuu8VAjqVsXZvUCCqQETRqkmySry",
+	"qjwVZjkowUrOaoDO0HUgMgu27WeNX7AB14TURFRNt9E+qO9OBR5vWkwusx1vjEwoyB2RgNijpmo+1uNA",
+	"+aXym4BzpVjnUp8L5Sqoyng9FtRiZntp54elBO48uG1CMYWsJzV7tq8joivh5DZGX0psvfWLbdPFXiG0",
+	"0oJO8Qposp2hN44ng1CZCkSs7VcKx1VqF+OVK67ds/fVd8MJny1W5BLCLLAlJ4VeS1wr0p0qEqUwG/aG",
+	"TKad/mIUqI/l2v1Ww8iXR3Qle6KRoX3yCS5wYnvu7NRIbOQeuSQbDzC688mSAygkSUCo42BJUhZYo/qP",
+	"X3FSkbqjGO1dtojttchuNsgekYL8h+tDORzJ8dzPPQqDegNx14PsCqVdRqGw04lBdywZSypr9sm9qJ5Y",
+	"lmUSo8Mdgfv2b5BkA9ww0Yoz4UKJCqM/NUEzbqd+07lx2Ux/BbKY0gz1r9P54Ynd/uLofg2QJWtM+Bwn",
+	"CQhBFhn8tey1aYGHvnyuusuh71BuFgC0m8y1Gmo041CeK9qZ5/29OVzhRR1yDnfWaNg/TYOtz3AZ8DJc",
+	"4ywLlTW2eqh2ifEJ7VA9ofPq/EW825Vs80Yh9XtANlr86XMMV8yMaXn6zM1Exwaenth4tFd59lhgrQYb",
+	"BZkI67ngIApGBZwo3o0o3pCVtfcbeTWPaXlqXglVMrX85WZxNu5e36ShIC8kzgt1gYaLW2uOKzFfgUQJ",
+	"ljhjK7SAJeM6N4hqrmK2O945HmQr9V0OXtfTLvnvoDkRTgdpN40MdXmpq9v1AedE6D7JpvualrhL4unS",
+	"cUThqzQ6mr3UYVdVvJ+UUts5K2MGi3Jhkp1d2c18DBlOcmf7vCng1fYzrsZntoz3hceR8+n5AHAMt6Tm",
+	"X593V7i1lEGXqW4T0tmym+XeSJKvypxqP5H2D7XuixntN9vUjuUR0O+gv/s8HmoG6iGPB8YBYjh0aOS/",
+	"owdURwvr4MLHBnddcvY7UJ/J1vYA+oHQVBiHX8UC46BDUTtmQCvgtQ5n2cAM/awUT4pU7IFx8rv5om57",
+	"1E1r4v7yG/0UL74f0FI7Mj7k2QmjltXJqnm7sDWdX0pO5PbWaOjNu2eaUP4BMAeOsmI+m6lrlVihjbC6",
+	"96XSOf3ml1fIrirXDlXMAX09cQs9McGc6tYkFR4EXl+d89qHbE1/uOpZcwtCHd41Y3cEqgt4EvOzGiZT",
+	"4lOI4BgP2kO/ZAPuvAVWTQxc4Njuc4bMCMhsQRffdDZ2hXCWaZcyyoiw2y/wSmf5pjP0jmxqDBTOE20L",
+	"cq6Q683hvWIvrEqqolBCVyA04uWg7GqxJkV931VqELiKgOilqEU4z2q2RUmGhdACbobeYLFeMMzNmdr1",
+	"KsRPdI0TtTdjccUTdamOMkZEqWxvSNHrm7foDrZK3yFZhoAuGU8CYJkhBbgcU7zSaOFQRCCMTLcyZM9L",
+	"X7YFVBg4qRWJtVqTvGdoiUl2slRxfpExaUqdMDp/dWKUbFQ5mqsYAvrbq7OXaFGK7ali6KyUf69Bpb/3",
+	"SmxXnJUKuc3B2RoqxYiRuaPNihJhjNOL6g+myy0iVEjAqRZJpjxYl3xRzDm7rxy/IkZawCuq8a4fm6Ef",
+	"SrFVi3U6Y52W/VHJ6ZPXSwlca4tEZqB6CyvsxOjmP/9DnRZWZ6FLPblxj0bns7PZmfVwU1yQ6DJ6OTub",
+	"vdRMV6410Z/igpxuzk9tLoX+28rU2VXAfJuayeRr91LcuKWwp5KhfuVUw0cXM+x40daAjXjT0ceoUR3o",
+	"Rw3s7NoR7+rC9RHvSTbmLacUP3yOowoJ1Em8ODuLdJYzlWBz2mrX1+m/hXGG15eMjbgUxUrkh3YS8G2p",
+	"nRsm19beArenmU2/38Cc+gH628XZWXxxdh5fnL2ML84u4ovzs/jixT9idRPjq7OXf5+hixf/0CS7sJTS",
+	"Qx9GpGjIeU+aC21L0gdfKCqUfohrifjbZ/WrJXh++6zOSZR5jpUSHWVNAvlqQkLJieJhzuPSYYudNtKf",
+	"1Toqoizl+tTP6VCWDhMB6nxTv2S6PhrNAIT8gaXbvR1h1VX6oal7qN09HBBpdaLMEVt7sbWBiGkbFzoo",
+	"ZfOFerHJbx96GETyZzji0h8Xl1aNc2qhUcZWrBxgSu/M885ZXgScVEfgG7GzU8o4mH49sfryibmI1F0T",
+	"0DihHHr1uZ9AvofoSGd/3KNe2RPaddJJdUtM30Hbe2QOeNh2huNxj2Sr1Zk0DrI49Xp7DFpi18WN9+bR",
+	"HDuoORZ3pJUOUJzUeV262E8nT72tEtMwWgEF7nwwXr2CSRoJXkld3xAXvOI65AM8pLHYubzrSOB7tBhv",
+	"jJft+kYHC08S5Tj0m/toL1Plok4yltwZl5eNXSEvSLAPc3OZAchBtqPvgziym4Owmy9jXhKMy8P6hzrX",
+	"ixxJfs9OIkdEE0m2ulnMJ9l1daNGn+5n79w4IMbYGY54Mlr3qyDmHaQ93SHua++iOPLfR/DfQ7LMzn0k",
+	"R1LYM8usMX8fTFPFKwcJ7V+wfQaj6qBRHg3hIzI+1dtWI0PQCxP3eD7rK0oP4z6vxx/lPD/f28T1rURH",
+	"tHo8WiUeeuzy7ilmdfrtDrZzkj7YrGKQ0MW5j7Bhd3bQFufSrgYV8q89DWbAqI07fY6Hi10X5T58Prr5",
+	"94gh3DvMXRiS13dv9Xv6zStTZdqfxHSutdFDylQHxCPn26N2t/KRcx9OLEUN7LRuODBEEu6SpwMjjZsm",
+	"cIhvqYSVWdipqz00a79C/oVDp6BPm4gqi+9PjGtPRppfXCmgaT2JNJBRE37ob+o38BPdjjBhVJQ5cC9V",
+	"V/x9TxjnmOSJn/Dfa1t0biM4WvOHEAmqa8RcSMzl6LeBjlqnvV9FmDKQg0qc4E0ZR/GzR/FT37RTAD+p",
+	"ejMErt3Zk++hcTPkTibxBwvtPgeuH3H8EA40H6H2IfO4ufxgGIs/upeOIu4g+QkHjwX6N2kcSXLPJOlR",
+	"xz4Ei8bDE92WfQdVVvWc/1MI86Ak0uxMf6SSPVLJB3fxhamXcgXLaGMu1jC5MHvOgdFTjSCgvzbtfHkG",
+	"ojnSy0GkikPO/RHD6TfHSh+GHGp65lGxB79zzMGiD3vGVnt90xFf9+v7dUizD2wVkhXDnPtWv3G0Rp6F",
+	"yVd3SxxpZs883qHxPohGmvsUBsnG3rlwJJyjp3rMtRxHoj8E0ddEuA9vQXXn7QDRk6Os/MOlmlbXYBzp",
+	"a+/0RfYmVP1LmnsJ7BfvIv0jjT1X+5NjZcsBachD6X2S0em3urPZw6kqkxvM7PH7Q47yR7T6po3xSLz6",
+	"bpdHIv4WrPCs27L1DR3qC9c3mrs6vx6pwtoXZ16j6FeNNtHnceBK/incpN3yGH8pAelzqdqWzdD/0x0Z",
+	"vQsZbCtddV0XuCaOFoV1y0bbSFq/tu2rkHXj94Hv4uwf3wXB116z1JeDMdvp7/p9dW9D5WZWXVrxCtDv",
+	"wJnpvY2ubf9AnIqqG3dolXZbczdW+IhsW8ZOG+Zn4H9189QjE9wjE/wIOHW3yig8lULf/u1aU1pGc1o3",
+	"lX08m7QXHDi2phslR6fqsvX/GgA=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

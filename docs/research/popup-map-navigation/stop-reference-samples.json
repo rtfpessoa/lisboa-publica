@@ -1,0 +1,44 @@
+[
+  {
+    "operator": "cp",
+    "reference": [
+      {
+        "id": "cp:16019",
+        "source_stop_id": null,
+        "stop_id": null,
+        "trip_id": "cp:16019_20251214",
+        "plan_id": "76XA2",
+        "operational_date": "2026-09-27",
+        "current_status": "STOPPED_AT"
+      }
+    ]
+  },
+  {
+    "operator": "metro",
+    "reference": [
+      {
+        "id": "metro:001A",
+        "source_stop_id": "SP",
+        "stop_id": null,
+        "trip_id": "metro:A_2_10.A14",
+        "plan_id": "RSRHS",
+        "operational_date": "2026-09-27",
+        "current_status": "IN_TRANSIT_TO"
+      }
+    ]
+  },
+  {
+    "operator": "fertagus",
+    "reference": [
+      {
+        "id": "fertagus:14235",
+        "source_stop_id": null,
+        "stop_id": null,
+        "trip_id": "fertagus:3205",
+        "plan_id": "2XUL7",
+        "operational_date": "2026-09-27",
+        "current_status": "IN_TRANSIT_TO"
+      }
+    ]
+  }
+]

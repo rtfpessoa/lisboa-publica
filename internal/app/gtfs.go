@@ -20,10 +20,12 @@ type Calendar struct {
 }
 
 // StopTime records a stop visit in seconds from the GTFS service-day start.
+// Clock values are bounded by maxGTFSServiceHours at ingestion; int32 preserves
+// that range while avoiding eight bytes per retained visit on 64-bit servers.
 type StopTime struct {
 	Stop      string `json:"s"`
-	Arrival   int    `json:"a"`
-	Departure int    `json:"d"`
+	Arrival   int32  `json:"a"`
+	Departure int32  `json:"d"`
 	Sequence  int    `json:"q"`
 }
 
@@ -33,8 +35,8 @@ func (s *StopTime) UnmarshalJSON(b []byte) error {
 	var wire struct {
 		compact
 		LegacyStop      string `json:"Stop"`
-		LegacyArrival   int    `json:"Arrival"`
-		LegacyDeparture int    `json:"Departure"`
+		LegacyArrival   int32  `json:"Arrival"`
+		LegacyDeparture int32  `json:"Departure"`
 		LegacySequence  int    `json:"Sequence"`
 	}
 	if e := json.Unmarshal(b, &wire); e != nil {
@@ -200,7 +202,7 @@ func (q scheduleQuery) includesTrip(t ScheduledTrip, day time.Time) bool {
 
 func (q scheduleQuery) trip(t ScheduledTrip, day time.Time) api.Trip {
 	base := serviceStart(day)
-	return api.Trip{Id: qualify(q.operator, day.Format("20060102")+":"+t.ID), OperatorId: q.operator, RouteId: qualify(q.operator, t.Route), Headsign: t.Headsign, PlannedDeparture: base.Add(time.Duration(t.Times[0].Departure) * time.Second), PlannedEnd: base.Add(time.Duration(t.Times[len(t.Times)-1].Arrival) * time.Second), Kind: api.TripKindScheduled, ScheduledService: t.scheduledEndpoints(q.data.Source, day)}
+	return api.Trip{Id: qualify(q.operator, day.Format("20060102")+":"+t.ID), OperatorId: q.operator, RouteId: qualify(q.operator, t.Route), Headsign: t.Headsign, ServiceLabel: optional(cleanCPLabel(t.Label)), PlannedDeparture: base.Add(time.Duration(t.Times[0].Departure) * time.Second), PlannedEnd: base.Add(time.Duration(t.Times[len(t.Times)-1].Arrival) * time.Second), Kind: api.TripKindScheduled, ScheduledService: t.scheduledEndpoints(q.data.Source, day)}
 }
 
 func (q scheduleQuery) stopVisits(t ScheduledTrip, trip api.Trip, day time.Time) ([]api.Arrival, error) {
@@ -242,5 +244,6 @@ func (q scheduleQuery) plannedArrival(t ScheduledTrip, trip api.Trip, day time.T
 	arrival.ServiceDate = &date
 	arrival.StopSequence = ptr(v.Sequence)
 	arrival.RouteName = optional(scheduledRouteName(d, trip.RouteId))
+	arrival.ServiceLabel = optional(cleanCPLabel(t.Label))
 	return arrival
 }

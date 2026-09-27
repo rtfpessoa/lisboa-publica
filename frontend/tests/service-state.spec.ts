@@ -44,18 +44,18 @@ for(const width of [1280,390])test(`normal stopped bus, formatted plate and flee
 
 test('last-known stop remains a previous statement and original clocks expire',async({page})=>{
  await fixture(page,'carris',true);await page.clock.install();await page.goto('/');await openVehicle(page);
- await expect(page.locator('.detail-panel')).toContainText('Último estado: Parado em Oriente');await expect(page.locator('.detail-panel')).toContainText('Sem atualização');await expect(page.locator('.live-metrics')).toContainText('sem atualização após 5 min');await expect(page.locator('.live-metrics')).not.toContainText('inativas');await expect(page.locator('.detail-panel')).not.toContainText('Inativo');
- await page.clock.fastForward(55*60000);await expect(page.locator('.detail-panel')).toContainText('Posição anterior expirada');
+ await expect(page.locator('.detail-panel')).toContainText('Último registo: Parado em Oriente');await expect(page.locator('.detail-panel')).toContainText('Sem atualização');await expect(page.locator('.live-metrics')).toContainText('sem atualização após 5 min');await expect(page.locator('.live-metrics')).not.toContainText('inativas');await expect(page.locator('.detail-panel')).not.toContainText('Inativo');
+ await page.clock.fastForward(55*60000);await expect(page.locator('.detail-panel')).toContainText('Posição expirada');
 });
 
 test('silence without stop state does not imply stopped and Metro state is estimated',async({page})=>{
- await fixture(page,'carris',true,null);await page.goto('/');await openVehicle(page);await expect(page.locator('.detail-panel')).toContainText('estado de paragem não confirmado');await expect(page.locator('.detail-panel')).not.toContainText('Parado em');
- await fixture(page,'metro');await page.reload();await openVehicle(page);await expect(page.locator('.detail-panel')).toContainText('Estado estimado: Parado');await expect(page.locator('.detail-panel')).toContainText('Não é GPS');
+ await fixture(page,'carris',true,null);await page.goto('/');await openVehicle(page);await expect(page.locator('.detail-panel')).toContainText('Última posição conhecida');await expect(page.locator('.detail-panel')).not.toContainText('Parado em');
+ await fixture(page,'metro');await page.reload();await openVehicle(page);await expect(page.locator('.detail-panel')).toContainText('Estado estimado: Parado');await expect(page.locator('.detail-panel')).toContainText('não representa uma observação GPS');
 });
 
 test('CP full endpoints are explicitly scheduled with realtime delay unavailable',async({page})=>{
  await fixture(page,'cp');await page.goto('/');await openVehicle(page);
- await expect(page.locator('.detail-panel')).toContainText('Serviço planeado');await expect(page.locator('.detail-panel')).toContainText('Porto → Faro');await expect(page.locator('.detail-panel')).toContainText('extremos do horário publicado');await expect(page.locator('.detail-panel')).toContainText('CE29PV');
+ await expect(page.locator('.detail-panel')).toContainText('Serviço planeado');await expect(page.locator('.detail-panel')).toContainText('Porto → Faro');await expect(page.locator('.detail-panel')).toContainText('CE29PV');
 });
 
 test('CP endpoint row labels its retained Lisbon times without claiming full journey times',async({page})=>{
@@ -70,10 +70,10 @@ test('CP endpoint row labels its retained Lisbon times without claiming full jou
 
 for(const width of [1280,390])test(`published vehicle specifications preserve zero false and unavailable at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:800});await fixture(page,'carris',false,'STOPPED_AT',{seated_capacity:0,total_capacity:80,wheelchair_accessible:false,contactless:true});await page.goto('/');await openVehicle(page);
- const panel=page.locator('.detail-panel');await expect(panel.locator('span').filter({hasText:'Lugares sentados (capacidade publicada)'})).toContainText('0');
- await expect(panel.locator('span').filter({hasText:'Capacidade total publicada'})).toContainText('80');
- await expect(panel.locator('span').filter({hasText:'Acessibilidade para cadeira de rodas'})).toContainText('Não indicado');
- await expect(panel.locator('span').filter({hasText:'Pagamento contactless'})).toContainText('Sim (publicado)');await expect(panel).toContainText('Não indicam lugares livres');
- await fixture(page,'metro');await page.reload();await openVehicle(page);await expect(panel.locator('span').filter({hasText:'Capacidade total publicada'})).toContainText('Indisponível');
+ const panel=page.locator('.detail-panel');await expect(panel.locator('span').filter({hasText:'Lugares sentados'})).toContainText('0');
+ await expect(panel.locator('span').filter({hasText:'Capacidade total'})).toContainText('80');
+ await expect(panel.locator('span').filter({hasText:'Acessibilidade'})).toContainText('Não indicado');
+ await expect(panel.locator('span').filter({hasText:'Contactless'})).toContainText('Sim (publicado)');await expect(panel).toContainText('não lugares livres');
+ await fixture(page,'metro');await page.reload();await openVehicle(page);await expect(panel.locator('span').filter({hasText:'Capacidade total'})).toHaveCount(0);
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });

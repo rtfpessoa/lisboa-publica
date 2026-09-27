@@ -1,0 +1,17 @@
+npm notice run lisboa-publica@1.0.0 test
+npm notice run playwright test cm-paths.spec.ts
+
+Running 8 tests using 1 worker
+
+(node:9156) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/cm-paths.spec.ts:35:34 › selective complete CM path and exact map variant (desktop) (4.6s)
+  ✓  2 tests/cm-paths.spec.ts:35:34 › selective complete CM path and exact map variant (mobile) (2.3s)
+  ✓  3 tests/cm-paths.spec.ts:43:1 › reenabling overlays on a later page obtains geometry from pinned page zero (2.0s)
+  ✓  4 tests/cm-paths.spec.ts:50:1 › closing cancels late geometry and provider/tab changes clear the highlight (4.0s)
+  ✓  5 tests/cm-paths.spec.ts:54:1 › heartbeats do not repost the identical path (1.6s)
+  ✓  6 tests/cm-paths.spec.ts:58:1 › unmatched patterns show published next stop without claiming a full route (2.8s)
+  ✓  7 tests/cm-paths.spec.ts:62:1 › disabling overlays aborts pending later-page geometry and never retains its late result (2.9s)
+  ✓  8 tests/cm-paths.spec.ts:67:1 › valid first-page geometry recovers from a failed later-page lookup (3.5s)
+
+  8 passed (24.6s)

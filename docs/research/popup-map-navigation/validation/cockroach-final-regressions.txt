@@ -1,0 +1,1 @@
+ok  	lisboapublica/internal/app	10.637s

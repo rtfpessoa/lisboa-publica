@@ -125,6 +125,10 @@ export type ScheduledEndpoints = {
     /** Explicit validated GTFS service date, YYYY-MM-DD. */
     service_date: string;
 };
+export type VehicleReference = {
+    vehicle_id: string;
+    reference: string;
+};
 export type Vehicle = {
     id: string;
     source_id: string;
@@ -173,6 +177,11 @@ export type Vehicle = {
     wheelchair_accessible?: boolean | null;
     /** Optional published equipment value. Some upstream schemas default false when unspecified; false does not prove equipment absence or working availability. */
     contactless?: boolean | null;
+    /** Published commercial service number, never inferred from an internal ID. */
+    service_label?: string;
+    vehicle_ref?: VehicleReference;
+    /** Provider-published pattern identity, qualified by operator and original plan/agency. Does not establish operating day or schedule. */
+    pattern_id?: string;
 };
 export type VehiclePage = {
     data: Vehicle[];
@@ -189,6 +198,8 @@ export type Trip = {
     planned_end: string;
     kind: "scheduled";
     scheduled_service?: ScheduledEndpoints;
+    /** Published commercial service number, never inferred from an internal ID. */
+    service_label?: string;
 };
 export type TripPage = {
     data: Trip[];
@@ -211,6 +222,9 @@ export type Arrival = {
     service_date?: string | null;
     stop_sequence?: number | null;
     route_name?: string | null;
+    /** Published commercial service number, never inferred from an internal ID. */
+    service_label?: string;
+    vehicle_ref?: VehicleReference;
 };
 export type ArrivalPage = {
     data: Arrival[];
@@ -380,6 +394,7 @@ export type CpPrediction = {
     collected_at: string;
     valid_until: string;
     source_url: string;
+    vehicle_ref?: VehicleReference;
 };
 export type CpPredictionAvailability = {
     status: "loading" | "ok" | "partial" | "stale" | "error";
@@ -393,6 +408,35 @@ export type CpPredictionPage = {
     data: CpPrediction[];
     page: Page;
     availability: CpPredictionAvailability;
+};
+export type VehicleCall = {
+    id: string;
+    stop_id: string;
+    stop_name: string;
+    stop?: Stop;
+    stop_sequence?: number;
+    kind: "predicted" | "scheduled" | "published_route";
+    scheduled_at?: string;
+    expected_at?: string;
+    source_updated_at?: string;
+    delay_seconds?: number;
+    source_url: string;
+    /** Published static plan of this stop, response-only navigation provenance. */
+    stop_plan_id?: string;
+    /** Static network revision timestamp; revalidate the target catalog before opening a station. */
+    stop_static_updated_at?: string;
+};
+export type VehicleCallsPage = {
+    vehicle: Vehicle;
+    data: VehicleCall[];
+    page: Page;
+    availability: "available" | "partial" | "plan_mismatch" | "unidentified_service" | "next_stop_only" | "unavailable";
+    coverage: "regional_subset" | "complete_published_route";
+    progress: "known" | "unknown";
+    /** Earliest expiry of the whole pinned CP prediction result, including rows on later pages. */
+    valid_until?: string;
+    /** Exact published pattern geometry from the frozen revision. Only present on page zero when include_geometry=true; does not change vehicle position. */
+    geometry?: RouteShape;
 };
 /**
  * getHealth
@@ -575,12 +619,13 @@ export function listStops({ limit, offset, revision, operators, routeId, q }: {
 /**
  * listVehicles
  */
-export function listVehicles({ limit, offset, revision, operators, routeId }: {
+export function listVehicles({ limit, offset, revision, operators, routeId, stopId }: {
     limit?: number;
     offset?: number;
     revision?: string;
     operators?: string;
     routeId?: string;
+    stopId?: string;
 } = {}, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
@@ -593,7 +638,8 @@ export function listVehicles({ limit, offset, revision, operators, routeId }: {
         offset,
         revision,
         operators,
-        route_id: routeId
+        route_id: routeId,
+        stop_id: stopId
     }))}`, {
         ...opts
     }));
@@ -974,6 +1020,32 @@ export function listCpPredictions({ limit, offset, revision, operators, routeId,
         to,
         stop_id: stopId,
         trip_id: tripId
+    }))}`, {
+        ...opts
+    }));
+}
+/**
+ * Read cached visits of a frozen vehicle/service
+ */
+export function getVehicleCalls(vehicleId: string, { reference, limit, offset, revision, includeGeometry }: {
+    reference?: string;
+    limit?: number;
+    offset?: number;
+    revision?: string;
+    includeGeometry?: boolean;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: VehicleCallsPage;
+    } | {
+        status: number;
+        data: Error;
+    }>(`/api/v1/vehicles/${encodeURIComponent(vehicleId)}/calls${QS.query(QS.explode({
+        reference,
+        limit,
+        offset,
+        revision,
+        include_geometry: includeGeometry
     }))}`, {
         ...opts
     }));

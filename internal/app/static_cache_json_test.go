@@ -21,6 +21,8 @@ func TestStaticCacheJSONCompatibilityAndBoundedWrites(t *testing.T) {
 	d.Models["train"] = Metadata{Model: "Published model", Plate: "Sample plate", Typology: "Published code", Propulsion: "Electric"}
 	d.GeometryUpdated, d.GeometryError, d.GeometryPartial = &now, ptr("Partial coverage"), true
 	d.Shapes = []api.RouteShape{{Id: "cp:shape", OperatorId: "cp", RouteId: "cp:1", ShapeId: "shape", PlanId: "published", SourceUrl: hubBase, Geometry: [][]float64{{-9.15, 38.72}, {-9.14, 38.73}}, UpdatedAt: now}}
+	d.CMPaths = []CMPath{{ID: "cm:[plan][agency]pattern", Line: "cm:1001", Shape: "cm:shape", Visits: []CMPathVisit{{Stop: "s", Sequence: 1}}}}
+	d.CMPathError = ptr("Partial path coverage")
 	d.Routes[0].Geometry = &d.Shapes[0].Geometry
 	trip := d.Schedule.Trips[0]
 	d.Schedule.Trips = make([]ScheduledTrip, 2000)
@@ -96,6 +98,8 @@ func TestStaticCacheJSONPropagatesFailures(t *testing.T) {
 			t.Fatalf("writer failure swallowed at %d: %v", allowance, err)
 		}
 	}
+	d.CMPaths = []CMPath{{ID: "cm:[plan][agency]pattern", Line: "cm:1001", Shape: "cm:shape", Visits: []CMPathVisit{{Stop: "s", Sequence: 1}}}}
+	d.CMPathError = ptr("Partial path coverage")
 	d.Routes[0].Geometry = ptr([][]float64{{math.NaN(), 38.72}})
 	if _, err := encodeCache(d); err == nil {
 		t.Fatal("invalid JSON value encoded")

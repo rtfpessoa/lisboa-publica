@@ -73,6 +73,8 @@ func optional(s string) *string {
 
 // StaticData contains one operator’s normalized published routes, stops and schedule.
 type StaticData struct {
+	CMPaths              []CMPath            `json:"cm_paths,omitempty"`
+	CMPathError          *string             `json:"cm_path_error,omitempty"`
 	Routes               []api.RouteDetail   `json:"routes"`
 	Stops                []api.Stop          `json:"stops"`
 	Schedule             *Schedule           `json:"schedule,omitempty"`

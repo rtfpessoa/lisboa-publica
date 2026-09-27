@@ -1,0 +1,13 @@
+npm notice run lisboa-publica@1.0.0 test
+npm notice run playwright test continuity.spec.ts --grep full official geometry
+
+Running 2 tests using 1 worker
+
+(node:64313) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"width":1280,"variants":2261,"points":607609,"first_all_geometry_ms":2877,"main_js_heap_bytes":153497536,"operator_refreshes":2,"unchanged_network_posts":5}
+  ✓  1 tests/continuity.spec.ts:75:31 › full official geometry remains responsive through operator refresh at width 1280 (7.7s)
+{"width":390,"variants":2261,"points":607609,"first_all_geometry_ms":2093,"main_js_heap_bytes":235679848,"operator_refreshes":2,"unchanged_network_posts":6}
+  ✓  2 tests/continuity.spec.ts:75:31 › full official geometry remains responsive through operator refresh at width 390 (6.0s)
+
+  2 passed (15.4s)

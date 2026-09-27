@@ -16,6 +16,7 @@ func writeStaticCacheJSON(w io.Writer, d *StaticData) error {
 	fields := []cacheJSONField{
 		{"routes", d.Routes, false}, {"stops", d.Stops, false},
 		{"schedule", d.Schedule, d.Schedule == nil},
+		{"cm_paths", d.CMPaths, len(d.CMPaths) == 0}, {"cm_path_error", d.CMPathError, d.CMPathError == nil},
 		{"models", d.Models, len(d.Models) == 0},
 		{"plan_id", d.PlanID, false}, {"valid_from", d.ValidFrom, false},
 		{"valid_until", d.ValidUntil, false}, {"source", d.Source, false},
@@ -91,6 +92,8 @@ func writeCacheJSONElements[T any](w io.Writer, rows []T) error {
 func writeCacheJSONValue(w io.Writer, value any) error {
 	var err error
 	switch rows := value.(type) {
+	case []CMPath:
+		err = writeCacheJSONArray(w, rows)
 	case []ScheduledTrip:
 		err = writeCacheJSONArray(w, rows)
 	case []api.RouteDetail:

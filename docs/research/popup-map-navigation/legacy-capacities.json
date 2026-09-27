@@ -1,0 +1,122 @@
+[
+  {
+    "operator": "carris",
+    "samples": [
+      {
+        "vehicle_id": "2284",
+        "available_seats": "1",
+        "available_standing": "1",
+        "wheelchair": "1",
+        "num_carriages": null,
+        "propulsion": "2"
+      },
+      {
+        "vehicle_id": "2310",
+        "available_seats": "1",
+        "available_standing": "1",
+        "wheelchair": "1",
+        "num_carriages": null,
+        "propulsion": "2"
+      },
+      {
+        "vehicle_id": "2292",
+        "available_seats": "1",
+        "available_standing": "1",
+        "wheelchair": "1",
+        "num_carriages": null,
+        "propulsion": "2"
+      }
+    ],
+    "nonnegative_integer_seats": 841
+  },
+  {
+    "operator": "mobi",
+    "samples": [
+      {
+        "vehicle_id": "3001",
+        "available_seats": "19",
+        "available_standing": "12",
+        "wheelchair": "0",
+        "num_carriages": "1",
+        "propulsion": "2"
+      },
+      {
+        "vehicle_id": "3002",
+        "available_seats": "19",
+        "available_standing": "12",
+        "wheelchair": "0",
+        "num_carriages": "1",
+        "propulsion": "2"
+      },
+      {
+        "vehicle_id": "3003",
+        "available_seats": "19",
+        "available_standing": "12",
+        "wheelchair": "0",
+        "num_carriages": "1",
+        "propulsion": "2"
+      }
+    ],
+    "nonnegative_integer_seats": 164
+  },
+  {
+    "operator": "fertagus",
+    "samples": [
+      {
+        "vehicle_id": "3501",
+        "available_seats": "388",
+        "available_standing": "822",
+        "wheelchair": "1",
+        "num_carriages": null,
+        "propulsion": "6"
+      },
+      {
+        "vehicle_id": "3502",
+        "available_seats": "388",
+        "available_standing": "822",
+        "wheelchair": "1",
+        "num_carriages": null,
+        "propulsion": "6"
+      },
+      {
+        "vehicle_id": "3503",
+        "available_seats": "388",
+        "available_standing": "822",
+        "wheelchair": "1",
+        "num_carriages": null,
+        "propulsion": "6"
+      }
+    ],
+    "nonnegative_integer_seats": 18
+  },
+  {
+    "operator": "metro",
+    "samples": [
+      {
+        "vehicle_id": "UT01",
+        "available_seats": "128",
+        "available_standing": "395",
+        "wheelchair": "1",
+        "num_carriages": null,
+        "propulsion": "6"
+      },
+      {
+        "vehicle_id": "UT02",
+        "available_seats": "128",
+        "available_standing": "395",
+        "wheelchair": "1",
+        "num_carriages": null,
+        "propulsion": "6"
+      },
+      {
+        "vehicle_id": "UT03",
+        "available_seats": "128",
+        "available_standing": "395",
+        "wheelchair": "1",
+        "num_carriages": null,
+        "propulsion": "6"
+      }
+    ],
+    "nonnegative_integer_seats": 113
+  }
+]

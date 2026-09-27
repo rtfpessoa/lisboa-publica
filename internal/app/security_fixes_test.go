@@ -286,7 +286,7 @@ func TestExpensiveReadAdmissionAndRelease(t *testing.T) {
 	for range maxExpensiveReads {
 		s.expensiveReads <- struct{}{}
 	}
-	for _, path := range []string{"trips", "arrivals?stop_id=carris:S", "metrics", "history", "fleet", "traffic", "rankings", "operator-coverage"} {
+	for _, path := range []string{"trips", "arrivals?stop_id=carris:S", "vehicles/cp:v/calls", "metrics", "history", "fleet", "traffic", "rankings", "operator-coverage"} {
 		w := securityRequest(h, "GET", "/api/v1/"+path, "", nil)
 		if w.Code != 503 || !strings.Contains(w.Body.String(), `"busy"`) || w.Header().Get("Retry-After") == "" {
 			t.Fatalf("admission %s: %d %s", path, w.Code, w.Body.String())

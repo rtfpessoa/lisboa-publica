@@ -142,6 +142,9 @@ func (s *Server) Handler() (http.Handler, error) {
 }
 
 func expensiveRead(path string) bool {
+	if strings.HasPrefix(path, "/api/v1/vehicles/") && strings.HasSuffix(path, "/calls") {
+		return true
+	}
 	switch path {
 	case "/api/v1/cp/predictions", "/api/v1/trips", "/api/v1/arrivals", "/api/v1/metrics", "/api/v1/history", "/api/v1/fleet", "/api/v1/traffic", "/api/v1/rankings", "/api/v1/operator-coverage":
 		return true
@@ -404,7 +407,7 @@ func (s *Server) ListRoutes(ctx context.Context, _ api.ListRoutesRequestObject) 
 			continue
 		}
 		for _, r := range d.Routes {
-			if filter.Q != "" && !nameSearch(r.ShortName+" "+r.LongName+" "+r.SourceId, filter.Q) {
+			if filter.Q != "" && !nameSearch(r.ShortName+" "+r.LongName+" "+r.SourceId+" "+passengerRouteSearchName(r), filter.Q) {
 				continue
 			}
 			out = append(out, routeSummary(r))
@@ -468,21 +471,16 @@ func (s *Server) ListVehicles(ctx context.Context, _ api.ListVehiclesRequestObje
 	if err != nil {
 		return nil, err
 	}
-	out := []api.Vehicle{}
-	for p, d := range state.Live {
-		if !filter.selected(p) {
-			continue
-		}
-		rows, _, _, _, _ := projectLive(d, state.Operators[p], state.Static[p], asOf)
-		for _, v := range rows {
-			if filter.Route == "" || v.RouteId != nil && *v.RouteId == filter.Route {
-				out = append(out, v)
-			}
-		}
+	if filter.Stop != "" {
+		_, err = arrivalOperator(state, filter)
+	}
+	var out []api.Vehicle
+	if err == nil {
+		out, err = listedVehicles(ctx, state, filter, asOf)
 	}
 	sortVehicles(out)
 	page, data := paginate(out, filter, revision)
-	return api.ListVehicles200JSONResponse{Data: data, Page: page}, nil
+	return api.ListVehicles200JSONResponse{Data: data, Page: page}, err
 }
 
 func (s *Server) scheduleState(ctx context.Context, f *Filter) (*State, string, error) {

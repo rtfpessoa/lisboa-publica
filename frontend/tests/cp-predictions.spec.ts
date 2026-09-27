@@ -9,7 +9,7 @@ async function fixture(page:Page){
  const operators=['carris','cm','tcb','mobi','metro','cp','ttsl','fertagus'].map(id=>({id,name:id,mode:id==='metro'?'metro':id==='cp'||id==='fertagus'?'train':id==='ttsl'?'ferry':'bus',color:'#278044',status:'ok',static_status:'ok',live_updated_at:iso(epoch),static_updated_at:iso(epoch),reported_positions:id==='cp'?1:0,estimated_positions:0,note:'',error:null}));
  const stops=operators.map(o=>({id:`${o.id}:opaque-stop`,operator_id:o.id,source_id:'opaque-stop',name:o.id==='cp'?'Lisboa Santa Apolonia':'São João',lat:38.731,lon:-9.145,route_ids:[]}));
  const prediction:CpPrediction={id:'prediction',operator_id:'cp',plan_id:'plan',source_trip_id:'cp:opaque-trip',stop_id:'cp:opaque-stop',route_id:'cp:opaque-route',stop_name:'Lisboa Santa Apolonia',route_name:'R · Linha de Sintra',destination_name:'Lisboa Santa Apolonia',service_label:'123',service_date:day,date_basis:'matched_schedule',stop_sequence:0,scheduled_at:iso(epoch+570000),expected_at:iso(epoch+600000),delay_seconds:30,source_updated_at:iso(epoch),collected_at:iso(epoch),valid_until:iso(epoch+60000),source_url:'https://go.tmlmobilidade.pt/hub/api/v1/realtime/eta/gtfs'};
- const arrival:Arrival={id:'opaque-arrival',operator_id:'cp',stop_id:prediction.stop_id,route_id:prediction.route_id,trip_id:'opaque-dated-trip',headsign:'Lisboa Santa Apolonia',kind:'scheduled',scheduled_at:prediction.scheduled_at,expected_at:null,observed_at:null,source_url:'https://go.tmlmobilidade.pt/',plan_id:'plan',source_trip_id:prediction.source_trip_id,service_date:day,stop_sequence:0,route_name:'R · Linha de Sintra'};
+ const arrival:Arrival={id:'opaque-arrival',operator_id:'cp',stop_id:prediction.stop_id,route_id:prediction.route_id,trip_id:'opaque-dated-trip',headsign:'Lisboa Santa Apolonia',kind:'scheduled',scheduled_at:prediction.scheduled_at,expected_at:null,observed_at:null,source_url:'https://go.tmlmobilidade.pt/',plan_id:'plan',source_trip_id:prediction.source_trip_id,service_date:day,stop_sequence:0,route_name:'R · Linha de Sintra',service_label:'123'};
  const pageFor=(data:unknown[])=>({data,page:{limit:500,offset:0,total:data.length,has_more:false,revision:'shared-revision'}});
  await page.addInitScript(()=>{const original=Worker.prototype.postMessage;(window as unknown as {cpFeatures:unknown[],vehicleFeatures:unknown[]}).cpFeatures=[];(window as unknown as {vehicleFeatures:unknown[]}).vehicleFeatures=[];Worker.prototype.postMessage=function(message,...args){if(message?.data?.source==='cp-arrivals'&&message?.data?.data?.features)(window as unknown as {cpFeatures:unknown[]}).cpFeatures=message.data.data.features;if(message?.data?.source==='vehicles'&&message?.data?.data?.features)(window as unknown as {vehicleFeatures:unknown[]}).vehicleFeatures=message.data.data.features;return Reflect.apply(original,this,[message,...args])}});
  await page.route('https://tiles.openfreemap.org/styles/positron',r=>r.fulfill({json:{version:8,glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',sources:{},layers:[{id:'background',type:'background',paint:{'background-color':'#fff'}}]}}));
@@ -21,7 +21,12 @@ async function fixture(page:Page){
   if(path.endsWith('/route-shapes'))data={...pageFor([]),coverage:[]};
   if(path.endsWith('/metrics'))data={speed_kmh:null};
   if(path.endsWith('/stops'))data=pageFor(stops.filter(s=>(query.get('operators')??'').split(',').includes(s.operator_id)));
-  if(path.endsWith('/vehicles')&&(query.get('operators')??'').includes('cp'))data=pageFor([{id:'cp:train',source_id:'opaque-physical-unit',operator_id:'cp',route_id:prediction.route_id,trip_id:prediction.source_trip_id,operational_date:missingDate?null:day,plan_id:'plan',route_name:'Linha de Sintra',lat:38.731,lon:-9.145,observed_at:iso(epoch),collected_at:iso(epoch),position_kind:'reported',source_url:prediction.source_url,speed_kmh:null,bearing:null,model:null,license_plate:null,stale:false,last_known:false,inactive_at:iso(epoch+300000),last_known_expires_at:iso(epoch+3600000)}]);
+  if(path.endsWith('/vehicles')&&(query.get('operators')??'').includes('cp'))data=pageFor([{id:'cp:train',source_id:'opaque-physical-unit',operator_id:'cp',route_id:prediction.route_id,trip_id:prediction.source_trip_id,operational_date:missingDate?null:day,plan_id:'plan',route_name:'Linha de Sintra',service_label:missingDate?undefined:'123',vehicle_ref:{vehicle_id:'cp:train',reference:'frozen-train'},lat:38.731,lon:-9.145,observed_at:iso(epoch),collected_at:iso(epoch),position_kind:'reported',source_url:prediction.source_url,speed_kmh:null,bearing:null,model:null,license_plate:null,stale:false,last_known:false,inactive_at:iso(epoch+300000),last_known_expires_at:iso(epoch+3600000)}]);
+  if(path.endsWith('/calls')){
+   if(failure)return route.fulfill({status:503,json:{message:'Previsões temporariamente indisponíveis'}});
+   const vehicle={id:'cp:train',source_id:'opaque-physical-unit',operator_id:'cp',trip_id:prediction.source_trip_id,plan_id:'plan',operational_date:missingDate?null:day,observed_at:iso(epoch),collected_at:iso(epoch),lat:38.731,lon:-9.145,position_kind:'reported',source_url:prediction.source_url};
+   data={vehicle,availability:missingDate?'unidentified_service':'available',coverage:'regional_subset',progress:'unknown',valid_until:missingDate?undefined:prediction.valid_until,...pageFor(missingDate?[]:[{id:'call',stop_id:prediction.stop_id,stop_name:prediction.stop_name,stop:stops.find(s=>s.id===prediction.stop_id),kind:'predicted',expected_at:prediction.expected_at,source_url:prediction.source_url,stop_plan_id:'plan',stop_static_updated_at:iso(epoch)}])};
+  }
   if(path.endsWith('/cp/predictions')){
    if(revisionExpired&&query.get('revision')){revisionExpired=false;return route.fulfill({status:410,json:{message:'Revisão expirada'}})}
    if(failure)return route.fulfill({status:503,json:{message:'Previsões temporariamente indisponíveis'}});
@@ -73,17 +78,17 @@ test('train popup separates published service label, physical identity and upstr
  const f=await fixture(page);await page.goto('/');await selectCP(page);
  await expect.poll(()=>page.evaluate(()=>(window as unknown as {vehicleFeatures:unknown[]}).vehicleFeatures.length)).toBe(1);
  await page.waitForTimeout(300);const box=await page.locator('.map canvas').boundingBox();
- await page.mouse.click(box!.x+box!.width/2,box!.y+box!.height/2);
- const panel=page.locator('.detail-panel');await expect(panel).toContainText('opaque-physical-unit');await expect(panel.locator('.cp-calls')).toContainText('Comboio 123');await expect(panel.locator('.cp-calls')).toContainText('Lisboa Santa Apolónia');
- f.setFailure(true);await page.waitForTimeout(6000);await expect(panel.locator('.cp-calls')).toContainText('Previsões indisponíveis.');await expect(panel.locator('.cp-calls')).toContainText('Comboio 123');
+ await page.mouse.click(box!.x+box!.width/2+51,box!.y+box!.height/2-51);
+ const panel=page.locator('.detail-panel');await expect(panel).toContainText('opaque-physical-unit');await expect(panel.locator('h3')).toContainText('Comboio 123');await expect(panel.locator('.cp-calls')).toContainText('Lisboa Santa Apolónia');
+ f.setFailure(true);await page.clock.install();await page.clock.fastForward(61000);await expect(panel.locator('.popup-footnotes')).toContainText('Previsões temporariamente indisponíveis');await expect(panel.locator('h3')).toContainText('Comboio 123');
  await page.keyboard.press('Escape');await expect(panel).toHaveCount(0);
 });
 
 test('train with no published operating date never inherits a guessed association',async({page})=>{
  const f=await fixture(page);f.setMissingDate(true);await page.goto('/');await selectCP(page);
  await expect.poll(()=>page.evaluate(()=>(window as unknown as {vehicleFeatures:unknown[]}).vehicleFeatures.length)).toBe(1);
- await page.waitForTimeout(300);const box=await page.locator('.map canvas').boundingBox();await page.mouse.click(box!.x+box!.width/2,box!.y+box!.height/2);
- await expect(page.locator('.cp-calls')).toContainText('associadas a este serviço indisponíveis');await expect(page.locator('.cp-calls')).not.toContainText('Comboio 123');
+ await page.waitForTimeout(300);const box=await page.locator('.map canvas').boundingBox();await page.mouse.click(box!.x+box!.width/2+51,box!.y+box!.height/2-51);
+ await expect(page.locator('.popup-footnotes')).toContainText('Não foi possível identificar com segurança');await expect(page.locator('.cp-calls')).not.toContainText('Comboio 123');
 });
 
 test('prediction window uses exactly one captured clock and retries an expired collection once',async({page})=>{

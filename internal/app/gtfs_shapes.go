@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"net/url"
@@ -46,6 +47,23 @@ func readCMShapes(blob []byte, plan *hubPlan, p provider, source string, now tim
 
 // readCMNetwork reads geometry and optional fleet metadata; the CM line catalog remains authoritative.
 func readCMNetwork(blob []byte, plan *hubPlan, p provider, source string, now time.Time) (*StaticData, error) {
+	data, err := readCMGeometry(blob, plan, p, source, now)
+	if err != nil {
+		return nil, err
+	}
+	archive, err := openGTFS(blob)
+	if err == nil {
+		data.CMPaths, err = readCMPatterns(archive, plan, data.Shapes)
+	}
+	if errors.Is(err, errGTFSIntegrity) || errors.Is(err, errGTFSResource) {
+		return nil, err
+	}
+	if err != nil {
+		data.CMPathError = ptr("Não foi possível validar a sequência completa dos percursos CM.")
+	}
+	return data, nil
+}
+func readCMGeometry(blob []byte, plan *hubPlan, p provider, source string, now time.Time) (*StaticData, error) {
 	archive, err := openGTFS(blob)
 	if err != nil {
 		return nil, err

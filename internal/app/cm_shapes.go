@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"sort"
 	"time"
 
 	"lisboapublica/internal/api"
@@ -34,10 +35,15 @@ func (f *Fetcher) cmShapes(ctx context.Context, plans []hubPlan, today int) (*St
 			return nil, err
 		}
 		network.Shapes = append(network.Shapes, data.Shapes...)
+		network.CMPaths = append(network.CMPaths, data.CMPaths...)
+		if data.CMPathError != nil {
+			network.CMPathError = data.CMPathError
+		}
 		for id, metadata := range data.Models {
 			network.Models[id] = metadata
 		}
 	}
+	sort.Slice(network.CMPaths, func(i, j int) bool { return network.CMPaths[i].ID < network.CMPaths[j].ID })
 	return network, nil
 }
 
@@ -47,28 +53,43 @@ func (f *Fetcher) updateCMShapes(ctx context.Context, data *StaticData, plans []
 		network, err = f.cmShapes(ctx, plans, today)
 	}
 	if err == nil {
-		colors := map[string]string{}
-		for _, r := range data.Routes {
-			colors[r.Id] = r.Color
-		}
-		for id, metadata := range network.Models {
-			data.Models[id] = mergeMetadata(data.Models[id], metadata)
-		}
-		for _, shape := range network.Shapes {
-			if color, ok := colors[shape.RouteId]; ok {
-				shape.Color = color
-				data.Shapes = append(data.Shapes, shape)
-			}
-		}
-		data.GeometryUpdated = ptr(time.Now().UTC())
-		attachCMRouteGeometry(data)
-		if !geometryCacheFits(data, staticHealth(f.Cache.operator("cm"), data)) {
-			err = fmt.Errorf("Percursos excedem o limite de armazenamento por atualização")
-		}
+		mergeCMNetwork(data, network)
+		err = admitCMGeometry(data, staticHealth(f.Cache.operator("cm"), data))
 	}
 	if err != nil {
 		f.retainGeometry(data, "Falha ao atualizar percursos oficiais CM; a rede de carreiras mantém-se disponível.")
 	}
+}
+
+func mergeCMNetwork(data, network *StaticData) {
+	colors := map[string]string{}
+	for _, r := range data.Routes {
+		colors[r.Id] = r.Color
+	}
+	for id, metadata := range network.Models {
+		data.Models[id] = mergeMetadata(data.Models[id], metadata)
+	}
+	for _, shape := range network.Shapes {
+		if color, ok := colors[shape.RouteId]; ok {
+			shape.Color = color
+			data.Shapes = append(data.Shapes, shape)
+		}
+	}
+	data.CMPaths = network.CMPaths
+	data.CMPathError = network.CMPathError
+	data.GeometryUpdated = ptr(time.Now().UTC())
+	attachCMRouteGeometry(data)
+}
+func admitCMGeometry(data *StaticData, op api.Operator) error {
+	if geometryCacheFits(data, op) {
+		return nil
+	}
+	data.CMPaths = nil
+	data.CMPathError = ptr("Percursos completos indisponíveis: limite de armazenamento por atualização.")
+	if !geometryCacheFits(data, op) {
+		return fmt.Errorf("Percursos excedem o limite de armazenamento por atualização")
+	}
+	return nil
 }
 
 func geometryCacheFits(data *StaticData, op api.Operator) bool {
@@ -79,15 +100,21 @@ func geometryCacheFits(data *StaticData, op api.Operator) bool {
 func (f *Fetcher) retainGeometry(data *StaticData, message string) {
 	state, _ := f.Cache.state("")
 	data.Shapes = nil
+	data.CMPaths = nil
+	data.CMPathError = nil
 	data.GeometryUpdated = nil
 	if old := state.Static["cm"]; old != nil {
 		data.Shapes = old.Shapes
+		data.CMPaths = old.CMPaths
+		data.CMPathError = old.CMPathError
 		data.GeometryUpdated = old.GeometryUpdated
 	}
 	data.GeometryError = ptr(message)
 	attachCMRouteGeometry(data)
 	if !geometryCacheFits(data, staticHealth(f.Cache.operator("cm"), data)) {
 		data.Shapes = nil
+		data.CMPaths = nil
+		data.CMPathError = nil
 		data.GeometryUpdated = nil
 		for i := range data.Routes {
 			data.Routes[i].Geometry = nil
