@@ -79,7 +79,7 @@ func reusableStaticCache(p provider, state *State) bool {
 	op := state.Operators[p.ID]
 	fresh := op.StaticStatus == "ok" && op.StaticUpdatedAt != nil && time.Since(*op.StaticUpdatedAt) < staticCacheLifetime
 	data := state.Static[p.ID]
-	legacyEndpoints := p.ID == "cp" && data != nil && !data.CPJourneyEndpoints
+	legacyEndpoints := legacyCPMetadata(p, data)
 	return fresh && !legacyEndpoints && !legacyRailFerryGeometry(p, data)
 }
 
@@ -88,4 +88,11 @@ func legacyRailFerryGeometry(p provider, d *StaticData) bool {
 		return false
 	}
 	return d != nil && len(d.Shapes) == 0 && d.GeometryUpdated == nil && d.GeometryError == nil
+}
+
+func legacyCPMetadata(p provider, data *StaticData) bool {
+	if p.ID != "cp" || data == nil {
+		return false
+	}
+	return !data.CPJourneyEndpoints || !data.CPPredictionMetadata
 }

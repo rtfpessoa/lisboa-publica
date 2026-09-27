@@ -36,6 +36,10 @@ func readGTFS(blob []byte, p provider, planID, from, until, source string, now t
 		return nil, err
 	}
 	data := &StaticData{CPJourneyEndpoints: p.ID == "cp", Models: map[string]Metadata{}, PlanID: planID, ValidFrom: from, ValidUntil: until, Source: source, Updated: now, Schedule: &Schedule{Calendars: map[string]Calendar{}, Exceptions: map[string]map[string]int{}, Parents: map[string]string{}}}
+	if p.ID == "cp" {
+		data.CPPredictionMetadata = true
+		data.CPHasFrequencies = archive["frequencies.txt"] != nil
+	}
 	reader := &gtfsReader{provider: p, data: data, routes: map[string]*api.RouteDetail{}, stops: map[string]*api.Stop{}, shapes: map[string][]shapePoint{}, trips: map[string]*ScheduledTrip{}, shapeForRoute: map[string]string{}, directions: map[string]*int{}, routeStops: map[string]map[string]bool{}, endpointNames: map[string]string{}}
 	tables := []struct {
 		name  string
@@ -153,7 +157,7 @@ func (g *gtfsReader) trip(m map[string]string) error {
 		}
 		g.directions[id] = ptr(direction)
 	}
-	g.trips[id] = &ScheduledTrip{ID: id, Route: m["route_id"], Service: m["service_id"], Headsign: m["trip_headsign"], Shape: m["shape_id"]}
+	g.trips[id] = &ScheduledTrip{ID: id, Route: m["route_id"], Service: m["service_id"], Headsign: m["trip_headsign"], Shape: m["shape_id"], Label: m["trip_short_name"]}
 	return nil
 }
 
@@ -167,6 +171,9 @@ func (g *gtfsReader) stopTime(m map[string]string) error {
 		return fmt.Errorf("invalid stop sequence")
 	}
 	g.rememberEndpoint(t, m["stop_id"], seq)
+	if g.provider.ID == "cp" {
+		t.rememberCPTiming(m, seq)
+	}
 	if g.stops[m["stop_id"]] == nil {
 		return nil
 	}

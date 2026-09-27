@@ -143,7 +143,7 @@ func (s *Server) Handler() (http.Handler, error) {
 
 func expensiveRead(path string) bool {
 	switch path {
-	case "/api/v1/trips", "/api/v1/arrivals", "/api/v1/metrics", "/api/v1/history", "/api/v1/fleet", "/api/v1/traffic", "/api/v1/rankings", "/api/v1/operator-coverage":
+	case "/api/v1/cp/predictions", "/api/v1/trips", "/api/v1/arrivals", "/api/v1/metrics", "/api/v1/history", "/api/v1/fleet", "/api/v1/traffic", "/api/v1/rankings", "/api/v1/operator-coverage":
 		return true
 	}
 	return false
@@ -404,7 +404,7 @@ func (s *Server) ListRoutes(ctx context.Context, _ api.ListRoutesRequestObject) 
 			continue
 		}
 		for _, r := range d.Routes {
-			if filter.Q != "" && !strings.Contains(strings.ToLower(r.ShortName+" "+r.LongName+" "+r.SourceId), filter.Q) {
+			if filter.Q != "" && !nameSearch(r.ShortName+" "+r.LongName+" "+r.SourceId, filter.Q) {
 				continue
 			}
 			out = append(out, routeSummary(r))
@@ -447,7 +447,7 @@ func (s *Server) ListStops(ctx context.Context, _ api.ListStopsRequestObject) (a
 			if filter.Route != "" && !contains(v.RouteIds, filter.Route) {
 				continue
 			}
-			if filter.Q != "" && !strings.Contains(strings.ToLower(v.Name+" "+v.SourceId), filter.Q) {
+			if filter.Q != "" && !nameSearch(v.Name+" "+v.SourceId, filter.Q) {
 				continue
 			}
 			out = append(out, v)

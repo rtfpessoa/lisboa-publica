@@ -1,0 +1,3 @@
+?   	lisboapublica/cmd/server	[no test files]
+?   	lisboapublica/internal/api	[no test files]
+ok  	lisboapublica/internal/app	19.368s

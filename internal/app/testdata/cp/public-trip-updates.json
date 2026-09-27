@@ -1,0 +1,479 @@
+{
+  "data": {
+    "entity": [
+      {
+        "id": "[76XA2][N18KL]16044_20251214",
+        "trip_update": {
+          "trip": {
+            "trip_id": "[76XA2][N18KL]16044_20251214"
+          },
+          "vehicle": {
+            "id": "16044"
+          },
+          "stop_time_update": [
+            {
+              "stop_sequence": 12,
+              "stop_id": "121398",
+              "arrival": {
+                "time": 1790455426,
+                "delay": 46
+              },
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "stop_sequence": 13,
+              "stop_id": "253542",
+              "arrival": {
+                "time": 1790455520,
+                "delay": 20
+              },
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "stop_sequence": 14,
+              "stop_id": "910666",
+              "arrival": {
+                "time": 1790455748,
+                "delay": 38
+              },
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "stop_sequence": 15,
+              "stop_id": "786988",
+              "arrival": {
+                "time": 1790455982,
+                "delay": -118
+              },
+              "schedule_relationship": "SCHEDULED"
+            }
+          ],
+          "timestamp": 1790455426
+        }
+      },
+      {
+        "id": "[76XA2][N18KL]18524_20251214",
+        "trip_update": {
+          "trip": {
+            "trip_id": "[76XA2][N18KL]18524_20251214"
+          },
+          "vehicle": {
+            "id": "18524"
+          },
+          "stop_time_update": [
+            {
+              "stop_sequence": 4,
+              "stop_id": "234295",
+              "arrival": {
+                "time": 1790455511,
+                "delay": 11
+              },
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "stop_sequence": 5,
+              "stop_id": "519110",
+              "arrival": {
+                "time": 1790455711,
+                "delay": 1
+              },
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "stop_sequence": 6,
+              "stop_id": "514784",
+              "arrival": {
+                "time": 1790455839,
+                "delay": -51
+              },
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "stop_sequence": 7,
+              "stop_id": "546084",
+              "arrival": {
+                "time": 1790455953,
+                "delay": -87
+              },
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "stop_sequence": 8,
+              "stop_id": "818095",
+              "arrival": {
+                "time": 1790456022,
+                "delay": -138
+              },
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "stop_sequence": 9,
+              "stop_id": "503501",
+              "arrival": {
+                "time": 1790456140,
+                "delay": -200
+              },
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "stop_sequence": 10,
+              "stop_id": "733968",
+              "arrival": {
+                "time": 1790456251,
+                "delay": -239
+              },
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "stop_sequence": 11,
+              "stop_id": "350658",
+              "arrival": {
+                "time": 1790456322,
+                "delay": -288
+              },
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "stop_sequence": 12,
+              "stop_id": "793740",
+              "arrival": {
+                "time": 1790456410,
+                "delay": -320
+              },
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "stop_sequence": 13,
+              "stop_id": "150906",
+              "arrival": {
+                "time": 1790456592,
+                "delay": -348
+              },
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "stop_sequence": 14,
+              "stop_id": "305135",
+              "arrival": {
+                "time": 1790456723,
+                "delay": -397
+              },
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "stop_sequence": 15,
+              "stop_id": "262124",
+              "arrival": {
+                "time": 1790456805,
+                "delay": -435
+              },
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "stop_sequence": 16,
+              "stop_id": "910666",
+              "arrival": {
+                "time": 1790457025,
+                "delay": -485
+              },
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "stop_sequence": 17,
+              "stop_id": "253542",
+              "arrival": {
+                "time": 1790457166,
+                "delay": -554
+              },
+              "schedule_relationship": "SCHEDULED"
+            }
+          ],
+          "timestamp": 1790455426
+        }
+      },
+      {
+        "id": "[76XA2][N18KL]18524_20251214",
+        "trip_update": {
+          "trip": {
+            "trip_id": "[76XA2][N18KL]18524_20251214",
+            "schedule_relationship": "SCHEDULED"
+          },
+          "stop_time_update": [
+            {
+              "arrival": {
+                "delay": -6
+              },
+              "departure": {
+                "delay": -6
+              },
+              "stop_id": "234295",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": -6
+              },
+              "departure": {
+                "delay": -6
+              },
+              "stop_id": "519110",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": -6
+              },
+              "departure": {
+                "delay": -6
+              },
+              "stop_id": "514784",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": -6
+              },
+              "departure": {
+                "delay": -6
+              },
+              "stop_id": "546084",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": -6
+              },
+              "departure": {
+                "delay": -6
+              },
+              "stop_id": "818095",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": -6
+              },
+              "departure": {
+                "delay": -6
+              },
+              "stop_id": "503501",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": -6
+              },
+              "departure": {
+                "delay": -6
+              },
+              "stop_id": "733968",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": -6
+              },
+              "departure": {
+                "delay": -6
+              },
+              "stop_id": "350658",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": -6
+              },
+              "departure": {
+                "delay": -6
+              },
+              "stop_id": "793740",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": -6
+              },
+              "departure": {
+                "delay": -6
+              },
+              "stop_id": "150906",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": -6
+              },
+              "departure": {
+                "delay": -6
+              },
+              "stop_id": "305135",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": -6
+              },
+              "departure": {
+                "delay": -6
+              },
+              "stop_id": "262124",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": -6
+              },
+              "departure": {
+                "delay": -6
+              },
+              "stop_id": "910666",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": -6
+              },
+              "departure": {
+                "delay": -6
+              },
+              "stop_id": "253542",
+              "schedule_relationship": "SCHEDULED"
+            }
+          ],
+          "timestamp": 1790455680
+        }
+      },
+      {
+        "id": "[76XA2][N18KL]16044_20251214",
+        "trip_update": {
+          "trip": {
+            "trip_id": "[76XA2][N18KL]16044_20251214",
+            "schedule_relationship": "SCHEDULED"
+          },
+          "stop_time_update": [
+            {
+              "arrival": {
+                "delay": 36
+              },
+              "departure": {
+                "delay": 36
+              },
+              "stop_id": "121398",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": 36
+              },
+              "departure": {
+                "delay": 36
+              },
+              "stop_id": "253542",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": 36
+              },
+              "departure": {
+                "delay": 36
+              },
+              "stop_id": "910666",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": 36
+              },
+              "departure": {
+                "delay": 36
+              },
+              "stop_id": "786988",
+              "schedule_relationship": "SCHEDULED"
+            }
+          ],
+          "timestamp": 1790455487
+        }
+      },
+      {
+        "id": "[76XA2][N18KL]4436_20251214",
+        "trip_update": {
+          "trip": {
+            "trip_id": "[76XA2][N18KL]4436_20251214",
+            "schedule_relationship": "SCHEDULED"
+          },
+          "stop_time_update": [
+            {
+              "arrival": {
+                "delay": 345
+              },
+              "departure": {
+                "delay": 345
+              },
+              "stop_id": "114818",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": 345
+              },
+              "departure": {
+                "delay": 345
+              },
+              "stop_id": "994387",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": 345
+              },
+              "departure": {
+                "delay": 345
+              },
+              "stop_id": "177252",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": 345
+              },
+              "departure": {
+                "delay": 345
+              },
+              "stop_id": "889906",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": 345
+              },
+              "departure": {
+                "delay": 345
+              },
+              "stop_id": "253542",
+              "schedule_relationship": "SCHEDULED"
+            },
+            {
+              "arrival": {
+                "delay": 345
+              },
+              "departure": {
+                "delay": 345
+              },
+              "stop_id": "786988",
+              "schedule_relationship": "SCHEDULED"
+            }
+          ],
+          "timestamp": 1790455679
+        }
+      }
+    ],
+    "header": {
+      "gtfs_realtime_version": "2.0",
+      "incrementality": "FULL_DATASET",
+      "timestamp": 1790455682
+    }
+  },
+  "error": null,
+  "status_code": 200
+}

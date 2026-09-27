@@ -1,0 +1,23 @@
+# Public CP arrival predictions and passenger names
+
+26 September2026. Main implemented the accepted [plan](PLAN-cp-public-predictions.md); independent real quasar-alpha reviewers at xhigh review only. User authorized implementation, Maat fixes, commit, push and dashboard-only deployment.
+
+## Scope and boundaries
+
+Public TML GTFS-RT JSON supplies ephemeral CP station arrival predictions. Verified active-plan/trip/stop-sequence crosswalks, calendars and full national timing extrema admit scheduled-instance associations; ambiguous identities/dates remain unjoined or unavailable. Original clocks expire at90seconds. Negative/cancelled/conflicting/contradictory calls are suppressed. No prediction creates a train GPS position, physical unit identity, observed speed or measured punctuality.
+
+One generated OpenAPI endpoint `/api/v1/cp/predictions` supports existing scoped read:transit/public reads, pagination, filtering and immutable revisions; earliest source deadline expires the whole pinned set with410. Station clients pin planned arrivals to that same revision and merge only exact typed identities and scheduled time. Original GPS continuity/counts/metrics remain independent. Predictions are not stored in historical snapshots.
+
+Station rings indicate arrivals at existing CP station coordinates. Train panels enrich only an explicitly dated exact associated reported service; readable published service numbers are separate from physical unit IDs. Human names, Unicode and accent-insensitive search apply across providers; no title-casing guesses or infrastructure ID joins. Unavailable, partial, expired and source-error states remain visible, including retained train calls during errors. Metro direct arrivals retain official readable line names.
+
+The independent no-overlap collector waits five seconds after completion, uses a five-second shared deadline and existing verified transport/retry/cooldown budgets:900 actual outgoing attempts/min globally, conservative120/min TML. Maximum12 initiated CP calls/min,36actual attempts with bounded retries. No Mover/private CP API, new credentials, per-visitor upstream fanout, database schema/history write, storage-limit change or generic arrival abstraction.
+
+## Local checks and corrections
+
+[Saved evidence](research/cp-public-predictions/validation/). Full Postgres race passes19.368s. TypeScript/Vite, generated-code comparison, vet and diff checks pass. Fixed-clock sanitized official fixture admits15local calls,2Oriente, without credentials. Targeted identity/calendar/date ambiguity, negative events, duplicate order, scoped authorization, pagination/410/expiry, no fanout, cross-plan races and defensive decoder bounds pass.
+
+Resource scenario keeps all eight official provider networks,1000incoming rows/provider, one-hour churn,64read revisions and20000pending historical observations. Added64distinct near-cap prediction snapshots (110rows each), two concurrent16776905-byte mixed-feed decodes and overflow rejection. With exact production GOMEMLIMIT=768MiB, peak RSS1037565952bytes (989.5MiB), below1024MiB gate; heap881633048bytes, runtime system1036489208bytes. Container budget1280MiB stays unchanged. Unrestricted Go runtime initially used1785331712bytes and exceeded the external RSS criterion; this failure is retained in evidence. The passing run changes no test workload or acceptance limit and uses the existing deployment configuration. Local macOS RSS is not a Linux maximum-capacity guarantee.
+
+Independent checkpoint corrections: direct Metro named lines; order-independent verified call chronology; start_time syntax even in unjoined fallback; one captured client window clock; train error/partial coverage notices beside retained calls; passenger service label separate from unit ID; token-only trailing JSON rejection instead of materializing an arbitrary array; response-time collection timestamp and context-aware streaming decode. Main added regressions for each.
+
+Expanded full browser and Cockroach runs, normal Maat gate, final independent acceptance, push and production rollout remain pending at this checkpoint. No production configuration/data has changed. A protected dashboard-only rollback and existing Compose/Caddy setup will be retained during the authorized rollout.

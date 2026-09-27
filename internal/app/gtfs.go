@@ -50,6 +50,8 @@ func (s *StopTime) UnmarshalJSON(b []byte) error {
 // ScheduledTrip holds the published stop sequence and service of a planned trip.
 type ScheduledTrip struct {
 	ID, Route, Service, Headsign, Shape string
+	Label                               string        `json:",omitempty"`
+	CPTiming                            *cpTripTiming `json:"cp_timing,omitempty"`
 	Times                               []StopTime
 	Endpoints                           *tripEndpoints `json:"endpoints,omitempty"`
 }
@@ -173,7 +175,7 @@ func (q scheduleQuery) day(day time.Time) ([]api.Trip, []api.Arrival, error) {
 			continue
 		}
 		trip := q.trip(t, day)
-		visits, err := q.stopVisits(t, trip, serviceStart(day))
+		visits, err := q.stopVisits(t, trip, day)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -201,8 +203,9 @@ func (q scheduleQuery) trip(t ScheduledTrip, day time.Time) api.Trip {
 	return api.Trip{Id: qualify(q.operator, day.Format("20060102")+":"+t.ID), OperatorId: q.operator, RouteId: qualify(q.operator, t.Route), Headsign: t.Headsign, PlannedDeparture: base.Add(time.Duration(t.Times[0].Departure) * time.Second), PlannedEnd: base.Add(time.Duration(t.Times[len(t.Times)-1].Arrival) * time.Second), Kind: api.TripKindScheduled, ScheduledService: t.scheduledEndpoints(q.data.Source, day)}
 }
 
-func (q scheduleQuery) stopVisits(t ScheduledTrip, trip api.Trip, base time.Time) ([]api.Arrival, error) {
-	d, p, from, to, stop, id, rid := q.data, q.operator, q.filter.From, q.filter.To, q.filter.Stop, trip.Id, trip.RouteId
+func (q scheduleQuery) stopVisits(t ScheduledTrip, trip api.Trip, day time.Time) ([]api.Arrival, error) {
+	base := serviceStart(day)
+	d, p, from, to, stop := q.data, q.operator, q.filter.From, q.filter.To, q.filter.Stop
 	arrivals := []api.Arrival{}
 
 	if stop != "" {
@@ -221,8 +224,23 @@ func (q scheduleQuery) stopVisits(t ScheduledTrip, trip api.Trip, base time.Time
 			if len(arrivals) >= maxReadResults {
 				return nil, readResultLimit()
 			}
-			arrivals = append(arrivals, api.Arrival{Id: id + ":" + v.Stop + ":" + strconv.Itoa(v.Sequence), OperatorId: p, StopId: sid, RouteId: rid, TripId: id, Headsign: t.Headsign, ScheduledAt: &at, SourceUrl: d.Source, Kind: api.ArrivalKindScheduled})
+			arrival := q.plannedArrival(t, trip, day, v)
+			arrivals = append(arrivals, arrival)
 		}
 	}
 	return arrivals, q.ctx.Err()
+}
+
+func (q scheduleQuery) plannedArrival(t ScheduledTrip, trip api.Trip, day time.Time, v StopTime) api.Arrival {
+	d, p, id, rid := q.data, q.operator, trip.Id, trip.RouteId
+	sid := qualify(p, v.Stop)
+	at := serviceStart(day).Add(time.Duration(v.Arrival) * time.Second)
+	arrival := api.Arrival{Id: id + ":" + v.Stop + ":" + strconv.Itoa(v.Sequence), OperatorId: p, StopId: sid, RouteId: rid, TripId: id, Headsign: t.Headsign, ScheduledAt: &at, SourceUrl: d.Source, Kind: api.ArrivalKindScheduled}
+	arrival.PlanId = optional(d.PlanID)
+	arrival.SourceTripId = ptr(qualify(p, t.ID))
+	date := apiDate(day)
+	arrival.ServiceDate = &date
+	arrival.StopSequence = ptr(v.Sequence)
+	arrival.RouteName = optional(scheduledRouteName(d, trip.RouteId))
+	return arrival
 }

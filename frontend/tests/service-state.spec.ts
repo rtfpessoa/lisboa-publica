@@ -55,7 +55,7 @@ test('silence without stop state does not imply stopped and Metro state is estim
 
 test('CP full endpoints are explicitly scheduled with realtime delay unavailable',async({page})=>{
  await fixture(page,'cp');await page.goto('/');await openVehicle(page);
- await expect(page.locator('.detail-panel')).toContainText('Serviço planeado');await expect(page.locator('.detail-panel')).toContainText('Porto → Faro');await expect(page.locator('.detail-panel')).toContainText('atraso em tempo real indisponível');await expect(page.locator('.detail-panel')).toContainText('CE29PV');
+ await expect(page.locator('.detail-panel')).toContainText('Serviço planeado');await expect(page.locator('.detail-panel')).toContainText('Porto → Faro');await expect(page.locator('.detail-panel')).toContainText('extremos do horário publicado');await expect(page.locator('.detail-panel')).toContainText('CE29PV');
 });
 
 test('CP endpoint row labels its retained Lisbon times without claiming full journey times',async({page})=>{

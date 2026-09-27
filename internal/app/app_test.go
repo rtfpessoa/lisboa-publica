@@ -497,7 +497,7 @@ func TestMetroTokenAndPredictions(t *testing.T) {
 func TestFrozenPredictionEligibility(t *testing.T) {
 	asOf := time.Now().Add(-2 * time.Minute)
 	state := &State{Created: asOf, Metro: &MetroData{Status: api.MetroStatus{Status: "ok", CheckedAt: &asOf}, Stations: []MetroStation{{ID: "RM", Name: "Roma", Lines: "[Verde]"}}, Waits: []MetroWait{{Stop: "RM", At: asOf.In(lisbon).Format("20060102150405"), Train: "1", Destination: "54", Wait1: json.RawMessage("120")}}}}
-	if out := predictedArrivals(state, asOf, asOf.Add(time.Hour), "", "metro:RM"); len(out) != 1 {
+	if out := predictedArrivals(state, asOf, asOf.Add(time.Hour), "", "metro:RM"); len(out) != 1 || out[0].RouteName == nil || *out[0].RouteName != "Linha Verde" {
 		t.Fatal("frozen prediction aged out with wall clock", out)
 	}
 	state.Created = asOf.Add(91 * time.Second)
@@ -528,7 +528,7 @@ func TestSpecScopePolicy(t *testing.T) {
 		}
 	}
 	sort.Strings(ids)
-	if len(ids) != 24 {
+	if len(ids) != 25 {
 		t.Fatalf("unexpected operation count%d", len(ids))
 	}
 }

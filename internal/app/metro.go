@@ -360,18 +360,33 @@ func platformArrivals(wait MetroWait, stations map[string]MetroStation, routeIDs
 	if err != nil || asOf.Sub(observed) > sourceFreshness || observed.After(asOf.Add(providerClockSkew)) {
 		return out
 	}
-	routeID := routeIDs[platformLine(wait, stations[wait.Stop])]
-	if route != "" && route != routeID {
+	base := metroArrival(wait, stations, routeIDs, stop)
+	if route != "" && route != base.RouteId {
 		return out
 	}
+	base.ObservedAt = &observed
+	return metroUpcoming(wait, base, from, to)
+}
+
+func metroArrival(wait MetroWait, stations map[string]MetroStation, routeIDs map[string]string, stop string) api.Arrival {
+	line := platformLine(wait, stations[wait.Stop])
+	routeID := routeIDs[line]
+	lineName := map[string]string{"azul": "Linha Azul", "amarela": "Linha Amarela", "verde": "Linha Verde", "vermelha": "Linha Vermelha"}[line]
 	headsign := stations[destinations[wait.Destination]].Name
 	if headsign == "" {
 		headsign = "Destino publicado: " + wait.Destination
 	}
+	return api.Arrival{OperatorId: "metro", StopId: stop, RouteId: routeID, RouteName: optional(lineName), Headsign: headsign, Kind: api.ArrivalKindPrediction, SourceUrl: metroBase + "/tempoEspera/Estacao/todos"}
+}
+
+func metroUpcoming(wait MetroWait, base api.Arrival, from, to time.Time) []api.Arrival {
+	out := []api.Arrival{}
+	observed := *base.ObservedAt
+
 	trains := []string{wait.Train, wait.Train2, wait.Train3}
 	for index, value := range []json.RawMessage{wait.Wait1, wait.Wait2, wait.Wait3} {
 		var seconds int
-		if err = json.Unmarshal(value, &seconds); err != nil || seconds < 0 || seconds > maxPredictionWaitSeconds || trains[index] == "" {
+		if err := json.Unmarshal(value, &seconds); err != nil || seconds < 0 || seconds > maxPredictionWaitSeconds || trains[index] == "" {
 			continue
 		}
 		expected := observed.Add(time.Duration(seconds) * time.Second)
@@ -379,7 +394,9 @@ func platformArrivals(wait MetroWait, stations map[string]MetroStation, routeIDs
 			continue
 		}
 		id := qualify("metro", "prediction:"+wait.Stop+":"+trains[index]+":"+wait.Destination)
-		out = append(out, api.Arrival{Id: id, OperatorId: "metro", StopId: stop, RouteId: routeID, TripId: qualify("metro", trains[index]), Headsign: headsign, ExpectedAt: &expected, ObservedAt: &observed, Kind: api.ArrivalKindPrediction, SourceUrl: metroBase + "/tempoEspera/Estacao/todos"})
+		row := base
+		row.Id, row.TripId, row.ExpectedAt = id, qualify("metro", trains[index]), &expected
+		out = append(out, row)
 	}
 	return out
 }

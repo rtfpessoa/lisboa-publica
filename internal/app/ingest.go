@@ -107,8 +107,9 @@ type hubPlan struct {
 // Run refreshes provider data until its context is cancelled.
 func (f *Fetcher) Run(ctx context.Context) {
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(providerCollectorCount)
 	go func() { defer wg.Done(); f.staticLoop(ctx) }()
+	go func() { defer wg.Done(); f.cpLoop(ctx) }()
 	go func() {
 		defer wg.Done()
 		ticker := time.NewTicker(providerRefreshInterval)

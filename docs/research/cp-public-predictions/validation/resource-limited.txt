@@ -1,0 +1,34 @@
+=== RUN   TestProviderContinuityResourceEnvelope
+    continuity_resource_test.go:29: cp_worst_case_distinct_snapshots=64 cp_rows_per_snapshot=110
+    continuity_resource_test.go:33: churn_retained_versions=64 history_pending=20000
+    continuity_resource_test.go:36: cp_concurrent_decode_bytes=16776905 workers=2
+    continuity_resource_test.go:43: static_providers=8 retained_versions=64 history_pending=20000 heap_bytes=881633048 sys_bytes=1036489208
+    continuity_resource_test.go:46: carris source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:46: cm source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:46: tcb source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:46: mobi source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:46: metro source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:46: cp source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:46: ttsl source=1000 retained=500 ledger=2000
+    continuity_resource_test.go:46: fertagus source=1000 retained=500 ledger=2000
+--- PASS: TestProviderContinuityResourceEnvelope (71.99s)
+PASS
+ok  	lisboapublica/internal/app	73.419s
+       76.52 real       233.19 user         6.78 sys
+          1037565952  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              100115  page reclaims
+                1419  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   8  messages sent
+                 122  messages received
+               51840  signals received
+               18068  voluntary context switches
+              702472  involuntary context switches
+          5806413897  instructions retired
+          3458618450  cycles elapsed
+            36831808  peak memory footprint

@@ -78,7 +78,7 @@ export type Page = {
     offset: number;
     total: number;
     has_more: boolean;
-    /** Endpoint-specific immutable view token. Vehicle v: tokens pin first-page eligibility time for at most five minutes, subject to version eviction; clients must remove positions whose original expiry has passed. */
+    /** Endpoint-specific immutable view token. Vehicle v: tokens pin first-page eligibility time for at most five minutes, subject to version eviction; clients must remove positions whose original expiry has passed. CP predictions use schedule tokens and reject the whole pinned result with410 when its earliest included original source expiry passes. */
     revision: string | null;
 };
 export type OperatorPage = {
@@ -198,6 +198,11 @@ export type Arrival = {
     expected_at: string | null;
     observed_at: string | null;
     source_url: string;
+    plan_id?: string | null;
+    source_trip_id?: string | null;
+    service_date?: string | null;
+    stop_sequence?: number | null;
+    route_name?: string | null;
 };
 export type ArrivalPage = {
     data: Arrival[];
@@ -345,6 +350,41 @@ export type OperatorCoverage = {
 export type OperatorCoveragePage = {
     data: OperatorCoverage[];
     page: Page;
+};
+export type CpPrediction = {
+    id: string;
+    operator_id: string;
+    plan_id: string;
+    source_trip_id: string;
+    stop_id: string;
+    route_id: string;
+    stop_name: string;
+    route_name: string;
+    destination_name: string;
+    service_label: string | null;
+    service_date: string | null;
+    date_basis: ("published" | "matched_schedule") | null;
+    stop_sequence: number;
+    scheduled_at: string | null;
+    expected_at: string;
+    delay_seconds: number | null;
+    source_updated_at: string;
+    collected_at: string;
+    valid_until: string;
+    source_url: string;
+};
+export type CpPredictionAvailability = {
+    status: "loading" | "ok" | "partial" | "stale" | "error";
+    message: string;
+    collected_at: string | null;
+    published_at: string | null;
+    excluded_updates: number;
+    source_url: string;
+};
+export type CpPredictionPage = {
+    data: CpPrediction[];
+    page: Page;
+    availability: CpPredictionAvailability;
 };
 /**
  * getHealth
@@ -892,6 +932,40 @@ export function listOperatorCoverage({ limit, offset, revision, operators, route
         hour_start: hourStart,
         hour_end: hourEnd,
         weekdays_only: weekdaysOnly
+    }))}`, {
+        ...opts
+    }));
+}
+/**
+ * Public CP stop-call predictions with original clocks and partial coverage
+ */
+export function listCpPredictions({ limit, offset, revision, operators, routeId, $from, to, stopId, tripId }: {
+    limit?: number;
+    offset?: number;
+    revision?: string;
+    operators?: string;
+    routeId?: string;
+    $from?: string;
+    to?: string;
+    stopId?: string;
+    tripId?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: CpPredictionPage;
+    } | {
+        status: number;
+        data: Error;
+    }>(`/api/v1/cp/predictions${QS.query(QS.explode({
+        limit,
+        offset,
+        revision,
+        operators,
+        route_id: routeId,
+        "from": $from,
+        to,
+        stop_id: stopId,
+        trip_id: tripId
     }))}`, {
         ...opts
     }));

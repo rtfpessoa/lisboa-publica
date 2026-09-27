@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Lisboa P\u00fablica API",
+    "title": "Lisboa Pública API",
     "version": "1.0.0",
     "description": "Provider-backed Lisbon transit. apiKey scopes use x-required-scopes; all data lists are paginated. Live revisions expire with410; snapshot revisions freeze committed ingestion membership. Scheduled and estimated data are explicitly classified. Dashboard reads are public for now and rate-limited; supplied API keys still enforce x-required-scopes. Key management requires a Google session. Expensive reads share two fail-fast slots and a 15-second operation deadline (503 busy/timeout). Schedule and historical grouped lists reject over 100000 results with 400 result_limit instead of truncation; narrow operators, route or time window. Busy503 responses include Retry-After."
   },
@@ -1408,6 +1408,89 @@
         ],
         "x-public-read": true
       }
+    },
+    "/api/v1/cp/predictions": {
+      "get": {
+        "operationId": "listCpPredictions",
+        "summary": "Public CP stop-call predictions with original clocks and partial coverage",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CPPredictionPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/limit"
+          },
+          {
+            "$ref": "#/components/parameters/offset"
+          },
+          {
+            "$ref": "#/components/parameters/revision"
+          },
+          {
+            "$ref": "#/components/parameters/operators"
+          },
+          {
+            "$ref": "#/components/parameters/route_id"
+          },
+          {
+            "$ref": "#/components/parameters/from"
+          },
+          {
+            "$ref": "#/components/parameters/to"
+          },
+          {
+            "$ref": "#/components/parameters/stop_id"
+          },
+          {
+            "name": "trip_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "description": "Source-qualified GTFS trip ID; never a generated dated arrival ID."
+          }
+        ],
+        "x-public-read": true
+      }
     }
   },
   "components": {
@@ -1597,7 +1680,7 @@
           "revision": {
             "type": "string",
             "nullable": true,
-            "description": "Endpoint-specific immutable view token. Vehicle v: tokens pin first-page eligibility time for at most five minutes, subject to version eviction; clients must remove positions whose original expiry has passed."
+            "description": "Endpoint-specific immutable view token. Vehicle v: tokens pin first-page eligibility time for at most five minutes, subject to version eviction; clients must remove positions whose original expiry has passed. CP predictions use schedule tokens and reject the whole pinned result with410 when its earliest included original source expiry passes."
           }
         },
         "required": [
@@ -2254,6 +2337,27 @@
           },
           "source_url": {
             "type": "string"
+          },
+          "plan_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "source_trip_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "service_date": {
+            "type": "string",
+            "nullable": true,
+            "format": "date"
+          },
+          "stop_sequence": {
+            "type": "integer",
+            "nullable": true
+          },
+          "route_name": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
@@ -3109,6 +3213,175 @@
           "destination_name",
           "source_url",
           "service_date"
+        ]
+      },
+      "CPPrediction": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "operator_id": {
+            "type": "string"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "source_trip_id": {
+            "type": "string"
+          },
+          "stop_id": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          },
+          "stop_name": {
+            "type": "string"
+          },
+          "route_name": {
+            "type": "string"
+          },
+          "destination_name": {
+            "type": "string"
+          },
+          "service_label": {
+            "type": "string",
+            "nullable": true
+          },
+          "service_date": {
+            "type": "string",
+            "nullable": true,
+            "format": "date"
+          },
+          "date_basis": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "published",
+              "matched_schedule"
+            ]
+          },
+          "stop_sequence": {
+            "type": "integer"
+          },
+          "scheduled_at": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "expected_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "delay_seconds": {
+            "type": "integer",
+            "nullable": true
+          },
+          "source_updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "collected_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "operator_id",
+          "plan_id",
+          "source_trip_id",
+          "stop_id",
+          "route_id",
+          "stop_name",
+          "route_name",
+          "destination_name",
+          "service_label",
+          "service_date",
+          "date_basis",
+          "stop_sequence",
+          "scheduled_at",
+          "expected_at",
+          "delay_seconds",
+          "source_updated_at",
+          "collected_at",
+          "valid_until",
+          "source_url"
+        ]
+      },
+      "CPPredictionAvailability": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "loading",
+              "ok",
+              "partial",
+              "stale",
+              "error"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "collected_at": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "published_at": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "excluded_updates": {
+            "type": "integer"
+          },
+          "source_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "message",
+          "collected_at",
+          "published_at",
+          "excluded_updates",
+          "source_url"
+        ]
+      },
+      "CPPredictionPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CPPrediction"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/Page"
+          },
+          "availability": {
+            "$ref": "#/components/schemas/CPPredictionAvailability"
+          }
+        },
+        "required": [
+          "data",
+          "page",
+          "availability"
         ]
       }
     }

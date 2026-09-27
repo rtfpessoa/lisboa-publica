@@ -22,6 +22,14 @@ _Avoid_: Inactive vehicle solely because observations stopped
 
 **Scheduled trip**: A planned journey on a route; it does not prove the journey occurred.
 
+**Arrival prediction**: An estimate of when a service will reach a passenger stop. It does not establish the vehicle's location or prove an arrival occurred.
+
+**Published schedule deviation**: A provider's signed estimate relative to the planned time, including early running, zero deviation and lateness. An absent deviation is unknown.
+
+**Source update time**: The time attached to the provider's underlying update. Publishing or collecting the same information again does not make it newer.
+
+**Passenger-facing name**: A readable name for an operator, station, destination or route, distinct from the technical identifier used to associate records.
+
 **Observed trip**: A journey identified in provider observations; incomplete observations do not prove completion.
 
 **Fleet view**: Vehicles detected during the selected period, not an operator's complete registered inventory.

@@ -73,20 +73,22 @@ func optional(s string) *string {
 
 // StaticData contains one operator’s normalized published routes, stops and schedule.
 type StaticData struct {
-	Routes             []api.RouteDetail   `json:"routes"`
-	Stops              []api.Stop          `json:"stops"`
-	Schedule           *Schedule           `json:"schedule,omitempty"`
-	Models             map[string]Metadata `json:"models,omitempty"`
-	PlanID             string              `json:"plan_id"`
-	ValidFrom          string              `json:"valid_from"`
-	ValidUntil         string              `json:"valid_until"`
-	Source             string              `json:"source"`
-	Updated            time.Time           `json:"updated"`
-	Shapes             []api.RouteShape    `json:"shapes,omitempty"`
-	GeometryUpdated    *time.Time          `json:"geometry_updated,omitempty"`
-	GeometryError      *string             `json:"geometry_error,omitempty"`
-	CPJourneyEndpoints bool                `json:"cp_journey_endpoints,omitempty"`
-	GeometryPartial    bool                `json:"geometry_partial,omitempty"`
+	Routes               []api.RouteDetail   `json:"routes"`
+	Stops                []api.Stop          `json:"stops"`
+	Schedule             *Schedule           `json:"schedule,omitempty"`
+	Models               map[string]Metadata `json:"models,omitempty"`
+	PlanID               string              `json:"plan_id"`
+	ValidFrom            string              `json:"valid_from"`
+	ValidUntil           string              `json:"valid_until"`
+	Source               string              `json:"source"`
+	Updated              time.Time           `json:"updated"`
+	Shapes               []api.RouteShape    `json:"shapes,omitempty"`
+	GeometryUpdated      *time.Time          `json:"geometry_updated,omitempty"`
+	GeometryError        *string             `json:"geometry_error,omitempty"`
+	CPJourneyEndpoints   bool                `json:"cp_journey_endpoints,omitempty"`
+	CPPredictionMetadata bool                `json:"cp_prediction_metadata,omitempty"`
+	CPHasFrequencies     bool                `json:"cp_has_frequencies,omitempty"`
+	GeometryPartial      bool                `json:"geometry_partial,omitempty"`
 }
 
 // Metadata contains published vehicle model and registration fields.
@@ -111,6 +113,7 @@ type LiveData struct {
 // State is an immutable collection version shared by paginated readers.
 type State struct {
 	Metro     *MetroData
+	CP        *CPData
 	Revision  string
 	Created   time.Time
 	Static    map[string]*StaticData
@@ -187,7 +190,7 @@ func (c *Cache) update(id string, static *StaticData, live *LiveData, op api.Ope
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	old := c.current
-	value := &State{Metro: old.Metro, Static: map[string]*StaticData{}, Live: map[string]*LiveData{}, Operators: map[string]api.Operator{}}
+	value := &State{Metro: old.Metro, CP: old.CP, Static: map[string]*StaticData{}, Live: map[string]*LiveData{}, Operators: map[string]api.Operator{}}
 	for k, v := range old.Static {
 		value.Static[k] = v
 	}
@@ -199,6 +202,9 @@ func (c *Cache) update(id string, static *StaticData, live *LiveData, op api.Ope
 	}
 	if static != nil {
 		value.Static[id] = static
+		if id == "cp" {
+			value.CP = nil
+		}
 	}
 	if live != nil {
 		published := *live

@@ -26,12 +26,14 @@ func TestProviderContinuityResourceEnvelope(t *testing.T) {
 	base := time.Now().Add(-time.Hour)
 	// Reproduce one-hour extreme churn, saturating both caps and all retained versions.
 	runContinuityChurn(t, cache, store, base)
+	cpVersions := resourceCPPredictions(t, cache)
 	if len(cache.versions) != maxCachedVersions {
 		t.Fatal("churn did not saturate pagination retention")
 	}
 	t.Logf("churn_retained_versions=%d history_pending=%d", len(cache.versions), len(store.collector.Pending))
 	// Static refresh overlap while a full current network and prior revisions remain retained.
 	loadResourceNetworks(t, cache, f, feeds, true)
+	concurrentCPDecode(t)
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	state, _ := cache.state("")
@@ -45,6 +47,7 @@ func TestProviderContinuityResourceEnvelope(t *testing.T) {
 	}
 	runtime.KeepAlive(cache)
 	runtime.KeepAlive(store)
+	runtime.KeepAlive(cpVersions)
 }
 
 func runContinuityChurn(t *testing.T, cache *Cache, store *Store, base time.Time) {

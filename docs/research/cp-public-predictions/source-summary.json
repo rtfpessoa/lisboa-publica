@@ -1,0 +1,157 @@
+{
+  "header": {
+    "gtfs_realtime_version": "2.0",
+    "incrementality": "FULL_DATASET",
+    "timestamp": 1790455682
+  },
+  "services": 29,
+  "sequence_validation": {
+    "rows": 250,
+    "joined": 126,
+    "ambiguous_or_missing": 124
+  },
+  "crosswalk_conflicts": 0,
+  "oriente_samples": [
+    {
+      "station": "Lisboa Oriente",
+      "stop": "94_31039",
+      "trip": "16044_20251214",
+      "headsign": "Lisboa Santa Apolonia",
+      "update": {
+        "stop_sequence": 13,
+        "stop_id": "253542",
+        "arrival": {
+          "time": 1790455520,
+          "delay": 20
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      "timestamp": 1790455426
+    },
+    {
+      "station": "Lisboa Oriente",
+      "stop": "94_31039",
+      "trip": "16046_20251214",
+      "headsign": "Lisboa Santa Apolonia",
+      "update": {
+        "stop_sequence": 13,
+        "stop_id": "253542",
+        "arrival": {
+          "time": 1790456658,
+          "delay": -2442
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      "timestamp": 1790454603
+    },
+    {
+      "station": "Lisboa Oriente",
+      "stop": "94_31039",
+      "trip": "18522_20251225",
+      "headsign": "Lisboa Oriente",
+      "update": {
+        "stop_sequence": 17,
+        "stop_id": "253542",
+        "arrival": {
+          "time": 1790455798,
+          "delay": -122
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      "timestamp": 1790455425
+    },
+    {
+      "station": "Lisboa Oriente",
+      "stop": "94_31039",
+      "trip": "18524_20251214",
+      "headsign": "Lisboa Oriente",
+      "update": {
+        "stop_sequence": 17,
+        "stop_id": "253542",
+        "arrival": {
+          "time": 1790457166,
+          "delay": -554
+        },
+        "schedule_relationship": "SCHEDULED"
+      },
+      "timestamp": 1790455426
+    }
+  ],
+  "delay_schedule_check": {
+    "date_used_for_test_only": "2026-09-26",
+    "counts": {
+      "matched": 126
+    },
+    "examples": []
+  },
+  "delay_only_mapping": {
+    "without_sequence": 124,
+    "unique_join": 104,
+    "unjoined": 20
+  },
+  "network_crosswalk": {
+    "public_cp_rows": 0,
+    "detail_oriente_http": 404,
+    "list_http": 200
+  },
+  "cp_source_clock_age_seconds": [
+    2,
+    2,
+    3,
+    3,
+    5,
+    7,
+    7,
+    7,
+    7,
+    10,
+    17,
+    79,
+    182,
+    195,
+    254,
+    255,
+    256,
+    256,
+    256,
+    257,
+    257,
+    257,
+    279,
+    306,
+    373,
+    571,
+    1079,
+    1237,
+    1240
+  ],
+  "unique_trip_ids": 19,
+  "eligible_absolute_future_90s": 0,
+  "exploratory_delay_resolution": {
+    "counts": {
+      "zero_or_ambiguous": 8,
+      "fresh_unique_upcoming_rows": 92
+    },
+    "oriente": [
+      {
+        "trip": "18522_20251225",
+        "date": "20260926",
+        "expected": 1790455920,
+        "delay": 0
+      },
+      {
+        "trip": "18524_20251214",
+        "date": "20260926",
+        "expected": 1790457714,
+        "delay": -6
+      },
+      {
+        "trip": "4436_20251214",
+        "date": "20260926",
+        "expected": 1790457075,
+        "delay": 345
+      }
+    ],
+    "note": "Per-event exploratory calendar check only, not complete entity-consistency/frequency/overlap validation; not admission proof."
+  }
+}
