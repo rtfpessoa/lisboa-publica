@@ -124,7 +124,12 @@ func (t *BudgetTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 	response, err := t.Base.RoundTrip(r)
-	t.response(host, response, err)
+	// A caller's shorter deadline does not establish an origin-wide outage.
+	// Actual provider throttling still takes priority over caller cancellation.
+	providerLimited := response != nil && (response.StatusCode == http.StatusTooManyRequests || response.StatusCode == http.StatusServiceUnavailable)
+	if err == nil || r.Context().Err() == nil || providerLimited {
+		t.response(host, response, err)
+	}
 	return response, err
 }
 

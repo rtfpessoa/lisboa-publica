@@ -1,6 +1,8 @@
 package app
 
 import (
+	"context"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -132,5 +134,76 @@ func TestInFlightSuccessCannotShortenProviderCooldown(t *testing.T) {
 	<-done
 	if _, err = transport.RoundTrip(r); err == nil {
 		t.Fatal("in-flight success erased provider cooldown")
+	}
+}
+
+// A collector's own deadline must not pause unrelated consumers of the same origin.
+func TestCallerCancellationDoesNotCoolDownSharedSource(t *testing.T) {
+	for _, deadline := range []bool{false, true} {
+		t.Run(map[bool]string{false: "canceled", true: "deadline"}[deadline], func(t *testing.T) {
+			transport := NewBudgetTransport(900)
+			ctx, cancel := context.WithCancel(context.Background())
+			if deadline {
+				ctx, cancel = context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+			}
+			defer cancel()
+			attempts := 0
+			transport.Base = roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				attempts++
+				if r.URL.Path == "/predictions" {
+					cancel()
+					return nil, r.Context().Err()
+				}
+				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("{}"))}, nil
+			})
+			request, _ := http.NewRequestWithContext(ctx, "GET", "https://go.tmlmobilidade.pt/predictions", nil)
+			_, err := transport.RoundTrip(request)
+			if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+				t.Fatalf("expected caller cancellation: %v", err)
+			}
+			sibling, _ := http.NewRequest("GET", "https://go.tmlmobilidade.pt/positions", nil)
+			response, err := transport.RoundTrip(sibling)
+			if err != nil {
+				t.Fatalf("caller deadline paused healthy sibling: %v", err)
+			}
+			response.Body.Close()
+			if attempts != 2 || len(transport.requests) != 2 || len(transport.sources["go.tmlmobilidade.pt"].requests) != 2 {
+				t.Fatal("actual attempts must remain counted")
+			}
+		})
+	}
+}
+
+func TestNetworkFailureStillCoolsDownSharedSource(t *testing.T) {
+	transport := NewBudgetTransport(900)
+	transport.Base = roundTripFunc(func(*http.Request) (*http.Response, error) { return nil, errors.New("network failure") })
+	request, _ := http.NewRequest("GET", "https://go.tmlmobilidade.pt/positions", nil)
+	_, _ = transport.RoundTrip(request)
+	if _, err := transport.RoundTrip(request); err == nil || !strings.Contains(err.Error(), "cooling down") {
+		t.Fatal("network failure must still back off")
+	}
+}
+
+func TestCanceledCallerStillHonorsProviderCooldown(t *testing.T) {
+	for _, code := range []int{429, 503} {
+		t.Run(http.StatusText(code), func(t *testing.T) {
+			transport := NewBudgetTransport(900)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			transport.Base = roundTripFunc(func(*http.Request) (*http.Response, error) {
+				cancel()
+				return &http.Response{StatusCode: code, Header: http.Header{"Retry-After": []string{"600"}}, Body: io.NopCloser(strings.NewReader("{}"))}, context.Canceled
+			})
+			request, _ := http.NewRequestWithContext(ctx, "GET", "https://go.tmlmobilidade.pt/predictions", nil)
+			response, _ := transport.RoundTrip(request)
+			response.Body.Close()
+			sibling, _ := http.NewRequest("GET", "https://go.tmlmobilidade.pt/positions", nil)
+			if _, err := transport.RoundTrip(sibling); err == nil || !strings.Contains(err.Error(), "cooling down") {
+				t.Fatal("provider cooldown lost on caller cancellation")
+			}
+			if transport.sources["go.tmlmobilidade.pt"].until.Before(time.Now().Add(590 * time.Second)) {
+				t.Fatal("Retry-After shortened")
+			}
+		})
 	}
 }
