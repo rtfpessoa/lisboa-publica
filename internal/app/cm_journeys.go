@@ -40,18 +40,20 @@ func cmJourneyLines(blob []byte) (map[string]string, error) {
 }
 func (i cmJourneyImport) namespace() string { return "[" + i.plan.ID + "][" + i.plan.Agency + "]" }
 func (i cmJourneyImport) mergeTrips(d *StaticData, lines map[string]string) error {
+	i.mergeStopLines(d, lines)
+	sources := map[string]*scheduledTripSource{}
 	for _, t := range d.Schedule.Trips {
 		line := lines[t.Route]
 		if line == "" {
 			return fmt.Errorf("CM line mapping unavailable")
 		}
-		t.SourceRoute = t.Route
+		if sources[t.Route] == nil {
+			sources[t.Route] = &scheduledTripSource{Route: t.Route, Plan: i.plan.ID, Agency: i.plan.Agency}
+		}
+		t.Source = sources[t.Route]
 		t.ID = i.namespace() + t.ID
 		t.Service = i.namespace() + t.Service
-		t.Route, t.SourcePlan, t.Agency = line, i.plan.ID, i.plan.Agency
-		t.PackedCount = len(t.Times)
-		t.PackedTimes = packVisits(t.Times)
-		t.Times = nil
+		t.Route = line
 		i.network.Schedule.Trips = append(i.network.Schedule.Trips, t)
 	}
 	return nil
@@ -115,6 +117,6 @@ func vehiclePlanMatches(v *api.Vehicle, d *StaticData) bool {
 	if v.OperatorId != "cm" || v.TripId == nil || d.Schedule == nil {
 		return false
 	}
-	trips := d.journeys("cm").trips[*v.TripId]
-	return len(trips) == 1 && trips[0].SourcePlan == *v.PlanId
+	trips := popupTripMatches(d, "cm", *v.TripId)
+	return len(trips) == 1 && predictionTripPlan(d, trips[0]) == *v.PlanId
 }

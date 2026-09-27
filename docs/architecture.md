@@ -176,3 +176,8 @@ Cache restoration streams individual trips and interns stop identities,
 so decoding does not buffer the whole expanded timetable.
 The station-to-trip lookup is lazy and bounded to 32 selected stops and 4 MiB per immutable network revision;
 a cache miss scans the retained local visits without dropping calls.
+
+The route/direction catalog and CM route/plan/agency source metadata are shared across trips.
+Trip identity lookups scan the immutable schedule without retaining a second trip-ID map.
+CM visit deltas are losslessly compressed before geometry ingestion,
+and exact GTFS stop-to-line membership narrows station reads before decompression.

@@ -52,18 +52,14 @@ func (s *StopTime) UnmarshalJSON(b []byte) error {
 // ScheduledTrip holds the published stop sequence and service of a planned trip.
 type ScheduledTrip struct {
 	ID, Route, Service, Headsign, Shape string
-	SourceRoute                         string        `json:"source_route,omitempty"`
-	SourcePlan                          string        `json:"source_plan,omitempty"`
-	Agency                              string        `json:"agency,omitempty"`
-	Direction                           *int          `json:"direction,omitempty"`
-	PackedCount                         int           `json:"packed_count,omitempty"`
-	PackedTimes                         []byte        `json:"packed_times,omitempty"`
-	JourneyTimes                        []StopTime    `json:"journey_times,omitempty"`
-	Label                               string        `json:",omitempty"`
-	ArrivalTiming                       uint64        `json:"arrival_timing,omitempty"`
-	CPTiming                            *cpTripTiming `json:"cp_timing,omitempty"`
-	Times                               []StopTime
-	Endpoints                           *tripEndpoints `json:"endpoints,omitempty"`
+	tripPopupMetadata
+	Direction     *int          `json:"direction,omitempty"`
+	JourneyTimes  []StopTime    `json:"journey_times,omitempty"`
+	Label         string        `json:",omitempty"`
+	ArrivalTiming uint64        `json:"arrival_timing,omitempty"`
+	CPTiming      *cpTripTiming `json:"cp_timing,omitempty"`
+	Times         []StopTime
+	Endpoints     *tripEndpoints `json:"endpoints,omitempty"`
 }
 
 // Schedule combines planned trips, service calendars and station relationships.
@@ -72,9 +68,10 @@ type Schedule struct {
 	Trips            []ScheduledTrip
 	Calendars        map[string]Calendar
 	Exceptions       map[string]map[string]int
-	StopNames        map[string]string `json:"stop_names,omitempty"`
-	CompleteJourneys bool              `json:"complete_journeys,omitempty"`
-	HasFrequencies   bool              `json:"has_frequencies,omitempty"`
+	StopLines        map[string][]string `json:"stop_lines,omitempty"`
+	StopNames        map[string]string   `json:"stop_names,omitempty"`
+	CompleteJourneys bool                `json:"complete_journeys,omitempty"`
+	HasFrequencies   bool                `json:"has_frequencies,omitempty"`
 	Parents          map[string]string
 }
 
@@ -275,4 +272,15 @@ func (q scheduleQuery) localTrip(trip ScheduledTrip, day time.Time) (ScheduledTr
 	trip.Times = localJourneyTimes(&trip)
 	trip.PackedTimes = nil
 	return trip, len(trip.Times) > 0
+}
+
+// Metadata shared by every trip on the same explicit CM route/plan/agency.
+type scheduledTripSource struct {
+	Route, Plan, Agency string
+}
+
+type tripPopupMetadata struct {
+	Source      *scheduledTripSource `json:"source_instance,omitempty"`
+	PackedCount int                  `json:"packed_count,omitempty"`
+	PackedTimes []byte               `json:"packed_times,omitempty"`
 }

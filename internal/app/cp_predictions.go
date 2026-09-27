@@ -326,8 +326,8 @@ func cpDepartureExpected(s cpStopUpdate, planned time.Time) (time.Time, bool) {
 }
 
 func predictionTripPlan(d *StaticData, t *ScheduledTrip) string {
-	if t.SourcePlan != "" {
-		return t.SourcePlan
+	if t.Source != nil && t.Source.Plan != "" {
+		return t.Source.Plan
 	}
 	return d.PlanID
 }

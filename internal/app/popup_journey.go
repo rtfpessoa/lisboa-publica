@@ -90,7 +90,7 @@ func (r *journeyPopupRead) identify() {
 		return
 	}
 	r.index = r.data.journeys(r.operator)
-	candidates := r.index.trips[*r.vehicle.TripId]
+	candidates := popupTripMatches(r.data, r.operator, *r.vehicle.TripId)
 	if len(candidates) != 1 {
 		if len(candidates) > 1 {
 			r.result.Association = "ambiguous"
@@ -111,8 +111,8 @@ func (r *journeyPopupRead) matchesRoute(t *ScheduledTrip) bool {
 	return r.operator != "metro" && r.vehicle.RouteId != nil && (*r.vehicle.RouteId == qualify(r.operator, t.Route) || *r.vehicle.RouteId == line)
 }
 func popupDirectionLabel(index *journeyIndex, t *ScheduledTrip) string {
-	for _, dir := range index.directions[index.lines[t]] {
-		if dir.DirectionKey != nil && equalDirection(dir.DirectionKey, index.direction[t]) {
+	for _, dir := range index.directions[index.lineFor(t)] {
+		if dir.DirectionKey != nil && equalDirection(dir.DirectionKey, index.directionFor(t)) {
 			return dir.Label
 		}
 	}

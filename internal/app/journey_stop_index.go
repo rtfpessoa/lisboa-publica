@@ -23,7 +23,7 @@ func (idx *journeyIndex) stopTrips(data *StaticData, operator, stop string) []*S
 	trips := []*ScheduledTrip{}
 	for n := range data.Schedule.Trips {
 		trip := &data.Schedule.Trips[n]
-		if tripVisitsStop(data.Schedule, trip, source) {
+		if popupStopIncludesRoute(data.Schedule, source, trip.Route) && tripVisitsStop(data.Schedule, trip, source) {
 			trips = append(trips, trip)
 		}
 	}

@@ -32,7 +32,7 @@ func (p plannedPopupJourney) call(v StopTime) api.StopCall {
 	if v.Departure >= 0 {
 		departure = &api.CallTimeEvidence{At: dep, SourceUrl: d.Source, CollectedAt: &d.Updated}
 	}
-	call := api.StopCall{Id: journey + ":" + strconv.Itoa(v.Sequence), JourneyId: &journey, StopId: qualify(op, v.Stop), StopName: d.Schedule.StopNames[v.Stop], StopSequence: v.Sequence, LineKey: idx.lines[t], DirectionKey: idx.direction[t], Destination: tripDestination(d.Schedule, t), ServiceLabel: optional(t.Label), Arrival: selectCallTime(nil, nil, arrival, false, now), Departure: selectCallTime(nil, nil, departure, false, now), Phase: "unknown"}
+	call := api.StopCall{Id: journey + ":" + strconv.Itoa(v.Sequence), JourneyId: &journey, StopId: qualify(op, v.Stop), StopName: d.Schedule.StopNames[v.Stop], StopSequence: v.Sequence, LineKey: idx.lineFor(t), DirectionKey: idx.directionFor(t), Destination: tripDestination(d.Schedule, t), ServiceLabel: optional(t.Label), Arrival: selectCallTime(nil, nil, arrival, false, now), Departure: selectCallTime(nil, nil, departure, false, now), Phase: "unknown"}
 	for _, stop := range d.Stops {
 		if stop.Id == call.StopId {
 			copy := stop
@@ -46,8 +46,8 @@ func (p plannedPopupJourney) call(v StopTime) api.StopCall {
 
 func journeyKey(op string, d *StaticData, t *ScheduledTrip, day time.Time) string {
 	plan := d.PlanID
-	if t.SourcePlan != "" {
-		plan = t.SourcePlan
+	if t.Source != nil && t.Source.Plan != "" {
+		plan = t.Source.Plan
 	}
 	return strings.Join([]string{op, plan, t.ID, day.In(lisbon).Format("2006-01-02")}, "|")
 }

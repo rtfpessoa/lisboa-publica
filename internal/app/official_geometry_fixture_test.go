@@ -81,6 +81,16 @@ func mergeCMFixture(network, data *StaticData) {
 
 func mergeFixtureSchedules(target, source *Schedule) {
 	target.Trips = append(target.Trips, source.Trips...)
+	if source.StopLines != nil {
+		if target.StopLines == nil {
+			target.StopLines = map[string][]string{}
+		}
+		for stop, lines := range source.StopLines {
+			for _, line := range lines {
+				retainStopLine(target, stop, line)
+			}
+		}
+	}
 	for id, value := range source.Calendars {
 		target.Calendars[id] = value
 	}

@@ -29,6 +29,7 @@ func decodeStaticCacheJSON(reader io.Reader, data *StaticData) error {
 
 func decodeScheduleCache(decoder *json.Decoder, schedule *Schedule) error {
 	identities := map[string]string{}
+	sources := map[scheduledTripSource]*scheduledTripSource{}
 	return decodeCacheObject(decoder, schedule, func(name string) (bool, error) {
 		if name != "Trips" {
 			return false, nil
@@ -46,6 +47,7 @@ func decodeScheduleCache(decoder *json.Decoder, schedule *Schedule) error {
 			if err = decoder.Decode(&trip); err != nil {
 				return true, err
 			}
+			internCachedSource(&trip, sources)
 			internCachedVisits(trip.Times, identities)
 			internCachedVisits(trip.JourneyTimes, identities)
 			schedule.Trips = append(schedule.Trips, trip)
@@ -143,4 +145,16 @@ func decodeStoredCacheJSON(reader io.Reader, target any) error {
 		return decodeStaticCacheJSON(reader, static)
 	}
 	return json.NewDecoder(reader).Decode(target)
+}
+
+func internCachedSource(trip *ScheduledTrip, sources map[scheduledTripSource]*scheduledTripSource) {
+	if trip.Source == nil {
+		return
+	}
+	shared := sources[*trip.Source]
+	if shared == nil {
+		shared = trip.Source
+		sources[*shared] = shared
+	}
+	trip.Source = shared
 }

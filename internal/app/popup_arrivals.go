@@ -141,8 +141,8 @@ func identifyPublishedPopupCall(call *api.StopCall, d *StaticData, op string, f 
 func publishedPopupOrientation(idx *journeyIndex, d *StaticData, f Filter, row api.Arrival) *string {
 	keys := map[string]*string{}
 	for _, t := range idx.stopTrips(d, row.OperatorId, f.Stop) {
-		if idx.lines[t] == row.RouteId && normalizeName(tripDestination(d.Schedule, t)) == normalizeName(row.Headsign) {
-			key := idx.direction[t]
+		if idx.lineFor(t) == row.RouteId && normalizeName(tripDestination(d.Schedule, t)) == normalizeName(row.Headsign) {
+			key := idx.directionFor(t)
 			keys[boardSelection(row.RouteId, key)] = key
 		}
 	}
@@ -158,12 +158,12 @@ func attachPublishedPopupJourney(call *api.StopCall, idx *journeyIndex, d *Stati
 	if row.PlanId == nil || row.SourceTripId == nil || row.ServiceDate == nil || row.StopSequence == nil {
 		return
 	}
-	trips := idx.trips[qualify(op, *row.SourceTripId)]
+	trips := popupTripMatches(d, op, qualify(op, *row.SourceTripId))
 	if len(trips) != 1 {
 		return
 	}
 	t := trips[0]
-	if *row.PlanId != predictionTripPlan(d, t) || idx.lines[t] != row.RouteId {
+	if *row.PlanId != predictionTripPlan(d, t) || idx.lineFor(t) != row.RouteId {
 		return
 	}
 	if !publishedPopupVisit(t, op, row) {

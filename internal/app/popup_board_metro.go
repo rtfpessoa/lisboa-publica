@@ -31,9 +31,9 @@ func metroBoardDirection(d *StaticData, stop string, a api.Arrival) (string, *st
 	matches := map[string]*string{}
 	for _, t := range idx.stopTrips(d, "metro", stop) {
 		if normalizeName(tripDestination(d.Schedule, t)) == normalizeName(a.Headsign) {
-			line = idx.lines[t]
-			if idx.direction[t] != nil {
-				matches[*idx.direction[t]] = idx.direction[t]
+			line = idx.lineFor(t)
+			if idx.directionFor(t) != nil {
+				matches[*idx.directionFor(t)] = idx.directionFor(t)
 			}
 		}
 	}

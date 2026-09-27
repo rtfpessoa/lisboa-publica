@@ -301,9 +301,7 @@ func TestCMPlanAssociationAndOperationalDate(t *testing.T) {
 	d.Operator = "cm"
 	t0 := &d.Schedule.Trips[0]
 	t0.ID = "[plan][LA77N]T"
-	t0.SourcePlan = "plan"
-	t0.Agency = "LA77N"
-	t0.SourceRoute = "1001_0"
+	t0.Source = &scheduledTripSource{Plan: "plan", Agency: "LA77N", Route: "1001_0"}
 	v.TripId = ptr(qualify("cm", t0.ID))
 	v.SourceId = "[LA77N]v"
 	v.OperationalDate = nil
@@ -339,7 +337,7 @@ func TestCMReusesArchiveForFullSchedule(t *testing.T) {
 	if err := (cmJourneyImport{out, plan, p, hubBase}).merge(shapeArchive(t, true)); err != nil {
 		t.Fatal(err)
 	}
-	if len(out.Schedule.Trips) != 3 || out.Schedule.Trips[0].Route != "1001" || out.Schedule.Trips[0].SourcePlan != "plan" || len(journeyTimes(&out.Schedule.Trips[0])) != 1 {
+	if len(out.Schedule.Trips) != 3 || out.Schedule.Trips[0].Route != "1001" || predictionTripPlan(out, &out.Schedule.Trips[0]) != "plan" || len(journeyTimes(&out.Schedule.Trips[0])) != 1 {
 		t.Fatal("CM schedule or provenance lost")
 	}
 }

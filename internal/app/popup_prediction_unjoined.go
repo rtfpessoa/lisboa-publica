@@ -43,7 +43,7 @@ func (r popupForecastRead) appendUnjoined(extra map[string]api.StopCall, calls [
 	if !r.matchesStop(row) || !r.inWindow(row) || !time.Now().Before(row.ValidUntil) {
 		return
 	}
-	trips := r.index.trips[row.SourceTripId]
+	trips := popupTripMatches(r.data, r.operator, row.SourceTripId)
 	if len(trips) != 1 {
 		return
 	}
@@ -54,7 +54,7 @@ func (r popupForecastRead) appendUnjoined(extra map[string]api.StopCall, calls [
 	key := unjoinedForecastKey(row)
 	call, ok := extra[key]
 	if !ok {
-		call = api.StopCall{Id: key, StopId: row.StopId, StopName: row.StopName, StopSequence: row.StopSequence, LineKey: r.index.lines[t], DirectionKey: r.index.direction[t], Destination: row.DestinationName, ServiceLabel: row.ServiceLabel, Phase: "future", Arrival: missingCallTime("Chegada não publicada"), Departure: missingCallTime("Partida não publicada")}
+		call = api.StopCall{Id: key, StopId: row.StopId, StopName: row.StopName, StopSequence: row.StopSequence, LineKey: r.index.lineFor(t), DirectionKey: r.index.directionFor(t), Destination: row.DestinationName, ServiceLabel: row.ServiceLabel, Phase: "future", Arrival: missingCallTime("Chegada não publicada"), Departure: missingCallTime("Partida não publicada")}
 	}
 	forecast := popupForecastEvidence(row)
 	if row.ExpectedDepartureAt != nil {

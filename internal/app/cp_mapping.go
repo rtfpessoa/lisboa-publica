@@ -81,15 +81,15 @@ func ordinaryPredictionTrip(i *cpIndex, u cpUpdate) *ScheduledTrip {
 }
 func cmPredictionTrip(i *cpIndex, u cpUpdate) *ScheduledTrip {
 	t := i.Trips[u.Trip.ID]
-	if t != nil && !predictionRouteMatches(u, t, t.Agency) {
+	if t != nil && (t.Source == nil || !predictionRouteMatches(u, t, t.Source.Agency)) {
 		t = nil
 	}
 	return t
 }
 func predictionRouteMatches(update cpUpdate, t *ScheduledTrip, agency string) bool {
 	published, route := update.Trip.Route, t.Route
-	if t.SourceRoute != "" {
-		route = t.SourceRoute
+	if t.Source != nil && t.Source.Route != "" {
+		route = t.Source.Route
 	}
 	return published == "" || published == route || published == "["+agency+"]"+route
 }

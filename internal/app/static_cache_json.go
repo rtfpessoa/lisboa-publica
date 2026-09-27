@@ -105,7 +105,7 @@ func writeCacheJSONValue(w io.Writer, value any) error {
 	case []api.RouteShape:
 		err = writeCacheJSONArray(w, rows)
 	case *Schedule:
-		err = writeCacheJSONObject(w, []cacheJSONField{{"Trips", rows.Trips, false}, {"Calendars", rows.Calendars, false}, {"Exceptions", rows.Exceptions, false}, {"Parents", rows.Parents, false}, {"stop_names", rows.StopNames, len(rows.StopNames) == 0}, {"complete_journeys", rows.CompleteJourneys, !rows.CompleteJourneys}, {"has_frequencies", rows.HasFrequencies, !rows.HasFrequencies}})
+		err = writeCacheJSONObject(w, []cacheJSONField{{"Trips", rows.Trips, false}, {"Calendars", rows.Calendars, false}, {"Exceptions", rows.Exceptions, false}, {"Parents", rows.Parents, false}, {"stop_lines", rows.StopLines, len(rows.StopLines) == 0}, {"stop_names", rows.StopNames, len(rows.StopNames) == 0}, {"complete_journeys", rows.CompleteJourneys, !rows.CompleteJourneys}, {"has_frequencies", rows.HasFrequencies, !rows.HasFrequencies}})
 	default:
 		err = json.NewEncoder(w).Encode(value)
 	}

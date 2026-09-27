@@ -55,6 +55,7 @@ func readGTFS(blob []byte, p provider, planID, from, until, source string, now t
 			return nil, err
 		}
 	}
+	reader.connectTrips()
 	if err := reader.readGeometry(archive); err != nil {
 		return nil, err
 	}
@@ -146,7 +147,7 @@ func (g *gtfsReader) trip(m map[string]string) error {
 	if g.routes[m["route_id"]] == nil {
 		return fmt.Errorf("trip has unknown route")
 	}
-	id := m["trip_id"]
+	id := strings.Clone(m["trip_id"])
 	if id == "" || m["service_id"] == "" || g.trips[id] != nil {
 		return fmt.Errorf("invalid or duplicate GTFS trip")
 	}
@@ -157,7 +158,7 @@ func (g *gtfsReader) trip(m map[string]string) error {
 		}
 		g.directions[id] = ptr(direction)
 	}
-	g.trips[id] = &ScheduledTrip{ID: id, Route: m["route_id"], Service: m["service_id"], Headsign: m["trip_headsign"], Shape: m["shape_id"], Label: m["trip_short_name"], Direction: g.directions[id]}
+	g.trips[id] = &ScheduledTrip{ID: id, Route: strings.Clone(m["route_id"]), Service: strings.Clone(m["service_id"]), Headsign: strings.Clone(m["trip_headsign"]), Shape: strings.Clone(m["shape_id"]), Label: strings.Clone(m["trip_short_name"]), Direction: g.directions[id]}
 	return nil
 }
 
@@ -170,7 +171,6 @@ func (g *gtfsReader) stopTime(m map[string]string) error {
 	if e != nil || seq < 0 {
 		return fmt.Errorf("invalid stop sequence")
 	}
-	g.rememberEndpoint(t, m["stop_id"], seq)
 	t.rememberCPTiming(m, seq)
 	a, e := optionalStopClock(m["arrival_time"])
 	if e != nil {
@@ -185,6 +185,7 @@ func (g *gtfsReader) stopTime(m map[string]string) error {
 		// Reuse catalog identity instead of retaining each CSV record's backing string.
 		stop = local.SourceId
 	}
+	g.rememberEndpoint(t, stop, seq)
 	visit := StopTime{stop, int32(a), int32(dep), seq}
 	t.JourneyTimes = append(t.JourneyTimes, visit)
 	return nil
@@ -366,7 +367,7 @@ func (g *gtfsReader) finishGeometry(now time.Time) {
 	} else {
 		g.validateShapes()
 	}
-	g.connectTrips()
+	g.connectTripShapes()
 	g.buildRoutes()
 	g.buildStops()
 	variants, err := g.routeShapes(g.provider.Agency)

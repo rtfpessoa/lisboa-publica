@@ -9,11 +9,10 @@ import (
 )
 
 type journeyIndex struct {
-	trips      map[string][]*ScheduledTrip
 	stops      journeyStopIndex
 	directions map[string][]api.BoardDirection
 	direction  map[*ScheduledTrip]*string
-	lines      map[*ScheduledTrip]string
+	routes     map[string]*journeyRouteCatalog
 }
 
 // Index lifetime follows the immutable schedule, not a browser or a live refresh.
@@ -68,7 +67,7 @@ type journeyCatalogBuilder struct {
 }
 
 func indexJourneys(d *StaticData, operator string) *journeyIndex {
-	idx := &journeyIndex{trips: map[string][]*ScheduledTrip{}, directions: map[string][]api.BoardDirection{}, direction: map[*ScheduledTrip]*string{}, lines: map[*ScheduledTrip]string{}}
+	idx := &journeyIndex{directions: map[string][]api.BoardDirection{}, direction: map[*ScheduledTrip]*string{}, routes: map[string]*journeyRouteCatalog{}}
 	builder := journeyCatalogBuilder{data: d, operator: operator, index: idx, representatives: map[string][]*ScheduledTrip{}}
 	for _, t := range orderedJourneyTrips(d.Schedule) {
 		builder.addTrip(t)
@@ -90,20 +89,23 @@ func orderedJourneyTrips(s *Schedule) []*ScheduledTrip {
 	return trips
 }
 func (b *journeyCatalogBuilder) addTrip(t *ScheduledTrip) {
-	line, name, color := lineForTrip(b.data, b.operator, t)
-	b.index.lines[t] = line
-	key := qualify(b.operator, t.ID)
-	b.index.trips[key] = append(b.index.trips[key], t)
-	direction := b.tripDirection(t, line)
-	b.index.direction[t] = direction
-	b.addDirection(t, api.BoardDirection{LineKey: line, LineName: name, Color: color, DirectionKey: direction})
+	route := b.route(t)
+	direction := b.tripDirection(t, route.line)
+	if b.operator == "metro" {
+		b.index.direction[t] = direction
+	}
+	b.addDirection(t, api.BoardDirection{LineKey: route.line, LineName: route.name, Color: route.color, DirectionKey: direction})
 }
 func (b *journeyCatalogBuilder) tripDirection(t *ScheduledTrip, line string) *string {
 	var key *string
 	if b.operator == "metro" && len(journeyTimes(t)) >= 2 {
 		key = b.metroDirection(t, line)
 	} else if t.Direction != nil {
-		key = ptr(line + ":direction:" + strconv.Itoa(*t.Direction))
+		route := b.index.routes[t.Route]
+		if route.direction[*t.Direction] == nil {
+			route.direction[*t.Direction] = ptr(line + ":direction:" + strconv.Itoa(*t.Direction))
+		}
+		key = route.direction[*t.Direction]
 	}
 	return key
 }
@@ -170,4 +172,42 @@ func sameMetroOrientation(s *Schedule, a, b []StopTime) bool {
 		}
 	}
 	return false
+}
+
+type journeyRouteCatalog struct {
+	line, name, color string
+	direction         [2]*string
+}
+
+func (b *journeyCatalogBuilder) route(trip *ScheduledTrip) *journeyRouteCatalog {
+	route := b.index.routes[trip.Route]
+	if route == nil {
+		line, name, color := lineForTrip(b.data, b.operator, trip)
+		route = &journeyRouteCatalog{line: line, name: name, color: color}
+		b.index.routes[trip.Route] = route
+	}
+	return route
+}
+
+func (index *journeyIndex) lineFor(trip *ScheduledTrip) string { return index.routes[trip.Route].line }
+func (index *journeyIndex) directionFor(trip *ScheduledTrip) *string {
+	if direction, found := index.direction[trip]; found {
+		return direction
+	}
+	if trip.Direction == nil {
+		return nil
+	}
+	return index.routes[trip.Route].direction[*trip.Direction]
+}
+
+func popupTripMatches(data *StaticData, operator, qualified string) []*ScheduledTrip {
+	id := strings.TrimPrefix(qualified, operator+":")
+	matches := []*ScheduledTrip{}
+	for n := range data.Schedule.Trips {
+		trip := &data.Schedule.Trips[n]
+		if trip.ID == id {
+			matches = append(matches, trip)
+		}
+	}
+	return matches
 }

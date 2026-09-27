@@ -15,7 +15,7 @@ func packVisits(visits []StopTime) []byte {
 		result = binary.AppendVarint(result, int64(visit.Sequence)-sequence)
 		arrival, sequence = int64(visit.Arrival), int64(visit.Sequence)
 	}
-	return result
+	return compressPackedVisits(result)
 }
 
 type packedVisitReader struct {
@@ -85,6 +85,7 @@ func localJourneyTimes(trip *ScheduledTrip) []StopTime {
 }
 
 func decodePackedVisits(blob []byte) []StopTime {
+	blob = expandPackedVisits(blob)
 	if len(blob) == 0 || blob[0] != 1 {
 		return nil
 	}
