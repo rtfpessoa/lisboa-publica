@@ -4,6 +4,8 @@ Station popups show a matrix of lines and directions, with the selected directio
 
 Vehicle popups show the complete safely associated journey, including visits outside the map area and repeated visits to the same stop. The initial page contains the next uniquely identified visit; users can navigate to the beginning and subsequent pages. Existing map paths, nearby-stop navigation, verified vehicle links and published specifications remain available. CM vehicles without an identified journey retain the separate verified published-pattern path or next-stop fallback.
 
+Vehicle positions remain on the map for 24 hours from their original source clock. “Posição antiga” appears only in the detail after ten minutes for CP or five for other operators, with unchanged marker appearance and no effect on metrics or actions. After expiry, an already open detail retains its attributes and journey consultation with “Sinal expirado”; cached evidence is not presented as current progress. Stable verified attributes persist independently of position/history expiry.
+
 ## Cached reads and identity
 
 The additive station board and vehicle journey operations are defined in [OpenAPI](../api/openapi.yaml). Generated Go and TypeScript contracts must be regenerated from that file. Boards default to a two-hour interval and retain all known direction groups independently of the displayed page. Vehicles default to 100 visits per page, up to the existing 500-row limit. No browser read fetches an upstream source.

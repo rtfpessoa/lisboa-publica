@@ -40,11 +40,11 @@ The collector can be disabled, feeds can fail or return no current observations,
 |---|---|---|---|---|
 | Static GTFS | Active plan archives parsed into network, calendars, trips and optional metadata | Routes/stops/planned services/shapes | Compressed normalized static state | No proof of operated trips; context for associations |
 | CM catalogue | Direct lines/stops; Hub geometry and metadata supplement it | CM routes/stops/shapes | Static state | No static CM scheduled trips; observed trip IDs may appear in positions |
-| Positions | Admitted source reports and identity/continuity checks | Current or labelled last-known vehicles | Selected live state, without pending history samples | New admitted samples feed selected facts/aggregates, speed and partial distance |
+| Positions | Admitted source reports and identity/continuity checks | Vehicles with original clocks; age detail and update coverage | Selected live state, without pending history samples | New admitted samples feed selected facts/aggregates, speed and partial distance |
 | Requested-stop predictions | Validated CM/TML arrivals, source-specific clocks and bounded validity | Stop arrival API/popups | None | None; memory-only |
 | CP predictions | Current publication/update clocks plus validated stop visits | CP prediction services and typed arrivals | None | None; memory-only |
 | Metro direct data | Line state, waits and stations | Status and predicted arrivals | Separate direct cache | No direct prediction history or GPS conversion |
-| Fleet specifications | Verified static/live identity enrichment | Fleet and vehicle details | Static/live metadata | Supported metadata/specification projection in future snapshots; old missing values remain absent |
+| Fleet specifications | Verified static/live identity enrichment | Fleet and vehicle details | Independent permanent vehicle facts, plus static/live projections | Supported metadata/specification projection in future snapshots; old missing values remain absent |
 | Derived metrics | Valid retained reported samples and observation identifiers | Speed, partial distance, detected trips, volume/fleet/rankings/traffic estimates | Not an upstream metric cache | Computed from retained facts; see [history](history.md) |
 | Account data | Verified login identity, session/key lifecycle | Own account/key management | SQL identity and hashed session/key secrets | No transport-history role |
 | Map/fonts | Browser presentation resources | Rendered cartography and typography | Browser-controlled resource caching | No application transport-history role |
@@ -72,7 +72,7 @@ Exposure is also field-specific: live `Vehicle` includes capacity/accessibility/
 | Current observation | Source recently verified and position within the current observation-age window |
 | Last-known state | Original report projected after omission, stale source or restart; not a new observation |
 
-Source verification uses a 90-second collection freshness window; current vehicle age is at most 180 seconds. Last-known reports can be retained for one hour, with bounded counts and truncation flags. The five-minute `inactive_at` display threshold does not prove a vehicle stopped operating. See [continuity](associations.md#continuity-and-last-known-state).
+Source verification uses a 90-second collection freshness window; current vehicle age is at most 180 seconds. Positions remain on the map for 24 hours from the original source clock. CP shows an old-position detail after ten minutes; other operators after five. This detail changes no marker or metric. Map totals distinguish updated positions from those awaiting a signal; current speed/history still require valid observation evidence. `inactive_at` is a legacy timestamp, not proof of stopped operation. Stable verified fleet attributes have no automatic expiry and are independent of position/history retention. See [continuity](associations.md#continuity-and-last-known-state).
 
 Normalized nullable output fields use null for unknown/unavailable values rather than zero. Raw input handling is source-specific: the current [Metro wait decoder](../integrations/metro.md#waiting-time-fields) treats an explicit JSON null as zero, a documented parser limitation. Zero delay, zero displacement and published capacity zero remain meaningful when valid. A successful empty source response differs from failure; failure can preserve old data but does not refresh its source timestamp. Availability/error/coverage fields distinguish unavailable collection from known empty coverage.
 

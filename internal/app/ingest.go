@@ -134,13 +134,7 @@ func (f *Fetcher) refreshMetadata(ctx context.Context) {
 		if d == nil {
 			continue
 		}
-		copyData := mergePublishedMetadata(d, id, rows)
-		f.Store.PublishMu.Lock()
-		op := f.Cache.operator(id)
-		if e := f.Store.Save(ctx, id, copyData, nil, op, nil); e == nil {
-			f.Cache.update(id, copyData, nil, op)
-		}
-		f.Store.PublishMu.Unlock()
+		f.publishMetadata(ctx, id, d, rows)
 	}
 }
 func (f *Fetcher) saveStatic(ctx context.Context, p provider, d *StaticData) {
@@ -150,12 +144,22 @@ func (f *Fetcher) saveStatic(ctx context.Context, p provider, d *StaticData) {
 		state, _ := f.Cache.state("")
 		prepareGTFSGeometry(d, state.Static[p.ID], f.Cache.operator(p.ID))
 	}
+	if p.ID != "cm" {
+		if e := f.Store.stageMetadataFacts(ctx, p.ID, d.Models, factInput{Source: d.Source, ConfirmedAt: d.Updated, Priority: 0}); e != nil {
+			f.Log.Warn("static facts unavailable", zap.String("operator", p.ID), zap.Error(e))
+		}
+	}
 	op := staticHealth(f.Cache.operator(p.ID), d)
+	current, _ := f.Cache.state("")
+	projection, projectionErr := f.Store.factProjection(ctx, p.ID, current.Live[p.ID])
+	if projectionErr != nil {
+		f.Log.Warn("static fact projection unavailable", zap.String("operator", p.ID), zap.Error(projectionErr))
+	}
 	if e := f.Store.Save(ctx, p.ID, d, nil, op, nil); e != nil {
 		f.Log.Error("static persistence failed", zap.String("operator", p.ID), zap.Error(e))
 		return
 	}
-	f.Cache.update(p.ID, d, nil, op)
+	f.Cache.update(p.ID, d, projection, op)
 	f.Log.Info("static provider refreshed", zap.String("operator", p.ID), zap.Int("routes", len(d.Routes)), zap.Int("stops", len(d.Stops)))
 }
 func (f *Fetcher) refreshLive(ctx context.Context) {
@@ -192,6 +196,7 @@ func (f *Fetcher) refreshLive(ctx context.Context) {
 	}
 }
 func (f *Fetcher) saveLive(ctx context.Context, p provider, vehicles []api.Vehicle, now time.Time) {
+	vehicles = normalizeVehicleAttributes(vehicles)
 	ids := map[string]bool{}
 	for _, v := range vehicles {
 		if ids[v.Id] {
@@ -203,10 +208,8 @@ func (f *Fetcher) saveLive(ctx context.Context, p provider, vehicles []api.Vehic
 	f.Store.PublishMu.Lock()
 	defer f.Store.PublishMu.Unlock()
 	state, _ := f.Cache.state("")
-	live, dist := nextLive(state.Live[p.ID], state.Operators[p.ID], vehicles, now)
-	if prior := state.Live[p.ID]; prior != nil && live.LastKnownTruncatedUntil.After(prior.LastKnownTruncatedUntil) {
-		f.Log.Warn("last-known display capped", zap.String("operator", p.ID), zap.Int("display_limit", maxLastKnown))
-	}
+	live, dist := f.prepareVehiclePublication(ctx, p.ID, state, vehicles, now)
+
 	for i := range live.Vehicles {
 		enrichVehicle(&live.Vehicles[i], state.Static[p.ID])
 	}
@@ -400,22 +403,29 @@ func updateObservedVehicle(v *api.Vehicle, old map[string]api.Vehicle) *float64 
 }
 
 func enrichVehicle(v *api.Vehicle, data *StaticData) {
-
-	if data != nil {
-		if v.PlanId != nil && !vehiclePlanMatches(v, data) {
-			v.RouteId = nil
-		}
-		if m, ok := data.Models[v.SourceId]; ok {
-			if v.Model == nil {
-				v.Model = optional(m.Model)
-			}
-			if v.LicensePlate == nil {
-				v.LicensePlate = optional(m.Plate)
-			}
-			v.Typology = optional(m.Typology)
-			v.Propulsion = optional(m.Propulsion)
-			enrichSpecifications(v, m)
-		}
+	if data == nil {
+		return
+	}
+	if v.PlanId != nil && !vehiclePlanMatches(v, data) {
+		v.RouteId = nil
+	}
+	if metadata, exists := data.Models[v.SourceId]; exists {
+		enrichCatalogueVehicle(v, validatedMetadata(metadata))
+	}
+}
+func enrichCatalogueVehicle(v *api.Vehicle, metadata Metadata) {
+	if v.LicensePlate != nil && metadata.Plate != "" && registration(v.LicensePlate) != registration(optional(metadata.Plate)) {
+		return
+	}
+	fillVehicleText(&v.Model, metadata.Model)
+	fillVehicleText(&v.LicensePlate, metadata.Plate)
+	fillVehicleText(&v.Typology, metadata.Typology)
+	fillVehicleText(&v.Propulsion, metadata.Propulsion)
+	enrichSpecifications(v, metadata)
+}
+func fillVehicleText(target **string, value string) {
+	if *target == nil {
+		*target = optional(value)
 	}
 }
 

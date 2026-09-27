@@ -79,7 +79,7 @@ func TestStoppedStateOriginalClocksAndResume(t *testing.T) {
 	if json.NewDecoder(rd).Decode(&restored) != nil || restored.LastKnown[0].StopName == nil {
 		t.Fatal("state missing from durable live cache")
 	}
-	rows, _, _, _, _ = projectLive(&restored, op, nil, now.Add(time.Hour))
+	rows, _, _, _, _ = projectLive(&restored, op, nil, now.Add(lastKnownLifetime))
 	if len(rows) != 0 {
 		t.Fatal("stopped state refreshed expiry")
 	}

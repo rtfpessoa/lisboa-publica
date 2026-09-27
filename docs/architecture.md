@@ -64,6 +64,7 @@ Parsers validate identity, time, coordinates and bounded payloads. [Source refer
 | Data path | Memory publication | Durability |
 |---|---|---|
 | Static data and metadata | Replace the static state after a successful save | Compressed, chunked static cache and source health |
+| Permanent vehicle facts | Independently stage explicitly supplied fields; enrich admitted positions | Separate `vehicle_facts` table, no automatic TTL; pending changes retry in cache/health/history transactions |
 | Vehicle positions | Advance in-memory state independently of successful writes | Live cache/health and selected history; normally at most once per 30 seconds in aggregate mode, each update in raw mode |
 | Requested-stop arrivals | Publish only against the exact static generation used; independent bounded store | None; no ETA rows in64 archived network revisions |
 | CP predictions | Publish only if the static state used for normalization is still current | Memory only; a static CP update invalidates predictions |
@@ -98,6 +99,8 @@ sequenceDiagram
 
 [The frontend pagination helper](../frontend/src/data.ts) carries the returned revision through subsequent pages and restarts on HTTP 410, up to three attempts. [CP queries](../frontend/src/cp.ts) have their own coherent collection logic. TanStack Query uses the [generated client](../frontend/src/api.ts), same-origin credentials and query keys incorporating selections. Live queries generally refresh at the reported live interval; historical windows advance on a 30-second cadence. CP, Metro and ordinary live API reads consume published cache. Additional stop arrival reads register demand for the asynchronous collectors; popup cancellation does not cancel shared collection.
 
+Permanent vehicle attributes use an independent `vehicle_facts` table keyed by exact operator/source identity, with registration contexts and field-level provenance. Pending changes participate in the same guarded transaction as cache/health/history writes and are acknowledged only on success. Failed reads retain pending supplied fields until their durable base can be loaded, and failed writes retry without renewing field confirmation times. Legacy caches seed low-precedence facts with explicitly unknown original field provenance; normal guarded writes persist this recovery before replacing the cached source data. Restore lazily reads facts for needed identities independently of `cache_parts` and snapshots. No historical cleanup removes permanent facts. The registry is separate from archived network revisions; it evicts clean memory entries while preserving dirty changes. Position retention is 24 hours from the original source clock and does not renew on polling or restore. Retained identity count and memory/cache size therefore follow the last day's admitted inventory; the old 500-position cap no longer applies. Existing response-size and guarded write limits remain in force. A dated [fixed-fleet resource measurement](research/vehicle-position-retention-2026-09-27/resource.txt) retained 80,000 synthetic identities with all eight official static fixtures and 64 revisions on macOS: heap was about 1.63 GB and runtime system allocation about 2.65 GB. This does not certify the former one-GB Linux envelope or a production inventory bound; the older capped-display measurements must not be applied to this retention policy.
+
 ## API, authentication and trust
 
 [OpenAPI](../api/openapi.yaml) generates the strict Go interface and TypeScript client through the [generation workflow](../scripts/generate.sh). [The server](../internal/app/server.go) applies request validation, identity/scopes, per-IP/principal rate limits and generated dispatch. Heavy reads are bounded to two concurrent operations with 15-second contexts and result limits. The frontend distinguishes `busy` responses and uses bounded retry/backoff.
@@ -111,7 +114,7 @@ Metro secrets stay in the server environment. `PUBLIC_ORIGIN` establishes the al
 | Condition | Application behavior |
 |---|---|
 | Upstream failure/throttling | Mark source error, preserve prior usable data and original observation clocks, retry on scheduled refresh after applicable cooldown |
-| Successful empty positions | Known successful source coverage with no new membership; omitted vehicles may remain separately labelled last-known |
+| Successful empty positions | Known successful source coverage with no new membership; omitted vehicles remain visible for 24 hours with original source clocks and unchanged marker appearance |
 | Source not recently verified | Current counts can become unknown; age and last-known projection do not turn old reports into fresh observations |
 | Missing Metro credentials | Direct status is unconfigured; estimated Hub positions and planned GTFS remain distinct paths |
 | Static/geometry failure | Preserve eligible prior data; geometry availability may differ from schedule availability; fallback is source-specific |

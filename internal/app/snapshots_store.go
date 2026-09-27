@@ -76,7 +76,10 @@ func (s *Store) historyCollectionStatus() api.ConfigHistoryCollectionStatus {
 	return api.ConfigHistoryCollectionStatus(s.historyStatus())
 }
 
-type cacheUpdate struct{ Static, Live, Health []byte }
+type cacheUpdate struct {
+	Static, Live, Health []byte
+	Facts                []factWrite
+}
 
 func prepareCacheUpdate(static *StaticData, live *LiveData, op api.Operator) (cacheUpdate, error) {
 	update := cacheUpdate{}
@@ -114,6 +117,9 @@ func (s *Store) persistUpdate(ctx context.Context, id string, update cacheUpdate
 			if err := writeCache(ctx, tx, id, part.Kind, part.Blob); err != nil {
 				return err
 			}
+		}
+		if err := insertVehicleFacts(ctx, tx, id, update.Facts); err != nil {
+			return err
 		}
 		if err := insertHistory(ctx, tx, id, generation, records); err != nil {
 			return err

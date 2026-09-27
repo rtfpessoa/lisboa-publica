@@ -8,9 +8,8 @@ import (
 )
 
 const (
-	lastKnownLifetime = time.Hour
+	lastKnownLifetime = 24 * time.Hour
 	inactiveAfter     = 5 * time.Minute
-	maxLastKnown      = 500
 	maxContinuityIDs  = 2000
 )
 
@@ -24,15 +23,6 @@ func sourceVerified(d *LiveData, op api.Operator, now time.Time) bool {
 	return d != nil && !d.Unverified && (op.Status == api.OperatorStatusOk || op.Status == api.OperatorStatusStale) && op.Error == nil && now.Sub(d.Collected) <= sourceFreshness
 }
 
-func newestVehicles(rows []api.Vehicle) {
-	sort.Slice(rows, func(i, j int) bool {
-		if rows[i].ObservedAt.Equal(rows[j].ObservedAt) {
-			return rows[i].Id < rows[j].Id
-		}
-		return rows[i].ObservedAt.After(rows[j].ObservedAt)
-	})
-}
-
 func boundLastKnown(rows []api.Vehicle, until time.Time, now time.Time) ([]api.Vehicle, time.Time) {
 	out := make([]api.Vehicle, 0, len(rows))
 	for _, v := range rows {
@@ -40,16 +30,7 @@ func boundLastKnown(rows []api.Vehicle, until time.Time, now time.Time) ([]api.V
 			out = append(out, v)
 		}
 	}
-	newestVehicles(out)
-	if len(out) > maxLastKnown {
-		for _, v := range out[maxLastKnown:] {
-			if expiry := v.ObservedAt.Add(lastKnownLifetime); expiry.After(until) {
-				until = expiry
-			}
-		}
-		// Copy the bounded prefix: reslicing alone retains evicted rows and their backing allocation.
-		out = append([]api.Vehicle(nil), out[:maxLastKnown]...)
-	}
+
 	sortVehicles(out)
 	return out, until
 }
@@ -123,7 +104,7 @@ func restoreLive(d *LiveData, now time.Time) *LiveData {
 	return result
 }
 
-// projectLive applies one clock and cap to omitted, stale and unverified source positions.
+// projectLive applies the original source clock to omitted, stale and unverified source positions.
 func projectLive(d *LiveData, op api.Operator, static *StaticData, now time.Time) ([]api.Vehicle, *int, *int, int, bool) {
 	if d == nil {
 		return []api.Vehicle{}, nil, nil, 0, false

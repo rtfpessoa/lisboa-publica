@@ -109,7 +109,7 @@ func TestContinuityClocksRecoveryAndHistory(t *testing.T) {
 	if len(rows) != 1 || !rows[0].LastKnown || !rows[0].Stale || *r != 0 || n != 1 || len(d.Samples) != 0 || len(rawHistory(d, nil)) != 0 {
 		t.Fatal("omission is not display only")
 	}
-	if !rows[0].InactiveAt.Equal(now.Add(5*time.Minute)) || !rows[0].LastKnownExpiresAt.Equal(now.Add(time.Hour)) {
+	if !rows[0].InactiveAt.Equal(now.Add(5*time.Minute)) || !rows[0].LastKnownExpiresAt.Equal(now.Add(lastKnownLifetime)) {
 		t.Fatal("clocks moved")
 	}
 	d, _ = nextLive(d, op, []api.Vehicle{a}, now.Add(10*time.Second))
@@ -139,13 +139,13 @@ func TestContinuityHealthyRepeatExpiry(t *testing.T) {
 	now := time.Now().UTC()
 	op := api.Operator{Status: api.OperatorStatusOk}
 	// Repeated healthy CM-style inventory expires without collector changes.
-	for _, age := range []time.Duration{181 * time.Second, 5 * time.Minute, time.Hour - time.Nanosecond, time.Hour} {
+	for _, age := range []time.Duration{181 * time.Second, 5 * time.Minute, lastKnownLifetime - time.Nanosecond, lastKnownLifetime} {
 		repeated := &LiveData{Vehicles: []api.Vehicle{continuityVehicle("old", now)}, Collected: now.Add(age)}
 		got, reported, _, _, _ := projectLive(repeated, op, nil, now.Add(age))
 		if *reported != 0 {
 			t.Fatal("stale row counted")
 		}
-		if age < time.Hour {
+		if age < lastKnownLifetime {
 			if len(got) != 1 || !got[0].LastKnown {
 				t.Fatal("eligible old inventory hidden")
 			}
@@ -167,7 +167,7 @@ func TestContinuityFailedSourceExpiry(t *testing.T) {
 		if len(got) != 1 || !got[0].LastKnown || r != nil {
 			t.Fatal("failure treated as zero/current")
 		}
-		got, _, _, _, _ = projectLive(frozen, failed, nil, now.Add(time.Hour))
+		got, _, _, _, _ = projectLive(frozen, failed, nil, now.Add(lastKnownLifetime))
 		if len(got) != 0 {
 			t.Fatal("failed source kept expired position")
 		}
@@ -177,21 +177,18 @@ func TestContinuityFailedSourceExpiry(t *testing.T) {
 func TestContinuityCapsRestartAndReplay(t *testing.T) {
 	now := time.Now().UTC()
 	op := api.Operator{Status: api.OperatorStatusOk}
-	rows := make([]api.Vehicle, maxLastKnown+1)
+	rows := make([]api.Vehicle, 1001)
 	for i := range rows {
 		rows[i] = continuityVehicle(stringID(uint64(i)), now.Add(-time.Duration(i)*time.Millisecond))
 	}
 	d, _ := nextLive(nil, op, rows, now)
 	d, _ = nextLive(d, op, nil, now.Add(time.Second))
 	got, _, _, count, truncated := projectLive(d, op, nil, now.Add(2*time.Second))
-	if len(got) != maxLastKnown || count != maxLastKnown || !truncated || d.LastKnownTruncatedUntil.IsZero() {
-		t.Fatal("cap not bounded/visible")
+	if len(got) != len(rows) || count != len(rows) || truncated || !d.LastKnownTruncatedUntil.IsZero() {
+		t.Fatal("eligible positions were silently truncated")
 	}
 	d, _ = nextLive(d, op, nil, now.Add(3*time.Second))
-	if !d.LastKnownTruncatedUntil.After(now) {
-		t.Fatal("truncation forgotten")
-	}
-	// Old candidate was evicted but its high-water remains, so replay cannot create evidence.
+	// Replaying a retained candidate cannot create evidence.
 	d, _ = nextLive(d, op, []api.Vehicle{rows[len(rows)-1]}, now.Add(4*time.Second))
 	if len(d.Samples) != 0 {
 		t.Fatal("evicted replay recorded")
@@ -319,7 +316,7 @@ func TestContinuityDurabilityAndRestore(t *testing.T) {
 	if r != nil {
 		t.Fatal("restore claimed verified coverage")
 	}
-	rows, _, _, _, _ := projectLive(state.Live[p.ID], state.Operators[p.ID], nil, now.Add(time.Hour))
+	rows, _, _, _, _ := projectLive(state.Live[p.ID], state.Operators[p.ID], nil, now.Add(lastKnownLifetime))
 	if len(rows) != 0 {
 		t.Fatal("restored position clock reset")
 	}
@@ -358,5 +355,63 @@ func TestHistorySamplesDoNotAccumulateInRevisions(t *testing.T) {
 	state, _ := c.state("")
 	if len(state.Live["cp"].historyVehicles()) != 0 || len(d.Samples) != 1 {
 		t.Fatal("publication samples retained or caller mutated")
+	}
+}
+
+func TestAllProvidersRetainOriginalClockFor24Hours(t *testing.T) {
+	for _, p := range providers {
+		t.Run(p.ID, func(t *testing.T) {
+			now := time.Now().UTC()
+			op := api.Operator{Status: api.OperatorStatusOk}
+			v := continuityVehicle("retained", now)
+			v.Id = qualify(p.ID, v.SourceId)
+			v.OperatorId = p.ID
+			if p.ID == "metro" {
+				v.PositionKind = api.VehiclePositionKindEstimated
+			}
+			live, _ := nextLive(nil, op, []api.Vehicle{v}, now)
+			for _, age := range []time.Duration{5 * time.Minute, 10 * time.Minute, 23 * time.Hour, lastKnownLifetime - time.Nanosecond} {
+				live, _ = nextLive(live, op, []api.Vehicle{v}, now.Add(age))
+				rows, _, _, _, truncated := projectLive(live, op, nil, now.Add(age))
+				if len(rows) != 1 || truncated || !rows[0].ObservedAt.Equal(now) || !rows[0].CollectedAt.Equal(now) || !rows[0].LastKnownExpiresAt.Equal(now.Add(lastKnownLifetime)) || len(live.Samples) != 0 {
+					t.Fatal("repeat renewed/removed position or created history", age)
+				}
+			}
+			rows, _, _, _, _ := projectLive(restoreLive(live, now.Add(23*time.Hour)), op, nil, now.Add(lastKnownLifetime))
+			if len(rows) != 0 {
+				t.Fatal("restart renewed position deadline")
+			}
+		})
+	}
+}
+func TestRetainedInventoryTraversesAllPagesWithoutDuplicates(t *testing.T) {
+	f, s := continuityFetcher()
+	p, _ := providerByID("cp")
+	now := time.Now().UTC()
+	inventory := make([]api.Vehicle, 1001)
+	for i := range inventory {
+		inventory[i] = continuityVehicle(strconv.Itoa(i), now)
+	}
+	f.saveLive(context.Background(), p, inventory, now)
+	f.saveLive(context.Background(), p, nil, now.Add(time.Second))
+	seen := map[string]bool{}
+	revision := ""
+	for offset := 0; ; offset += 500 {
+		page := vehiclePage(t, s, "operators=cp&offset="+strconv.Itoa(offset)+"&revision="+revision)
+		if revision == "" {
+			revision = stringValue(page.Page.Revision)
+		}
+		for _, v := range page.Data {
+			if seen[v.Id] {
+				t.Fatal("duplicate retained identity across pages")
+			}
+			seen[v.Id] = true
+		}
+		if !page.Page.HasMore {
+			break
+		}
+	}
+	if len(seen) != len(inventory) {
+		t.Fatal("pagination lost retained vehicles", len(seen))
 	}
 }

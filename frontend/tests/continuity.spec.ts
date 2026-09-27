@@ -1,5 +1,6 @@
 import {test,expect,type Page} from '@playwright/test';
 import type {Operator,Vehicle,RouteShape,Health,Config,Metrics,GeometryCoverage,MetroStatus} from '../src/api';
+import {positionDeadline,positionIsOld} from '../src/vehicleFreshness';
 import {readFileSync} from 'node:fs';
 
 async function continuityFixture(page:Page){
@@ -19,7 +20,7 @@ async function continuityFixture(page:Page){
   if(u.pathname.endsWith('/metrics'))data={reported_vehicles:0,estimated_vehicles:0,speed_kmh:null,distance_km:null,detected_trips:null,first_snapshot:null,revision:'fixture',from:iso(epoch-3600000),to:iso(epoch),unavailable_fields:['trip_completion_percent','frequency_minutes'],live_coverage:'complete',unavailable_live_operators:[]} satisfies Metrics;
   if(u.pathname.endsWith('/vehicles')){
    const known=phase==='missing'||phase==='error',observed=phase==='recovery'?collected:epoch;
-   const vehicle:Vehicle={id:'cp:train',source_id:'train',operator_id:'cp',route_name:'Sintra',route_id:null,trip_id:null,lat:38.731,lon:-9.145,observed_at:iso(observed),collected_at:iso(observed),position_kind:'reported',source_url:'https://go.tmlmobilidade.pt/hub/api/v1/vehicles/positions',speed_kmh:known?null:10,bearing:null,model:'Publicado',license_plate:null,stale:known,plan_id:'plan',typology:null,propulsion:null,last_known:known,inactive_at:iso(observed+300000),last_known_expires_at:iso(observed+3600000)};
+   const vehicle:Vehicle={id:'cp:train',source_id:'train',operator_id:'cp',route_name:'Sintra',route_id:null,trip_id:null,lat:38.731,lon:-9.145,observed_at:iso(observed),collected_at:iso(observed),position_kind:'reported',source_url:'https://go.tmlmobilidade.pt/hub/api/v1/vehicles/positions',speed_kmh:known?null:10,bearing:null,model:'Publicado',license_plate:null,stale:known,plan_id:'plan',typology:null,propulsion:null,last_known:known,inactive_at:iso(observed+300000),last_known_expires_at:iso(observed+86400000)};
    data=paged((u.searchParams.get('operators')??'').includes('cp')?[vehicle]:[]);
   }
   await r.fulfill({json:data});
@@ -27,16 +28,25 @@ async function continuityFixture(page:Page){
  return {epoch,operator,setPhase:(value:typeof phase,at=epoch)=>{phase=value;collected=at}};
 }
 
-test('selected CP retains one dimmed marker, truthful counts and no-update detail through gaps',async({page})=>{
+test('selected CP retains one unchanged marker, truthful counts and no-update detail through gaps',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));const fixture=await continuityFixture(page);await page.clock.install({time:new Date(fixture.epoch)});
  await page.goto('/');await page.getByRole('button',{name:'CP',exact:true}).click();await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click();
  const count=()=>page.evaluate(()=>(window as unknown as {vehicleFeatures:unknown[]}).vehicleFeatures.length);
  await expect.poll(count).toBe(1);await expect(page.locator('.live-metrics .metric').first()).toContainText('1');
- fixture.setPhase('missing');await page.clock.fastForward(6000);await expect(page.locator('.live-metrics')).toContainText('posições anteriores');await expect(page.locator('.live-metrics .metric').first()).toContainText('0');await expect.poll(count).toBe(1);
+ fixture.setPhase('missing');await page.clock.fastForward(6000);await expect(page.locator('.live-metrics')).toContainText('1 no mapa · 0 atualizados · 1 a aguardar sinal');await expect(page.locator('.live-metrics .metric').first()).toContainText('0');await expect.poll(count).toBe(1);
  const map=page.locator('.map canvas');await expect(map).toBeVisible();const box=await map.boundingBox();await page.mouse.click(box!.x+box!.width/2,box!.y+box!.height/2);await expect(page.locator('.detail-panel')).toContainText('Última posição conhecida');await expect(page.locator('.detail-panel')).toContainText('Publicado');
- fixture.setPhase('error');await page.clock.fastForward(300000);await expect(page.locator('.detail-panel')).toContainText('Sem atualização');await expect(page.locator('.live-metrics .metric').first()).toContainText('—');await expect(page.getByRole('button',{name:'CP',exact:true})).toHaveAttribute('aria-pressed','true');
- await page.clock.fastForward(3300000);await expect.poll(count).toBe(0);await expect(page.locator('.detail-panel')).toContainText('Posição expirada');
- fixture.setPhase('recovery',fixture.epoch+3610000);await page.clock.fastForward(10000);await expect.poll(count).toBe(1);await expect(page.locator('.detail-panel')).not.toContainText('expirada');expect(errors).toEqual([]);
+ fixture.setPhase('error');await page.clock.fastForward(300000);await expect(page.locator('.detail-panel')).toContainText('A aguardar atualização');await expect(page.locator('.live-metrics .metric').first()).toContainText('—');await expect(page.getByRole('button',{name:'CP',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('.detail-panel')).not.toContainText('Posição antiga');
+ await page.getByRole('button',{name:'Fechar detalhes'}).click();
+ const clip={x:box!.x+box!.width/2-20,y:box!.y+box!.height/2-20,width:40,height:40};
+ const mapBefore=await page.screenshot({clip});
+ const iconsBefore=await page.evaluate(()=>(window as unknown as {vehicleFeatures:{properties:{icon:string}}[]}).vehicleFeatures.map(f=>f.properties.icon));
+ await page.clock.fastForward(300000);await expect.poll(count).toBe(1);
+ expect((await page.screenshot({clip})).equals(mapBefore)).toBe(true);
+ expect(await page.evaluate(()=>(window as unknown as {vehicleFeatures:{properties:{icon:string}}[]}).vehicleFeatures.map(f=>f.properties.icon))).toEqual(iconsBefore);
+ await page.mouse.click(box!.x+box!.width/2,box!.y+box!.height/2);await expect(page.locator('.detail-panel')).toContainText('Posição antiga');
+ await page.clock.setSystemTime(fixture.epoch+86400000);await page.clock.fastForward(5000);await expect.poll(count).toBe(0);await expect(page.locator('.detail-panel')).toContainText('Sinal expirado');await expect(page.locator('.detail-panel')).toContainText('Publicado');
+ fixture.setPhase('recovery',fixture.epoch+86410000);await page.clock.fastForward(10000);await expect.poll(count).toBe(1);await expect(page.locator('.detail-panel')).not.toContainText('Sinal expirado');expect(errors).toEqual([]);
 });
 
 
@@ -89,4 +99,14 @@ for(const width of [1280,390])test(`full official geometry remains responsive th
  await page.getByRole('checkbox',{name:'Linhas de comboio'}).uncheck();await expect.poll(async()=>(await measure()).completed,{timeout:10000}).toBe(shapes.filter(s=>modes[s.operator_id]!=='train').length);
  const cdp=await page.context().newCDPSession(page);await cdp.send('Performance.enable');const {metrics}=await cdp.send('Performance.getMetrics');const heap=metrics.find(m=>m.name==='JSHeapUsedSize')?.value??0;
  console.log(JSON.stringify({width,variants:shapes.length,points:shapes.reduce((n,s)=>n+s.geometry.length,0),first_all_geometry_ms:Math.round(elapsed),main_js_heap_bytes:heap,operator_refreshes:refresh,unchanged_network_posts:before.posts}));expect(heap).toBeLessThan(512*1024*1024);expect((await measure()).workerErrors).toBe(0);expect(errors).toEqual([]);
+});
+
+for(const operator of ['carris','cm','tcb','mobi','metro','cp','ttsl','fertagus'])test(`${operator} age detail is separate from 24-hour retention`,()=>{
+ const epoch=Date.parse('2026-09-27T10:00:00Z');
+ const vehicle={operator_id:operator,observed_at:new Date(epoch).toISOString()} as Vehicle;
+ const threshold=(operator==='cp'?10:5)*60000;
+ expect(positionIsOld(vehicle,epoch+threshold-1)).toBe(false);
+ expect(positionIsOld(vehicle,epoch+threshold)).toBe(true);
+ expect(positionDeadline(vehicle)).toBe(epoch+86400000);
+ expect(epoch+threshold).toBeLessThan(positionDeadline(vehicle));
 });

@@ -82,7 +82,7 @@ GTFS clocks accept hours through the implementation bound of 72 and can represen
 | `available_seats` | Optional integer admitted in 0–10,000 | Published `seated_capacity` specification, not live availability |
 | `wheelchair`, `contactless` | Optional booleans | Accessibility/contactless specification fallback |
 
-Only MobiCascais and CM currently merge this endpoint. Exact crosswalks and attribute precedence are in [fleet associations](../data/associations.md#fleet-metadata-crosswalks-and-precedence). Optional absence stays null; zero capacity is preserved. GTFS and Hub capacity/accessibility encodings are distinct.
+Only MobiCascais and CM currently merge this endpoint. Exact crosswalks and attribute precedence are in [fleet associations](../data/associations.md#fleet-metadata-crosswalks-and-precedence). Absent fields do not erase previously confirmed permanent facts; never-confirmed attributes remain null and zero capacity is preserved. GTFS and Hub capacity/accessibility encodings are distinct.
 
 ## CP prediction contract
 
@@ -129,7 +129,7 @@ The admission horizon is24hours; the default arrival query is one hour. Interest
 | Position identity, coordinates, original time | Vehicles/map, detected fleet | Live normalized state | Selected new observation facts and eligible speed/distance |
 | Bearing, stop status/reference, scheduled-service context | Live vehicle details | Live state | Not in current historical fact projection |
 | GTFS routes/stops/trips/calendars/shapes | Search, schedules, route/network overlays | Static normalized state | Not proof of operation; matching context |
-| Fleet metadata | Vehicle popups/specifications and fleet views | Static/live metadata | Supported metadata in subsequent snapshots |
+| Fleet metadata | Vehicle popups/specifications and fleet views | Independent permanent facts and static/live projections | Supported metadata in subsequent snapshots |
 | Requested-stop normalized predictions | Stop arrival API/popups | None | None |
 | CP normalized predictions | CP services/station views and typed arrivals | None | None |
 | Plan selection/error fields | Source health and matching decisions | Static/health state | Not historical observations |
@@ -149,3 +149,5 @@ Implementation: [ingestion](../../internal/app/ingest.go), [GTFS parser](../../i
 The shared ETA decode also retains bounded publications by explicit agency/operator, including independent `stop_time_update.departure.time` and `departure.delay`. CP arrival output remains arrival-only; the additive popup contract exposes arrival and departure separately. Original entity/header clocks and validity remain unchanged. An operator exceeding its retained input capacity is partial, while requested-stop collection and other operator publications continue.
 
 GTFS static parsing retains `direction_id`, all stop names and complete `stop_times` separately from local map visits. Missing published clocks remain unknown. Complete journey association requires the exact plan, route, trip and explicit operating date; unjoined predictions stay standalone station calls. No ETA, vehicle position or status is certified as an actual stop occurrence. See [matching rules](../data/associations.md#complete-journey-and-stop-event-association) and [popup behavior](../VEHICLE-POPUPS.md).
+
+Position publication logs record operator, normalized published count, accepted count, rejected regressions and retained count; successful empty coverage is distinct from a request/conversion error. This diagnostic uses the existing scheduled requests. It does not expose or certify the private CP/partner collection pipeline behind the Hub. Position retention and stable-field provenance are governed by [continuity and permanent facts](../data/associations.md).

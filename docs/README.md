@@ -2,7 +2,7 @@
 
 Lisboa Pública collects Lisbon transport data, normalizes it into shared entities, and serves a dashboard and a versioned API. This reference describes the implemented application, including unavailable data and the limits of its observations.
 
-The baseline reference was reviewed at `89fb91b`; affected arrival references were updated for `ca4a5be` on2026-09-27. This is a code and fixture review, not a fresh upstream availability audit. External-source research retains its own verification dates.
+The baseline reference was reviewed at `89fb91b`; affected arrival references were updated for `ca4a5be` on2026-09-27. The 24-hour position retention, informational age detail and independent permanent vehicle facts were updated on 2026-09-27. This is a code and fixture review, not a fresh upstream availability audit. External-source research retains its own verification dates.
 
 ## Reading paths
 

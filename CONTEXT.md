@@ -27,6 +27,8 @@ _Avoid_: Live vehicle when the report is stale
 
 **Last-known state**: The most recent available position or operational statement, with its original time. It does not necessarily describe the vehicle's current state.
 
+**Position awaiting update**: A last published vehicle position temporarily displayed while a newer observation is unavailable. It does not establish movement during the data gap.
+
 **Data gap**: An interval without a newer observation. A data gap does not establish whether a vehicle is stationary, moving, or out of service.
 _Avoid_: Inactive vehicle solely because observations stopped
 

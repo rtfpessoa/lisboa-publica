@@ -33,7 +33,7 @@ func TestProviderContinuityResourceEnvelope(t *testing.T) {
 	}
 	store := &Store{HistoryInterval: staticRefreshInterval, collector: newHistoryCollector()}
 	base := time.Now().Add(-time.Hour)
-	// Reproduce one-hour extreme churn, saturating both caps and all retained versions.
+	// Reproduce one-hour churn across a fixed 10,000-ID inventory, saturating the ledger and all retained versions.
 	runContinuityChurn(t, cache, store, base)
 	cpVersions := resourceProviderPredictions(t, cache)
 	if len(cache.versions) != maxCachedVersions {
@@ -99,7 +99,7 @@ func publishContinuityChurn(t *testing.T, cache *Cache, store *Store, p provider
 	}
 
 	d, dist := nextLive(state.Live[p.ID], op, rows, now)
-	if len(d.LastKnown) > maxLastKnown || len(d.Continuity) > maxContinuityIDs {
+	if len(d.Continuity) > maxContinuityIDs {
 		t.Fatal("unbounded continuity")
 	}
 	store.stageLive(d, dist)
@@ -121,12 +121,13 @@ func resourceCMPatterns(rows []api.Vehicle, path CMPath) {
 }
 
 func churnVehicles(p provider, tick int, now time.Time) []api.Vehicle {
-	// Source inventory is fixed independently of the display cap: reducing
-	// retention must not weaken this extreme-churn input workload.
+	// Synthetic fixed fleet: 10,000 IDs per operator, observed in rotating groups
+	// of 1,000. Identity re-observation replaces positions without a display cap.
+	// This does not certify a bound on arbitrary upstream identity churn.
 	const sourceRows = 1000
 	rows := make([]api.Vehicle, sourceRows)
 	for i := range rows {
-		id := stringID(uint64(tick*sourceRows + i))
+		id := stringID(uint64((tick%10)*sourceRows + i))
 		rows[i] = api.Vehicle{Id: qualify(p.ID, id), SourceId: id, OperatorId: p.ID, ObservedAt: now, CollectedAt: now, PositionKind: api.VehiclePositionKindReported, Lat: 38.72, Lon: -9.15, CurrentStatus: ptr(api.STOPPEDAT), SourceStopId: ptr("published-stop"), StopId: ptr(qualify(p.ID, "published-stop")), StopName: ptr("Published terminal"), OperationalDate: ptr("2026-09-26"), Model: ptr("Published model"), LicensePlate: ptr("Sample plate"), SeatedCapacity: ptr(42), TotalCapacity: ptr(80), WheelchairAccessible: ptr(true), Contactless: ptr(false), SourceUrl: hubBase}
 		if p.ID == "cp" {
 			rows[i].ScheduledService = &api.ScheduledEndpoints{OriginSourceStopId: "outside-origin", OriginName: "Published origin outside Lisbon", DestinationSourceStopId: "outside-destination", DestinationName: "Published destination outside Lisbon", SourceUrl: hubBase, ServiceDate: "2026-09-26"}

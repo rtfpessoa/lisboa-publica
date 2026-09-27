@@ -22,6 +22,7 @@ const schema = `
 CREATE TABLE IF NOT EXISTS app_state (id INT PRIMARY KEY, generation BIGINT NOT NULL);
 INSERT INTO app_state (id,generation) VALUES (1,0) ON CONFLICT (id) DO NOTHING;
 CREATE TABLE IF NOT EXISTS cache_parts (operator_id TEXT NOT NULL, kind TEXT NOT NULL, part INT NOT NULL, data BYTEA NOT NULL, PRIMARY KEY(operator_id,kind,part));
+CREATE TABLE IF NOT EXISTS vehicle_facts (operator_id TEXT NOT NULL, source_id TEXT NOT NULL, payload JSONB NOT NULL, PRIMARY KEY(operator_id,source_id));
 CREATE TABLE IF NOT EXISTS source_health (operator_id TEXT PRIMARY KEY, payload JSONB NOT NULL);
 CREATE TABLE IF NOT EXISTS snapshots (
  operator_id TEXT NOT NULL, vehicle_id TEXT NOT NULL, observed_at TIMESTAMPTZ NOT NULL,
@@ -56,6 +57,7 @@ type Store struct {
 	archiveCursor   *snapshotArchiveKey
 	budget          *storageBudget
 	PublishMu       sync.Mutex
+	facts           factRegistry
 }
 
 // OpenStore opens a database pool and applies compatible Postgres/Cockroach migrations.
@@ -243,14 +245,21 @@ func (s *Store) Save(ctx context.Context, id string, static *StaticData, live *L
 	defer s.writeMu.Unlock()
 	s.historyMu.Lock()
 	defer s.historyMu.Unlock()
+	update.Facts, err = s.pendingFacts(ctx, id)
+	if err != nil {
+		return err
+	}
 	records, next := s.prepareHistory(id, live, distances)
 	records, err = s.guardUpdate(ctx, update, records)
 	if err != nil {
 		return err
 	}
 	err = s.persistUpdate(ctx, id, update, records)
-	if err == nil && next != nil {
-		s.collector = next
+	if err == nil {
+		s.acknowledgeFacts(id, update.Facts)
+		if next != nil {
+			s.collector = next
+		}
 	}
 	return err
 }
@@ -302,14 +311,7 @@ func (s *Store) restoreProvider(ctx context.Context, c *Cache, p provider) error
 	if ok {
 		dl = restoreLive(&live, time.Now().UTC())
 	}
-	op := c.operator(p.ID)
-	if e = s.restoreOperator(ctx, p.ID, &op); e != nil {
-		return e
-	}
-	if ds != nil || dl != nil {
-		c.update(p.ID, ds, dl, op)
-	}
-	return nil
+	return s.restoreProviderFacts(ctx, c, p, ds, dl)
 }
 
 func (s *Store) restoreOperator(ctx context.Context, id string, op *api.Operator) error {

@@ -49,7 +49,7 @@ For production, set `ENVIRONMENT=production`, an HTTPS `PUBLIC_ORIGIN`, the inte
 
 ## Data interpretation
 
-[The catalogue](docs/data/README.md) distinguishes schedules, predictions, reported positions, estimates and last-known states. Metro map positions are estimated and excluded from sampled speed/distance. Detected trips do not establish completion; fleet views are detected vehicles, not complete inventory. Capacity is a published specification, not occupancy. Exact commercial speed, operational headway and depot assignments are unsupported.
+[The catalogue](docs/data/README.md) distinguishes schedules, predictions, reported positions, estimates and last-known states. Metro map positions are estimated and excluded from sampled speed/distance. Detected trips do not establish completion; fleet views are detected vehicles, not complete inventory. Positions stay on the map for 24 hours using their original source clocks; the old-position note after 10 minutes for CP or 5 for other operators is informational. Confirmed stable vehicle attributes persist independently of positions and historical retention. Capacity is a published specification, not occupancy. Exact commercial speed, operational headway and depot assignments are unsupported.
 
 [History](docs/data/history.md) is partial observed movement over the configured 1–30-day retention window. Aggregate mode preserves valid sample weights and summed displacement, with explicit gaps and unfinished-bucket loss on restart. Background cartography uses [OpenFreeMap](docs/integrations/openfreemap.md) with attribution; typography uses [Google Fonts](docs/integrations/google-fonts.md). There are no Mover Lisboa API dependencies.
 

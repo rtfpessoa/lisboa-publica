@@ -253,6 +253,9 @@ func validPosition(lat, lon float64) bool {
 	return !math.IsNaN(lat) && !math.IsNaN(lon) && !math.IsInf(lat, 0) && !math.IsInf(lon, 0) && lat >= lisbonSouthLatitude && lat <= lisbonNorthLatitude && lon >= -lisbonWestLongitude && lon <= -lisbonEastLongitude
 }
 func sampledDistance(a, b api.Vehicle) (*float64, *float64) {
+	if a.LicensePlate != nil && b.LicensePlate != nil && registration(a.LicensePlate) != registration(b.LicensePlate) {
+		return nil, nil
+	}
 	seconds := b.ObservedAt.Sub(a.ObservedAt).Seconds()
 	if a.PositionKind != "reported" || b.PositionKind != "reported" || seconds < 5 || seconds > 180 {
 		return nil, nil

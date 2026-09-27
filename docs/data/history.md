@@ -42,7 +42,7 @@ speed_kmh = distance_km / elapsed_seconds * 3600
 
 Both positions must be reported, elapsed time must be 5–180 seconds, and speed must be at most 130 km/h. Admission also requires valid local coordinates, genuine newer observations, verified continuity and replay bounds. Zero displacement can yield speed zero. Invalid/unavailable pairs produce null, not zero.
 
-Omission, source failure, restart and ledger eviction can break continuity. The first recovery report does not automatically create a valid movement pair. Identical reports preserve original clocks and do not create history samples; regressions are rejected. Estimated Metro positions and last-known display projections do not supply valid sampled speed/distance.
+Omission, source failure, restart and ledger eviction can break continuity. The first recovery report does not automatically create a valid movement pair. Identical position reports preserve original clocks and do not create history samples; stable metadata may be independently confirmed at that same position clock; regressions are rejected. Estimated Metro positions and last-known display projections do not supply valid sampled speed/distance.
 
 The distance is straight-line displacement between admitted samples, not travelled route distance. It is partial, misses unobserved movement and is not a completed ride's distance. The speed includes whatever movement/stopping occurred between eligible reports but is not exact commercial speed or general road speed.
 
@@ -67,7 +67,7 @@ The current [query implementation](../../internal/app/history_queries.go) also m
 
 ## Retention and storage guards
 
-`SNAPSHOT_RETENTION_DAYS` defaults to 30 and accepts 1–30. Public history queries honor that configured window. Physical cleanup retains an extra hour for pagination grace and removes at most 10,000 eligible rows per table per cleanup run. It is scheduled every five minutes when general ingestion runs; disabling it also disables that loop's cleanup.
+`SNAPSHOT_RETENTION_DAYS` defaults to 30 and accepts 1–30. Public history queries honor that configured window. Permanent `vehicle_facts` are independent of this retention and are never removed by historical cleanup. Physical cleanup retains an extra hour for pagination grace and removes at most 10,000 eligible rows per table per cleanup run. It is scheduled every five minutes when general ingestion runs; disabling it also disables that loop's cleanup.
 
 With `STORAGE_GUARD=true`, [the application budget](../../internal/app/storage_budget.go) measures storage, estimates/reserves writes and blocks history admission around 4,000,000,000 bytes and operational writes around 4,500,000,000 bytes. Measurement failure blocks guarded writes. Config reports resolution, retention, storage limit and collection status. These are application admission thresholds, not a hard cap on internal database storage or other writers. Use one collector and a dedicated database; exact deployment settings are in [the deployment guide](../../deploy/README.md).
 

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"go.uber.org/zap"
 	"net/url"
 	"sort"
 	"time"
@@ -36,6 +37,11 @@ func (f *Fetcher) updateCMShapes(ctx context.Context, data *StaticData, plans []
 		network, err = f.cmShapes(ctx, plans, today)
 	}
 	if err == nil {
+		if f.Store != nil {
+			if e := f.Store.stageMetadataFacts(ctx, "cm", network.Models, factInput{Source: f.Hub + "/plans", ConfirmedAt: time.Now().UTC(), Priority: 0}); e != nil {
+				f.Log.Warn("CM static facts unavailable", zap.Error(e))
+			}
+		}
 		data.Schedule = network.Schedule
 		mergeCMNetwork(data, network)
 		err = admitCMGeometry(data, staticHealth(f.Cache.operator("cm"), data))

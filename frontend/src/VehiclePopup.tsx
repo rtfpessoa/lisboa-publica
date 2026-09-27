@@ -1,3 +1,4 @@
+import {positionDeadline,positionIsOld} from './vehicleFreshness';
 import {useEffect,useRef,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {AlertTriangle,BusFront,Ship,TramFront,TrainFront,X} from 'lucide-react';
@@ -33,9 +34,9 @@ export default function VehiclePopup({vehicle:v,mode,operatorName,now,onClose,on
  const responseShape=offset===0?calls.data?.geometry:geometry.data?.geometry;
  useEffect(()=>{if(showPath&&responseShape&&reference&&!calls.error&&!geometryError)setPath({reference,shape:responseShape})},[responseShape,reference,calls.error,geometryError,showPath]);
  useEffect(()=>{
-  const visible=showPath&&!calls.error&&!geometryError&&reference===path?.reference&&v.pattern_id&&now-Date.parse(v.observed_at)<3600000;
+  const visible=showPath&&!calls.error&&!geometryError&&reference===path?.reference&&v.pattern_id&&now<positionDeadline(v);
   onPath(visible&&path?{vehicleId:v.id,patternId:v.pattern_id!,shape:path.shape}:undefined);
- },[showPath,path,reference,v.id,v.pattern_id,calls.error,geometryError,now-Date.parse(v.observed_at)>=3600000,onPath]);
+ },[showPath,path,reference,v.id,v.pattern_id,calls.error,geometryError,now>=positionDeadline(v),onPath]);
  useEffect(()=>()=>onPath(undefined),[onPath]);
  useEffect(()=>{
   const changed=bound.current.observed!==v.observed_at||bound.current.stop!==v.stop_id||bound.current.status!==v.current_status||bound.current.previous!==(!!v.last_known||!!v.stale);
@@ -45,11 +46,11 @@ export default function VehiclePopup({vehicle:v,mode,operatorName,now,onClose,on
  const predictionsExpired=!!calls.data?.valid_until&&Date.parse(calls.data.valid_until)<=now;
  useEffect(()=>{if(predictionsExpired&&offset===0)reload()},[predictionsExpired,v.vehicle_ref?.reference]);
  const previous=v.last_known||v.stale||now-Date.parse(v.observed_at)>180000;
- const expired=now-Date.parse(v.observed_at)>=3600000;
+ const expired=now>=positionDeadline(v);
  const warnings:string[]=[];
- if(previous)warnings.push(now-Date.parse(v.observed_at)>=300000?`Sem atualização ${observationAge(v.observed_at,now)}; mostramos o último registo.`:'Mostramos o último registo conhecido; aguardamos uma nova observação.');
+ if(previous)warnings.push('A aguardar atualização; mostramos o último registo conhecido.');
  if(observationAge(v.observed_at,now)==='hora não confirmada')warnings.push('A hora da observação não pôde ser confirmada.');
- if(expired)warnings.push('Posição expirada. Esta observação deixou de estar disponível no mapa.');
+ if(expired)warnings.push('Sinal expirado. Esta observação deixou de estar disponível no mapa.');
  if(v.position_kind==='estimated')warnings.push('A posição é estimada pela fonte; não representa uma observação GPS. A velocidade amostral não é suportada para estas posições.');
  if(calls.data&&notices[calls.data.availability])warnings.push(notices[calls.data.availability]);
  if(v.operator_id==='cp'&&calls.data?.availability==='available'&&!calls.data.data.some(row=>row.kind==='predicted'))warnings.push('Sem previsões verificadas para este serviço; mostramos o horário planeado.');
@@ -74,7 +75,8 @@ export default function VehiclePopup({vehicle:v,mode,operatorName,now,onClose,on
   {v.position_kind==='estimated'&&<span className="pill estimated">Posição estimada</span>}
   {state&&<p className="vehicle-status">{state.replace('Último estado:','Último registo:')}</p>}
   <p className="subtle"><time dateTime={v.observed_at} title={Number.isFinite(Date.parse(v.observed_at))?new Date(v.observed_at).toLocaleString('pt-PT',{timeZone:'Europe/Lisbon'}):'Hora não confirmada'}>{observationTime(v.observed_at,now)}</time></p>
-  {!expired&&<>
+  {positionIsOld(v,now)&&!expired&&<p className="subtle">Posição antiga · {observationAge(v.observed_at,now)}</p>}
+  <>
    {v.scheduled_service&&<p className="journey">{passengerName(v.operator_id,v.scheduled_service.origin_name)} → {passengerName(v.operator_id,v.scheduled_service.destination_name)} <small>Serviço planeado</small></p>}
    {fields.length>0&&<div className="detail-grid">{fields.map(([label,value])=><span key={label}>{label}<strong>{value}</strong></span>)}</div>}
    <VehicleSpecifications vehicle={v}/>
@@ -87,7 +89,7 @@ export default function VehiclePopup({vehicle:v,mode,operatorName,now,onClose,on
     {!journeyResolved&&!calls.isFetching&&!rows.length&&!calls.error&&<p className="empty">Sem paragens disponíveis neste registo.</p>}
     {!journeyResolved&&calls.data&&<div className="pagination"><button disabled={offset===0||calls.isFetching} onClick={()=>{setRevision(calls.data?.page.revision??undefined);setOffset(Math.max(0,offset-20))}}>Anterior</button><span>{calls.data.page.total} paragens</span><button disabled={!calls.data.page.has_more||calls.isFetching} onClick={()=>{setRevision(calls.data?.page.revision??undefined);setOffset(offset+20)}}>Seguinte</button></div>}
    </section>}
-  </>}
+  </>
   <section ref={warningsRef} className="popup-footnotes" tabIndex={-1} aria-label="Avisos e fontes">{unique.map(w=><p className="notice" key={w}><AlertTriangle size={14}/>{w}</p>)}{(calls.error||geometryError||predictionsExpired)&&<button onClick={reload}>Atualizar percurso</button>}
    {calls.data&&<p className="subtle">{calls.data.coverage==='complete_published_route'?'Todas as paragens da variante publicada, sem indicar quais já foram percorridas.':'Mostramos as paragens publicadas disponíveis na área de Lisboa.'} Horários, previsões e percursos não alteram a posição nem a hora da observação.</p>}
    {(v.seated_capacity!=null||v.total_capacity!=null||v.wheelchair_accessible!=null||v.contactless!=null)&&<p className="subtle">Características publicadas, não lugares livres. “Não indicado” pode corresponder a omissão na origem.</p>}
