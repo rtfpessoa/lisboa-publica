@@ -11,6 +11,7 @@ The application combines static network/schedules, vehicle observations, predict
 | Stop | Passenger boarding/alighting location; can have a parent station and route membership | `Stop` |
 | Scheduled trip | GTFS service/calendar and ordered visits; does not prove operation | `Trip`, `ScheduledEndpoints` |
 | Arrival | Scheduled or predicted passenger-stop time, explicitly differentiated by kind | `Arrival` |
+| Vehicle reporting state | Backend-owned latest publication membership/availability, independent of movement | Optional `Vehicle.reporting` |
 | Vehicle observation | Reported or estimated position, source identity/time and optional operational/specification enrichment | `Vehicle` |
 | CP prediction | Matched stop visit and ETA with source clocks and optional planned service/date context | `CPPrediction`, `CPPredictionAvailability` |
 | Route shape | Published geometry variant tied to route, plan, shape and optional direction | `RouteShape`, `GeometryCoverage` |
@@ -40,6 +41,7 @@ The collector can be disabled, feeds can fail or return no current observations,
 |---|---|---|---|---|
 | Static GTFS | Active plan archives parsed into network, calendars, trips and optional metadata | Routes/stops/planned services/shapes | Compressed normalized static state | No proof of operated trips; context for associations |
 | CM catalogue | Direct lines/stops; Hub geometry and metadata supplement it | CM routes/stops/shapes | Static state | No static CM scheduled trips; observed trip IDs may appear in positions |
+| Reporting state | Accepted normalized snapshot membership, original observation age and source health | Vehicle popup signal and immediate marker warning | Latest `vehicle_reporting` row per exact operator/source ID | No transition history or movement sample; survives position/history expiry |
 | Positions | Admitted source reports and identity/continuity checks | Vehicles with original clocks; age detail and update coverage | Selected live state, without pending history samples | New admitted samples feed selected facts/aggregates, speed and partial distance |
 | Requested-stop predictions | Validated CM/TML arrivals, source-specific clocks and bounded validity | Stop arrival API/popups | None | None; memory-only |
 | CP predictions | Current publication/update clocks plus validated stop visits | CP prediction services and typed arrivals | None | None; memory-only |
@@ -72,7 +74,7 @@ Exposure is also field-specific: live `Vehicle` includes capacity/accessibility/
 | Current observation | Source recently verified and position within the current observation-age window |
 | Last-known state | Original report projected after omission, stale source or restart; not a new observation |
 
-Source verification uses a 90-second collection freshness window; current vehicle age is at most 180 seconds. All operators use a ten-minute position display deadline from the original source clock. At five minutes without a newer position, a small warning appears beside the vehicle icon and an age warning appears in the popup footer. Popups label the original vehicle update and show the separate application receipt time only when its formatted time or age differs; both original clocks remain exposed by the API. Local one-second aging continues through request failures; cached deadlines from the former longer policy cannot extend display past ten minutes. These age indicators do not establish movement, inactivity or metric eligibility. Map totals distinguish updated positions from those awaiting a signal; current speed/history still require valid observation evidence. `inactive_at` is a legacy timestamp, not proof of stopped operation. Stable verified fleet attributes have no automatic expiry and are independent of position/history retention. See [continuity](associations.md#continuity-and-last-known-state).
+Source verification uses a 90-second collection freshness window; current vehicle age is at most 180 seconds. All operators use a ten-minute position display deadline from the original source clock. A `not_reporting` state immediately adds the marker warning. At five minutes without a newer position, the age warning also appears, including on disconnected pages. Popups label the original vehicle update and show the separate application receipt time only when its formatted time or age differs; both original clocks remain exposed by the API. Local one-second aging continues through request failures; cached deadlines from the former longer policy cannot extend display past ten minutes. These age indicators do not establish movement, inactivity or metric eligibility. Map totals distinguish updated positions from those awaiting a signal; current speed/history still require valid observation evidence. `inactive_at` is a legacy timestamp, not proof of stopped operation. Stable verified fleet attributes have no automatic expiry and are independent of position/history retention. See [continuity](associations.md#continuity-and-last-known-state).
 
 Normalized nullable output fields use null for unknown/unavailable values rather than zero. Raw input handling is source-specific: the current [Metro wait decoder](../integrations/metro.md#waiting-time-fields) treats an explicit JSON null as zero, a documented parser limitation. Zero delay, zero displacement and published capacity zero remain meaningful when valid. A successful empty source response differs from failure; failure can preserve old data but does not refresh its source timestamp. Availability/error/coverage fields distinguish unavailable collection from known empty coverage.
 
@@ -101,3 +103,20 @@ Passenger-facing popups omit missing optional specifications, preserve published
 ## Stop-visit times and direction boards
 
 A stop visit identifies one occurrence within a complete planned journey; repeated stops remain separate visits. Arrival and departure independently expose actual, prediction and schedule evidence, or an explicit unavailable reason. Each evidence item retains its source URL and available original source/collection clocks; predictions also retain expiry. A collected GTFS schedule has a collection clock and does not invent a publication clock. Past visits select only certified actual occurrences. The generated API is authoritative for optional fields and enum values; see [direction boards](../VEHICLE-POPUPS.md), [matching](associations.md) and [history](history.md).
+
+## Backend-owned reporting state
+
+The optional `Vehicle.reporting` object describes whether the exact operator-scoped source identity is currently reporting through the accepted normalized feed. It is independent of `current_status=STOPPED_AT`, position retention and fleet attributes. Metro states describe inferred Hub entities, not identified physical trains. Exact fields and enums are defined in [OpenAPI](../../api/openapi.yaml).
+
+| Evidence, in evaluation order | State | Reason |
+|---|---|---|
+| Startup/unverified source or no successful collection | `unknown` | `source_unverified` |
+| Source error | `unknown` | `source_error` |
+| Successful collection older than 90 seconds | `unknown` | `collection_old` |
+| Identity omitted from the accepted successful normalized snapshot | `not_reporting` | `missing_from_snapshot` |
+| Present identity with original observation older than 180 seconds | `not_reporting` | `observation_old` |
+| Fresh collection membership and original observation | `reporting` | `current` |
+
+An empty successful snapshot causes omission immediately for known visible identities. Filtered/rejected provider rows can also be absent from this normalized snapshot; the state is not proof of raw provider absence, service withdrawal or physical stopping. A later admitted fresh report recovers the state. Repeated membership advances `last_seen_at` using the application's collection clock, while `last_observed_at` remains the original source clock. `state_changed_at` changes only when the state or reason changes.
+
+The backend saves latest state separately from expiring positions. `persisted=false` means the presented state or clocks still await a successful durable transaction, including normal batched clock updates; the popup notes pending storage. There is no reporting transition archive or public inventory endpoint. Reporting fields on retained vehicle responses do not create new historical samples or counts. See [runtime and recovery](../architecture.md) and [continuity](associations.md#continuity-and-last-known-state).

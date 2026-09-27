@@ -2569,6 +2569,9 @@
             "type": "string",
             "maxLength": 256,
             "description": "Provider-published pattern identity, qualified by operator and original plan/agency. Does not establish operating day or schedule."
+          },
+          "reporting": {
+            "$ref": "#/components/schemas/ReportingState"
           }
         },
         "required": [
@@ -4342,6 +4345,61 @@
           "data",
           "page",
           "coverage"
+        ]
+      },
+      "ReportingState": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Backend-owned latest reporting state for an exact operator-scoped source identity. Publication membership is not physical movement or service activity. Missing membership refers to the accepted normalized snapshot, which can exclude filtered or rejected provider records.",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "reporting",
+              "not_reporting",
+              "unknown"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "current",
+              "missing_from_snapshot",
+              "observation_old",
+              "source_error",
+              "source_unverified",
+              "collection_old"
+            ]
+          },
+          "state_changed_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Application clock when the state or reason last changed."
+          },
+          "last_observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Latest accepted original provider observation clock; repeated membership does not advance it."
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Application collection clock of the latest successful normalized snapshot containing this identity."
+          },
+          "persisted": {
+            "type": "boolean",
+            "description": "Whether this exact latest state and clocks have committed to durable storage; false while a write is pending or failed."
+          }
+        },
+        "required": [
+          "state",
+          "reason",
+          "state_changed_at",
+          "last_observed_at",
+          "last_seen_at",
+          "persisted"
         ]
       }
     }

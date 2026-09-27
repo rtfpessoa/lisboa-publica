@@ -65,11 +65,22 @@ func TestLivePublicationBoundsSuccessAndErrorDurability(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		v.ObservedAt = now.Add(time.Duration(i) * time.Millisecond)
 		f.saveLive(context.Background(), p, []api.Vehicle{v}, now)
+	}
+	successful, _ := s.generation(context.Background())
+	if successful != first {
+		t.Fatalf("unchanged reporting state multiplied durable writes %d->%d", first, successful)
+	}
+	f.markError(context.Background(), p, false, context.DeadlineExceeded)
+	failed, _ := s.generation(context.Background())
+	if failed != first+1 {
+		t.Fatalf("first reporting failure was not committed immediately: %d->%d", first, failed)
+	}
+	for i := 0; i < 10; i++ {
 		f.markError(context.Background(), p, false, context.DeadlineExceeded)
 	}
-	after, _ := s.generation(context.Background())
-	if after != first {
-		t.Fatalf("five-second success/error publication multiplied writes %d->%d", first, after)
+	repeatedFailure, _ := s.generation(context.Background())
+	if repeatedFailure != failed {
+		t.Fatalf("same reporting failure bypassed batch cadence %d->%d", failed, repeatedFailure)
 	}
 	if c.operator("carris").Status != "error" {
 		t.Fatal("error not published immediately")
@@ -77,6 +88,15 @@ func TestLivePublicationBoundsSuccessAndErrorDurability(t *testing.T) {
 	if len(s.collector.Pending) == 0 {
 		t.Fatal("intermediate samples not staged")
 	}
+	f.saveLive(context.Background(), p, []api.Vehicle{v}, now.Add(time.Second))
+	recovered, _ := s.generation(context.Background())
+	if recovered != failed+1 {
+		t.Fatalf("reporting recovery was not committed immediately: %d->%d", failed, recovered)
+	}
+	if c.operator("carris").Status != "ok" {
+		t.Fatal("reporting recovery not published")
+	}
+
 }
 
 func TestOperatorCoverageCommittedWindowAndRevision(t *testing.T) {

@@ -10,7 +10,7 @@ The baseline reference was reviewed at `89fb91b`; affected arrival references we
 |---|---|---|
 | Run or develop the app | [Project quick start](../README.md) | [Architecture](architecture.md), [domain glossary](../CONTEXT.md) |
 | Understand a displayed value | [Data catalogue](data/README.md) | Its [integration](integrations/README.md), [associations](data/associations.md), and [API contract](../api/openapi.yaml) |
-| Investigate missing or stale data | [Source references](integrations/README.md) | [Failure and recovery](architecture.md#failure-and-recovery), [time and availability](data/README.md#time-and-availability) |
+| Investigate missing or stale data | [Source references](integrations/README.md) | [Failure and recovery](architecture.md#failure-and-recovery), [time and availability](data/README.md#time-and-availability), [backend reporting state](data/README.md#backend-owned-reporting-state) |
 | Interpret historical metrics | [History and derivation](data/history.md) | [Matching and continuity](data/associations.md), implementation and test links |
 | Deploy or configure the server | [Deployment guide](../deploy/README.md) | [Runtime boundaries](architecture.md), [Metro credentials](integrations/metro.md#access-and-collection) |
 
@@ -36,3 +36,5 @@ New features and changes to behavior, fields, matching, persistence, metrics, co
 The [popup and selective-path integration validation](VALIDATION-popup-path-integration.md) records the combined release with the existing stop-arrival collectors.
 
 [Direction boards and independent journey times](VEHICLE-POPUPS.md) describe station selection, full visit pagination, source evidence and current actual-event limitations. Canonical matching, history and integration references above remain authoritative for their respective topics.
+
+Dated delivery evidence for [Metro published routes](research/metro-published-route-2026-09-27.md) and [durable reporting state](research/vehicle-reporting-state-2026-09-27.md) records investigated source behavior and performed checks; use the canonical references for current application behavior.

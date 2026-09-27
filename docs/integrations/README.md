@@ -39,3 +39,5 @@ JSON responses are bounded; static archives have separate compressed/expanded/en
 Every reference links code and existing fixtures/tests. [Provider research](../research/SOURCES.md), [polling research](../research/POLLING-LIMITS.md) and other notes record dated external observations. There are no runtime Mover Lisboa API calls, direct CP GTFS downloads, direct Carris/Fertagus/TTSL fallback downloads, or a separate rail/ferry geometry feed. Alternative sources mentioned in research remain alternatives, not consumed integrations.
 
 Read [the catalogue](../data/README.md) for data availability, [associations](../data/associations.md) for joins and [history](../data/history.md) for persistence/metrics.
+
+Position integrations also supply normalized membership/original clocks for backend-owned [reporting state](../data/README.md#backend-owned-reporting-state). No new upstream endpoint or credential is required; latest reporting persistence is separate from position/history retention.

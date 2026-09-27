@@ -4,7 +4,7 @@ import {positionDeadline,positionIsOld} from '../src/vehicleFreshness';
 import {readFileSync} from 'node:fs';
 
 async function continuityFixture(page:Page){
- const epoch=Date.now();let phase:'current'|'missing'|'error'|'recovery'='current';let collected=epoch;
+ const epoch=Date.now();let phase:'current'|'missing'|'error'|'recovery'='current';let collected=epoch;let reporting=false;
  const iso=(n:number)=>new Date(n).toISOString();
  const operator=(id:string):Operator=>({id,name:id==='cp'?'CP':'Metro de Lisboa',mode:id==='cp'?'train':'metro',color:'#278044',static_source:'https://go.tmlmobilidade.pt/hub/api/v1/plans',live_source:'https://go.tmlmobilidade.pt/hub/api/v1/vehicles/positions',status:id==='cp'&&phase==='error'?'error':'ok',static_status:'ok',static_updated_at:iso(epoch),live_updated_at:iso(collected),observed_at:iso(epoch),plan_id:'plan',valid_from:null,valid_until:null,reported_positions:id==='cp'&&phase==='error'?null:id==='cp'&&(phase==='current'||phase==='recovery')?1:0,estimated_positions:0,note:'',error:id==='cp'&&phase==='error'?'Fonte indisponível':null,static_error:null,direct_status:null,direct_error:null,direct_updated_at:null,last_known_positions:id==='cp'&&(phase==='missing'||phase==='error')?1:0,last_known_truncated:false});
  const paged=(data:unknown[])=>({data,page:{limit:500,offset:0,total:data.length,has_more:false,revision:'fixture'}});
@@ -21,11 +21,12 @@ async function continuityFixture(page:Page){
   if(u.pathname.endsWith('/vehicles')){
    const known=phase==='missing'||phase==='error',observed=phase==='recovery'?collected:epoch;
    const vehicle:Vehicle={id:'cp:train',source_id:'train',operator_id:'cp',route_name:'Sintra',route_id:null,trip_id:null,lat:38.731,lon:-9.145,observed_at:iso(observed),collected_at:iso(observed),position_kind:'reported',source_url:'https://go.tmlmobilidade.pt/hub/api/v1/vehicles/positions',speed_kmh:known?null:10,bearing:null,model:'Publicado',license_plate:null,stale:known,plan_id:'plan',typology:null,propulsion:null,last_known:known,inactive_at:iso(observed+300000),last_known_expires_at:iso(observed+600000)};
+   if(reporting)vehicle.reporting={state:phase==='error'?'unknown':phase==='missing'?'not_reporting':'reporting',reason:phase==='error'?'source_error':phase==='missing'?'missing_from_snapshot':'current',state_changed_at:iso(collected),last_observed_at:iso(observed),last_seen_at:iso(observed),persisted:true};
    data=paged((u.searchParams.get('operators')??'').includes('cp')?[vehicle]:[]);
   }
   await r.fulfill({json:data});
  });
- return {epoch,operator,setPhase:(value:typeof phase,at=epoch)=>{phase=value;collected=at}};
+ return {epoch,operator,enableReporting:()=>{reporting=true},setPhase:(value:typeof phase,at=epoch)=>{phase=value;collected=at}};
 }
 
 test('selected CP warns at five minutes and expires at ten even without new data',async({page})=>{
@@ -144,4 +145,26 @@ for(const operator of ['carris','cm','tcb','mobi','metro','cp','ttsl','fertagus'
  vehicle.last_known_expires_at=new Date(epoch+400000).toISOString();
  expect(positionDeadline(vehicle)).toBe(epoch+400000);
  expect(epoch+threshold).toBeLessThan(positionDeadline(vehicle));
+});
+
+
+test('stored reporting state warns on omission immediately and recovers without implying a physical stop',async({page})=>{
+ const fixture=await continuityFixture(page);fixture.enableReporting();await page.clock.install({time:new Date(fixture.epoch)});
+ await page.goto('/');await page.getByRole('button',{name:'CP',exact:true}).click();await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click();
+ const icons=()=>page.evaluate(()=>(window as unknown as {vehicleFeatures:{properties:{icon:string}}[]}).vehicleFeatures.map(f=>f.properties.icon));
+ await expect.poll(icons).toEqual(['cp']);
+ fixture.setPhase('missing',fixture.epoch+6000);await page.clock.fastForward(6000);await expect.poll(icons).toEqual(['cp-old']);
+ const map=page.locator('.map canvas'),box=await map.boundingBox();await page.mouse.click(box!.x+box!.width/2,box!.y+box!.height/2);
+ await expect(page.locator('.vehicle-reporting')).toHaveText('Sem sinal atual');
+ await expect(page.locator('.popup-footnotes')).toContainText('deixou de aparecer');
+ await expect(page.locator('.popup-footnotes')).not.toContainText('há pelo menos 5 minutos');
+ await expect(page.locator('.vehicle-status')).not.toContainText('Parado');
+ fixture.setPhase('error',fixture.epoch+12000);await page.clock.fastForward(6000);
+ await expect(page.locator('.vehicle-reporting')).toHaveText('Sinal por confirmar');
+ await expect(page.locator('.popup-footnotes')).toContainText('não podemos confirmar');
+ await expect.poll(icons).toEqual(['cp']);
+ fixture.setPhase('recovery',fixture.epoch+18000);await page.clock.fastForward(6000);
+ await expect(page.locator('.vehicle-reporting')).toHaveText('A receber atualizações');
+ await expect(page.locator('.popup-footnotes')).not.toContainText('deixou de aparecer');
+ await expect.poll(icons).toEqual(['cp']);
 });

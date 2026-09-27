@@ -114,7 +114,7 @@ Metro secrets stay in the server environment. `PUBLIC_ORIGIN` establishes the al
 | Condition | Application behavior |
 |---|---|
 | Upstream failure/throttling | Mark source error, preserve prior usable data and original observation clocks, retry on scheduled refresh after applicable cooldown |
-| Successful empty positions | Known successful source coverage with no new membership; omitted vehicles remain visible until the ten-minute source-clock deadline, with an age warning after five minutes |
+| Successful empty positions | Known successful source coverage with no new membership; omitted vehicles immediately become `not_reporting/missing_from_snapshot` and remain visible until the ten-minute source-clock deadline, with a separate age warning after five minutes |
 | Source not recently verified | Current counts can become unknown; age and last-known projection do not turn old reports into fresh observations |
 | Missing Metro credentials | Direct status is unconfigured; estimated Hub positions and planned GTFS remain distinct paths |
 | Static/geometry failure | Preserve eligible prior data; geometry availability may differ from schedule availability; fallback is source-specific |
@@ -186,3 +186,13 @@ The route/direction catalog and CM route/plan/agency source metadata are shared 
 Trip identity lookups scan the immutable schedule without retaining a second trip-ID map.
 Road-operator visit deltas are losslessly compressed before geometry ingestion,
 and exact GTFS stop-to-line membership narrows station reads before decompression.
+
+## Durable reporting state
+
+[Reporting classification](../internal/app/vehicle_reporting.go) maintains a separate latest `vehicle_reporting` row keyed by exact operator/source identity, including inferred Metro identities. It stores state/reason clocks, latest accepted observation and successful membership clocks, and internal collection/membership evidence. It does not store transition history. The table survives position expiry and snapshot cleanup; it is not a full registered vehicle inventory.
+
+Reporting changes participate in the existing guarded cache/health/history transaction and conservative operational byte reservations. State/reason transitions request immediate persistence; unchanged membership/observation clock updates use the existing 30-second batch cadence. Only committed matching versions are acknowledged. Failed writes preserve dirty versions and expose `persisted=false`; monotonic row versions and original observation checks reject regressions, including after map expiry. Restoration preserves clocks and classifies restored sources as unverified until collection succeeds. No migration backfills a supposed reporting history.
+
+An independent [reporting worker](../internal/app/vehicle_reporting_worker.go) runs even when `INGEST_ENABLED=false`, checking cached identities every second without browser reads. It reconciles database-only identities in primary-key batches of at most 128 rows every 30 seconds; those expired identities converge over multiple batches, rather than receiving the visible inventory's immediate transition guarantee. Stable reconciliations do not write SQL. Operations use a five-second context. Exact identity loads are lazy; the registry bounds cached identities at 8,192, evicts clean entries and protects pending changes. Capacity failures are logged instead of allowing unbounded growth. Database admission/availability can delay persistence, and source polling determines when omission can first be known.
+
+The API exposes latest reporting state on retained vehicles. The browser displays reporting independently of physical stop status and adds a marker warning immediately for `not_reporting`, retaining its independent five-minute age warning and ten-minute offline display expiry. A source error is `unknown`, not an omission. See the [state evaluation table](data/README.md#backend-owned-reporting-state).

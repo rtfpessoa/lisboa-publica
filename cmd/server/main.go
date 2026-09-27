@@ -14,6 +14,23 @@ import (
 	"lisboapublica/internal/app"
 )
 
+const (
+	upstreamRequestBudget  = 900
+	upstreamRequestTimeout = 45 * time.Second
+	httpHeaderTimeout      = 5 * time.Second
+	httpReadTimeout        = 30 * time.Second
+	httpWriteTimeout       = 60 * time.Second
+	httpIdleTimeout        = 60 * time.Second
+	httpShutdownTimeout    = 10 * time.Second
+)
+
+type backgroundServices struct {
+	server *app.Server
+	store  *app.Store
+	cache  *app.Cache
+	log    *zap.Logger
+}
+
 func env(name, fallback string) string {
 	if v := os.Getenv(name); v != "" {
 		return v
@@ -42,34 +59,50 @@ func main() {
 	if err = store.Restore(ctx, cache); err != nil {
 		log.Fatal("cache restoration failed", zap.Error(err))
 	}
-	limit, _ := strconv.Atoi(env("RATE_LIMIT_PER_MINUTE", "300"))
-	server, err := app.NewServer(store, cache, app.Options{Origin: env("PUBLIC_ORIGIN", "http://localhost:8080"), Environment: env("ENVIRONMENT", "development"), DevAuth: env("DEV_AUTH", "false") == "true", PublicReads: env("PUBLIC_READS", "true") == "true", GoogleClientID: os.Getenv("GOOGLE_CLIENT_ID"), FrontendDir: env("FRONTEND_DIR", "frontend/dist"), RateLimit: limit, TrustedProxyCIDRs: os.Getenv("TRUSTED_PROXY_CIDRS")}, log)
+	server, err := app.NewServer(store, cache, runtimeOptions(), log)
 	if err != nil {
 		log.Fatal("server configuration failed", zap.Error(err))
 	}
-	outgoing := &http.Client{Timeout: 45 * time.Second, Transport: app.NewBudgetTransport(900), CheckRedirect: app.CheckUpstreamRedirect}
-	server.Metro = app.NewMetroClient(outgoing, store, cache, os.Getenv("METRO_CLIENT_ID"), os.Getenv("METRO_CLIENT_SECRET"))
-	if os.Getenv("METRO_CLIENT_ID") != "" && os.Getenv("METRO_CLIENT_SECRET") != "" {
-		go server.Metro.Run(ctx)
-	}
+	services := backgroundServices{server: server, store: store, cache: cache, log: log}
+	services.start(ctx)
 	handler, err := server.Handler()
 	if err != nil {
 		log.Fatal("API initialization failed", zap.Error(err))
 	}
+	serveHTTP(ctx, handler, log)
+}
+func runtimeOptions() app.Options {
+	limit, _ := strconv.Atoi(env("RATE_LIMIT_PER_MINUTE", "300"))
+	return app.Options{Origin: env("PUBLIC_ORIGIN", "http://localhost:8080"), Environment: env("ENVIRONMENT", "development"), DevAuth: env("DEV_AUTH", "false") == "true", PublicReads: env("PUBLIC_READS", "true") == "true", GoogleClientID: os.Getenv("GOOGLE_CLIENT_ID"), FrontendDir: env("FRONTEND_DIR", "frontend/dist"), RateLimit: limit, TrustedProxyCIDRs: os.Getenv("TRUSTED_PROXY_CIDRS")}
+}
+func (services backgroundServices) start(ctx context.Context) {
+	go services.store.RunReporting(ctx, services.cache, services.log)
+	outgoing := &http.Client{Timeout: upstreamRequestTimeout, Transport: app.NewBudgetTransport(upstreamRequestBudget), CheckRedirect: app.CheckUpstreamRedirect}
+	services.server.Metro = app.NewMetroClient(outgoing, services.store, services.cache, os.Getenv("METRO_CLIENT_ID"), os.Getenv("METRO_CLIENT_SECRET"))
+	if os.Getenv("METRO_CLIENT_ID") != "" && os.Getenv("METRO_CLIENT_SECRET") != "" {
+		go services.server.Metro.Run(ctx)
+	}
+	services.startIngestion(ctx, outgoing)
+}
+func (services backgroundServices) startIngestion(ctx context.Context, outgoing *http.Client) {
 	if env("INGEST_ENABLED", "true") == "true" {
-		fetcher := app.NewFetcher(store, cache, log)
+		fetcher := app.NewFetcher(services.store, services.cache, services.log)
 		fetcher.Client = outgoing
 		go fetcher.Run(ctx)
 	}
-	srv := &http.Server{Addr: env("LISTEN_ADDR", "127.0.0.1:8080"), Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 60 * time.Second, IdleTimeout: 60 * time.Second}
-	go func() {
-		<-ctx.Done()
-		shutdown, c := context.WithTimeout(context.Background(), 10*time.Second)
-		defer c()
-		_ = srv.Shutdown(shutdown)
-	}()
+}
+func serveHTTP(ctx context.Context, handler http.Handler, log *zap.Logger) {
+	srv := &http.Server{Addr: env("LISTEN_ADDR", "127.0.0.1:8080"), Handler: handler, ReadHeaderTimeout: httpHeaderTimeout, ReadTimeout: httpReadTimeout, WriteTimeout: httpWriteTimeout, IdleTimeout: httpIdleTimeout}
+	go shutdownHTTP(ctx, srv)
 	log.Info("server started", zap.String("address", srv.Addr))
-	if err = srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal("HTTP server failed", zap.Error(err))
 	}
+}
+
+func shutdownHTTP(ctx context.Context, srv *http.Server) {
+	<-ctx.Done()
+	shutdown, c := context.WithTimeout(context.Background(), httpShutdownTimeout)
+	defer c()
+	_ = srv.Shutdown(shutdown)
 }

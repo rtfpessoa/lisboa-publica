@@ -573,6 +573,10 @@ func (s *Store) restoreProviderFacts(ctx context.Context, c *Cache, p provider, 
 	if err != nil {
 		return err
 	}
+	if _, err = s.reporting.stage(reportingLookup{ctx, s.readReporting}, p.ID, dl, op, time.Now().UTC()); err != nil {
+		return err
+	}
+	dl = s.reporting.projection(p.ID, dl)
 	if ds != nil || dl != nil {
 		c.update(p.ID, ds, dl, op)
 	}

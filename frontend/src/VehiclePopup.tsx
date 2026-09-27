@@ -1,4 +1,5 @@
 import {positionDeadline,positionIsOld} from './vehicleFreshness';
+import {reportingLabel,reportingNotice} from './vehicleReporting';
 import {useEffect,useRef,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {AlertTriangle,BusFront,Ship,TramFront,TrainFront,X} from 'lucide-react';
@@ -49,7 +50,9 @@ export default function VehiclePopup({vehicle:v,mode,operatorName,now,onClose,on
  const expired=now>=positionDeadline(v);
  const observedTime=observationTime(v.observed_at,now),collectedTime=observationTime(v.collected_at,now);
  const warnings:string[]=[];
- if(previous)warnings.push('A aguardar atualização; mostramos o último registo conhecido.');
+ const signalNotice=reportingNotice(v);
+ if(signalNotice)warnings.push(signalNotice);
+ else if(previous)warnings.push('A aguardar atualização; mostramos o último registo conhecido.');
  if(observationAge(v.observed_at,now)==='hora não confirmada')warnings.push('A hora da observação não pôde ser confirmada.');
  if(expired)warnings.push('Sinal expirado. Esta observação deixou de estar disponível no mapa.');
  if(positionIsOld(v,now)&&!expired)warnings.push(`Sem atualização há pelo menos 5 minutos · ${observationAge(v.observed_at,now)}.`);
@@ -75,6 +78,7 @@ export default function VehiclePopup({vehicle:v,mode,operatorName,now,onClose,on
  return <>
   <div className="section-head vehicle-heading"><h3><Icon size={20}/>{v.service_label?`${mode==='train'?'Comboio':'Serviço'} ${v.service_label}`:`${operatorName} · ${v.source_id}`}</h3><div>{unique.length>0&&<button className="quiet warning-jump" onClick={jump} aria-label={`Ver ${unique.length} avisos`}><AlertTriangle size={18}/><span>{unique.length}</span></button>}<button className="quiet" aria-label="Fechar detalhes" onClick={onClose}><X size={18}/></button></div></div>
   {v.position_kind==='estimated'&&v.operator_id!=='metro'&&<span className="pill estimated">Posição estimada</span>}
+  {v.reporting&&<p className="vehicle-reporting">{reportingLabel(v)}</p>}
   {state&&<p className="vehicle-status">{state.replace('Último estado:','Último registo:')}</p>}
   <p className="subtle vehicle-update-age">Última atualização do veículo: <time dateTime={v.observed_at} title={Number.isFinite(Date.parse(v.observed_at))?new Date(v.observed_at).toLocaleString('pt-PT',{timeZone:'Europe/Lisbon'}):'Hora não confirmada'}>{observedTime}</time></p>
   {collectedTime!==observedTime&&<p className="subtle">Recebido pela aplicação: <time dateTime={v.collected_at}>{collectedTime}</time></p>}
@@ -96,6 +100,7 @@ export default function VehiclePopup({vehicle:v,mode,operatorName,now,onClose,on
    {calls.data&&<p className="subtle">{calls.data.coverage==='complete_published_route'?'Todas as paragens da variante publicada, sem indicar quais já foram percorridas.':'Mostramos as paragens publicadas disponíveis na área de Lisboa.'} Horários, previsões e percursos não alteram a posição nem a hora da observação.</p>}
    {(v.seated_capacity!=null||v.total_capacity!=null||v.wheelchair_accessible!=null||v.contactless!=null)&&<p className="subtle">Características publicadas, não lugares livres. “Não indicado” pode corresponder a omissão na origem.</p>}
    {v.service_label&&v.source_id!==v.service_label&&<p className="subtle">Referência da fonte: {v.source_id}</p>}
+   {v.reporting&&!v.reporting.persisted&&<p className="subtle">O estado de sinal apresentado ainda aguarda gravação.</p>}
    <a href={v.source_url} target="_blank" rel="noreferrer">Fonte · {operatorName}</a>
   </section>
  </>;

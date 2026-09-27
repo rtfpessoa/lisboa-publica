@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS app_state (id INT PRIMARY KEY, generation BIGINT NOT 
 INSERT INTO app_state (id,generation) VALUES (1,0) ON CONFLICT (id) DO NOTHING;
 CREATE TABLE IF NOT EXISTS cache_parts (operator_id TEXT NOT NULL, kind TEXT NOT NULL, part INT NOT NULL, data BYTEA NOT NULL, PRIMARY KEY(operator_id,kind,part));
 CREATE TABLE IF NOT EXISTS vehicle_facts (operator_id TEXT NOT NULL, source_id TEXT NOT NULL, payload JSONB NOT NULL, PRIMARY KEY(operator_id,source_id));
+CREATE TABLE IF NOT EXISTS vehicle_reporting (operator_id TEXT NOT NULL, source_id TEXT NOT NULL, updated_at TIMESTAMPTZ NOT NULL, payload JSONB NOT NULL, PRIMARY KEY(operator_id,source_id));
 CREATE TABLE IF NOT EXISTS source_health (operator_id TEXT PRIMARY KEY, payload JSONB NOT NULL);
 CREATE TABLE IF NOT EXISTS snapshots (
  operator_id TEXT NOT NULL, vehicle_id TEXT NOT NULL, observed_at TIMESTAMPTZ NOT NULL,
@@ -58,6 +59,7 @@ type Store struct {
 	budget          *storageBudget
 	PublishMu       sync.Mutex
 	facts           factRegistry
+	reporting       reportingRegistry
 }
 
 // OpenStore opens a database pool and applies compatible Postgres/Cockroach migrations.
@@ -235,8 +237,20 @@ func (s *Store) Restore(ctx context.Context, c *Cache) error {
 	return nil
 }
 
+// preparedPublication groups the position/history input with the registry whose
+// exact pending versions participate in the same transaction.
+type preparedPublication struct {
+	Update    cacheUpdate
+	Live      *LiveData
+	Distances map[string]*float64
+	Reporting *reportingRegistry
+}
+
 // Save commits a provider refresh and deduplicated observations atomically.
 func (s *Store) Save(ctx context.Context, id string, static *StaticData, live *LiveData, op api.Operator, distances map[string]*float64) error {
+	if s.DB == nil {
+		return fmt.Errorf("durable storage unavailable")
+	}
 	update, err := prepareCacheUpdate(static, live, op)
 	if err != nil {
 		return err
@@ -245,23 +259,42 @@ func (s *Store) Save(ctx context.Context, id string, static *StaticData, live *L
 	defer s.writeMu.Unlock()
 	s.historyMu.Lock()
 	defer s.historyMu.Unlock()
+	publication := preparedPublication{update, live, distances, &s.reporting}
+	return s.savePreparedUpdate(ctx, id, publication)
+}
+func (s *Store) preparePendingUpdate(ctx context.Context, id string, update cacheUpdate, reporting *reportingRegistry) (cacheUpdate, error) {
+	var err error
+	update.Reporting, err = reporting.pending(id)
+	if err != nil {
+		return update, err
+	}
 	update.Facts, err = s.pendingFacts(ctx, id)
+	return update, err
+}
+
+// savePreparedUpdate requires writeMu and historyMu, retaining one atomic acknowledgement boundary.
+func (s *Store) savePreparedUpdate(ctx context.Context, id string, publication preparedPublication) error {
+	update, err := s.preparePendingUpdate(ctx, id, publication.Update, publication.Reporting)
 	if err != nil {
 		return err
 	}
-	records, next := s.prepareHistory(id, live, distances)
+	records, next := s.prepareHistory(id, publication.Live, publication.Distances)
 	records, err = s.guardUpdate(ctx, update, records)
 	if err != nil {
 		return err
 	}
 	err = s.persistUpdate(ctx, id, update, records)
 	if err == nil {
-		s.acknowledgeFacts(id, update.Facts)
-		if next != nil {
-			s.collector = next
-		}
+		s.acknowledgeUpdate(id, update, next)
 	}
 	return err
+}
+func (s *Store) acknowledgeUpdate(id string, update cacheUpdate, next *historyCollector) {
+	s.acknowledgeFacts(id, update.Facts)
+	s.reporting.acknowledge(id, update.Reporting)
+	if next != nil {
+		s.collector = next
+	}
 }
 
 func (s *Store) prune(ctx context.Context) error {

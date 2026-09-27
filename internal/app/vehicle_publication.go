@@ -22,7 +22,7 @@ func (f *Fetcher) publishMetadata(ctx context.Context, id string, d *StaticData,
 		f.Log.Warn("fleet fact projection unavailable", zap.String("operator", id), zap.Error(projectionErr))
 	}
 	if e := f.Store.Save(ctx, id, copyData, nil, op, nil); e == nil {
-		f.Cache.update(id, copyData, projection, op)
+		f.Cache.update(id, copyData, f.Store.reporting.projection(id, projection), op)
 	}
 }
 
@@ -38,6 +38,11 @@ func normalizeVehicleAttributes(vehicles []api.Vehicle) []api.Vehicle {
 }
 
 func (f *Fetcher) prepareVehiclePublication(ctx context.Context, id string, state *State, vehicles []api.Vehicle, now time.Time) (*LiveData, map[string]*float64) {
+	filtered, reportingErr := f.Store.reporting.filterRegressions(reportingLookup{ctx, f.Store.readReporting}, id, vehicles)
+	if reportingErr != nil {
+		f.Log.Warn("reporting state unavailable", zap.String("operator", id), zap.Error(reportingErr))
+	}
+	vehicles = filtered
 	factsErr := f.Store.stageVehicleFacts(ctx, id, vehicles, state.Live[id], now)
 	if factsErr != nil {
 		f.Log.Warn("vehicle facts unavailable", zap.String("operator", id), zap.Error(factsErr))

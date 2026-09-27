@@ -129,6 +129,18 @@ export type VehicleReference = {
     vehicle_id: string;
     reference: string;
 };
+export type ReportingState = {
+    state: "reporting" | "not_reporting" | "unknown";
+    reason: "current" | "missing_from_snapshot" | "observation_old" | "source_error" | "source_unverified" | "collection_old";
+    /** Application clock when the state or reason last changed. */
+    state_changed_at: string;
+    /** Latest accepted original provider observation clock; repeated membership does not advance it. */
+    last_observed_at: string | null;
+    /** Application collection clock of the latest successful normalized snapshot containing this identity. */
+    last_seen_at: string | null;
+    /** Whether this exact latest state and clocks have committed to durable storage; false while a write is pending or failed. */
+    persisted: boolean;
+};
 export type Vehicle = {
     id: string;
     source_id: string;
@@ -182,6 +194,7 @@ export type Vehicle = {
     vehicle_ref?: VehicleReference;
     /** Provider-published pattern identity, qualified by operator and original plan/agency. Does not establish operating day or schedule. */
     pattern_id?: string;
+    reporting?: ReportingState;
 };
 export type VehiclePage = {
     data: Vehicle[];

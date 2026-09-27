@@ -206,6 +206,9 @@ func (s *Store) guardUpdate(ctx context.Context, update cacheUpdate, records []h
 	for _, fact := range update.Facts {
 		operations += int64(len(fact.SourceID)+len(fact.Payload))*storageWriteOverhead + historyRecordOverhead
 	}
+	for _, row := range update.Reporting {
+		operations += int64(len(row.SourceID)+len(row.Payload))*storageWriteOverhead + historyRecordOverhead
+	}
 	historyBytes := recordBytes(records)
 	if s.budget == nil {
 		if operations+historyBytes > maximumWriteBytes {

@@ -159,7 +159,7 @@ func (f *Fetcher) saveStatic(ctx context.Context, p provider, d *StaticData) {
 		f.Log.Error("static persistence failed", zap.String("operator", p.ID), zap.Error(e))
 		return
 	}
-	f.Cache.update(p.ID, d, projection, op)
+	f.Cache.update(p.ID, d, f.Store.reporting.projection(p.ID, projection), op)
 	f.Log.Info("static provider refreshed", zap.String("operator", p.ID), zap.Int("routes", len(d.Routes)), zap.Int("stops", len(d.Stops)))
 }
 func (f *Fetcher) refreshLive(ctx context.Context) {
