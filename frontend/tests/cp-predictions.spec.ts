@@ -4,7 +4,7 @@ import type {CpPrediction,Arrival} from '../src/api';
 async function fixture(page:Page){
  const epoch=Date.now(),iso=(n:number)=>new Date(n).toISOString();
  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Lisbon',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(epoch));
- let failure=false,paged=false,mismatch=false,revisionExpired=false,missingDate=false;
+ let failure=false,paged=false,mismatch=false,revisionExpired=false,missingDate=false,freshPlanned=false;
  const requests:{path:string,query:URLSearchParams}[]=[];
  const operators=['carris','cm','tcb','mobi','metro','cp','ttsl','fertagus'].map(id=>({id,name:id,mode:id==='metro'?'metro':id==='cp'||id==='fertagus'?'train':id==='ttsl'?'ferry':'bus',color:'#278044',status:'ok',static_status:'ok',live_updated_at:iso(epoch),static_updated_at:iso(epoch),reported_positions:id==='cp'?1:0,estimated_positions:0,note:'',error:null}));
  const stops=operators.map(o=>({id:`${o.id}:opaque-stop`,operator_id:o.id,source_id:'opaque-stop',name:o.id==='cp'?'Lisboa Santa Apolonia':'São João',lat:38.731,lon:-9.145,route_ids:[]}));
@@ -29,10 +29,10 @@ async function fixture(page:Page){
    data={...pageFor([prediction]),availability:{status:'ok',message:'Previsões TML · CP',source_url:prediction.source_url,collected_at:iso(epoch),published_at:iso(epoch),excluded_updates:0}};
    if(paged&&!query.get('stop_id'))data={...(data as object),data:query.get('offset')==='500'?[second]:[prediction],page:{limit:500,offset:query.get('offset')==='500'?500:0,total:2,has_more:query.get('offset')!=='500',revision:'shared-revision'}};
   }
-  if(path.endsWith('/arrivals'))data=pageFor([{...arrival,plan_id:mismatch?'old-plan':'plan'}]);
+  if(path.endsWith('/arrivals'))data=pageFor([{...arrival,headsign:freshPlanned?'Novo destino publicado':arrival.headsign,plan_id:mismatch?'old-plan':'plan'}]);
   await route.fulfill({json:data});
  });
- return {epoch,requests,setFailure:(v:boolean)=>failure=v,setPaged:(v:boolean)=>paged=v,setMismatch:(v:boolean)=>mismatch=v,setExpiry:(v:boolean)=>revisionExpired=v,setMissingDate:(v:boolean)=>missingDate=v};
+ return {epoch,requests,setFreshPlanned:(v:boolean)=>freshPlanned=v,setFailure:(v:boolean)=>failure=v,setPaged:(v:boolean)=>paged=v,setMismatch:(v:boolean)=>mismatch=v,setExpiry:(v:boolean)=>revisionExpired=v,setMissingDate:(v:boolean)=>missingDate=v};
 }
 
 async function selectCP(page:Page){
@@ -94,3 +94,13 @@ test('prediction window uses exactly one captured clock and retries an expired c
  for(const r of f.requests.filter(r=>r.path.endsWith('/cp/predictions')))expect(Date.parse(r.query.get('to')!)-Date.parse(r.query.get('from')!)).toBe(7200000);
  await expect.poll(()=>page.evaluate(()=>(window as unknown as {cpFeatures:unknown[]}).cpFeatures.length)).toBe(1);
 });
+
+ test('station prediction failure exposes fresh planned fallback without stale merges',async({page})=>{
+ const f=await fixture(page);await page.goto('/');await selectCP(page);
+ await page.getByLabel('Pesquisar carreira ou paragem').fill('santa apolonia');await page.locator('.search-results button').last().click();
+ const panel=page.locator('.detail-panel');await expect(panel.getByTestId('cp-prediction')).toHaveCount(1);
+ f.setFreshPlanned(true);f.setFailure(true);
+ await expect(panel).toContainText('Novo destino publicado',{timeout:15000});
+ await expect(panel).toContainText('Horário planeado');await expect(panel.getByTestId('cp-prediction')).toHaveCount(0);
+ await expect(panel).toContainText('Previsões indisponíveis');
+ });

@@ -105,7 +105,7 @@ func (f *Fetcher) cpResponse(ctx context.Context, static *StaticData) (*CPData, 
 	feed, err := decodeCPFeedContext(ctx, blob)
 	var result *CPData
 	if err == nil {
-		result, err = normalizeCP(feed, static, time.Now().UTC())
+		result, err = normalizeCP(ctx, feed, static, time.Now().UTC())
 	}
 	return result, err
 }

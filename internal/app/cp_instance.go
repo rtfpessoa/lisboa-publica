@@ -79,6 +79,9 @@ func (i *cpIndex) uniqueDay(t *ScheduledTrip, u cpUpdate, at time.Time) (time.Ti
 	var found time.Time
 	// Existing GTFS hours are bounded; deviations add at most one extra day.
 	for delta := -(maxGTFSServiceHours/hoursPerDay + 1); delta <= 1; delta++ {
+		if i.Context.Err() != nil {
+			return time.Time{}, "invalid"
+		}
 		day := anchor.AddDate(0, 0, delta)
 		if !i.active(t, day) || !i.consistent(t, u, day, at) {
 			continue
@@ -97,6 +100,9 @@ func (i *cpIndex) uniqueDay(t *ScheduledTrip, u cpUpdate, at time.Time) (time.Ti
 func (i *cpIndex) verifiedCalls(t *ScheduledTrip, u cpUpdate, day time.Time) (map[int]time.Time, bool) {
 	calls := map[int]time.Time{}
 	for _, s := range u.Stops {
+		if i.Context.Err() != nil {
+			return nil, false
+		}
 		v := i.visit(t, s)
 		if v == nil || !cpScheduled(s.Relationship) {
 			continue

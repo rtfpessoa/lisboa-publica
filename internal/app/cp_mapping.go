@@ -1,8 +1,12 @@
 package app
 
-import "strings"
+import (
+	"context"
+	"strings"
+)
 
 type cpIndex struct {
+	Context   context.Context
 	Data      *StaticData
 	Trips     map[string]*ScheduledTrip
 	Names     map[string]string
@@ -11,32 +15,22 @@ type cpIndex struct {
 	BadStop   map[string]bool
 }
 
-func indexCP(data *StaticData, updates []cpUpdate) *cpIndex {
-	index := &cpIndex{Data: data, Trips: map[string]*ScheduledTrip{}, Names: map[string]string{}, Crosswalk: map[string]string{}, BadHub: map[string]bool{}, BadStop: map[string]bool{}}
+func indexCP(ctx context.Context, data *StaticData, updates []cpUpdate) *cpIndex {
+	index := &cpIndex{Context: ctx, Data: data, Trips: map[string]*ScheduledTrip{}, Names: map[string]string{}, Crosswalk: map[string]string{}, BadHub: map[string]bool{}, BadStop: map[string]bool{}}
 	for n := range data.Schedule.Trips {
+		if ctx.Err() != nil {
+			break
+		}
 		t := &data.Schedule.Trips[n]
 		index.Trips[t.ID] = t
 	}
 	for _, s := range data.Stops {
+		if ctx.Err() != nil {
+			break
+		}
 		index.Names[s.SourceId] = s.Name
 	}
-	reverse := map[string]string{}
-	for _, u := range updates {
-		t := cpTrip(index, u)
-		if t == nil || !cpScheduled(u.Trip.Relationship) {
-			continue
-		}
-		for _, s := range u.Stops {
-			if s.Sequence == nil || s.ID == "" || !cpScheduled(s.Relationship) {
-				continue
-			}
-			v := uniqueCPSequence(t, *s.Sequence)
-			if v == nil {
-				continue
-			}
-			index.addMapping(s.ID, v.Stop, reverse)
-		}
-	}
+	buildCPCrosswalk(index, updates)
 	return index
 }
 
@@ -120,4 +114,30 @@ func (i *cpIndex) validVisit(s cpStopUpdate, v *StopTime) bool {
 	}
 	mapped := i.Crosswalk[s.ID]
 	return mapped == "" || mapped == v.Stop
+}
+
+func buildCPCrosswalk(index *cpIndex, updates []cpUpdate) {
+	reverse := map[string]string{}
+	for _, u := range updates {
+		if index.Context.Err() != nil {
+			return
+		}
+		t := cpTrip(index, u)
+		if t == nil || !cpScheduled(u.Trip.Relationship) {
+			continue
+		}
+		for _, s := range u.Stops {
+			if index.Context.Err() != nil {
+				return
+			}
+			if s.Sequence == nil || s.ID == "" || !cpScheduled(s.Relationship) {
+				continue
+			}
+			v := uniqueCPSequence(t, *s.Sequence)
+			if v == nil {
+				continue
+			}
+			index.addMapping(s.ID, v.Stop, reverse)
+		}
+	}
 }

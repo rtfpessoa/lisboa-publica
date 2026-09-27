@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -21,7 +22,10 @@ type CPData struct {
 	Availability api.CPPredictionAvailability
 }
 
-func normalizeCP(feed *cpFeed, data *StaticData, now time.Time) (*CPData, error) {
+func normalizeCP(ctx context.Context, feed *cpFeed, data *StaticData, now time.Time) (*CPData, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if data == nil || data.Schedule == nil {
 		return nil, fmt.Errorf("CP network unavailable")
 	}
@@ -30,10 +34,16 @@ func normalizeCP(feed *cpFeed, data *StaticData, now time.Time) (*CPData, error)
 		return nil, fmt.Errorf("CP publication expired")
 	}
 	out := &CPData{PlanID: data.PlanID, Rows: []api.CPPrediction{}, Availability: api.CPPredictionAvailability{Status: api.CPPredictionAvailabilityStatusOk, Message: "Previsões da fonte pública TML · CP.", SourceUrl: cpSourceURL, CollectedAt: &now, PublishedAt: &published}}
-	batch := cpBatch{index: indexCP(data, feed.Updates), now: now, out: out, candidates: map[string]api.CPPrediction{}, conflicts: map[string]bool{}, services: map[string]bool{}}
+	batch := cpBatch{index: indexCP(ctx, data, feed.Updates), now: now, out: out, candidates: map[string]api.CPPrediction{}, conflicts: map[string]bool{}, services: map[string]bool{}}
 	err := batch.collect(feed.Updates)
 	if err == nil {
+		err = ctx.Err()
+	}
+	if err == nil {
 		err = finishCP(out)
+	}
+	if err == nil {
+		err = ctx.Err()
 	}
 	return out, err
 }
@@ -48,11 +58,17 @@ type cpBatch struct {
 
 func (b *cpBatch) collect(updates []cpUpdate) error {
 	for _, u := range updates {
+		if err := b.index.Context.Err(); err != nil {
+			return err
+		}
 		if err := b.accept(u); err != nil {
 			return err
 		}
 	}
 	for key, row := range b.candidates {
+		if err := b.index.Context.Err(); err != nil {
+			return err
+		}
 		if b.conflicts[key] || cpSuppressed(b.index, updates, row, b.now) {
 			b.out.Availability.ExcludedUpdates++
 			continue
@@ -75,6 +91,9 @@ func (b *cpBatch) accept(u cpUpdate) error {
 	day, basis := b.index.instance(t, u, b.now)
 	instance := cpResolvedUpdate{Trip: t, Update: u, Day: day, Basis: basis}
 	for _, s := range u.Stops {
+		if err := b.index.Context.Err(); err != nil {
+			return err
+		}
 		row, valid := b.index.prediction(instance, s, b.now)
 		if !valid {
 			b.out.Availability.ExcludedUpdates++
@@ -168,25 +187,37 @@ func chooseCPPrediction(rows map[string]api.CPPrediction, conflicts map[string]b
 
 func cpSuppressed(i *cpIndex, updates []cpUpdate, row api.CPPrediction, now time.Time) bool {
 	for _, u := range updates {
-		t := cpTrip(i, u)
-		if t == nil || qualify("cp", t.ID) != row.SourceTripId {
-			continue
-		}
-		at := time.Unix(u.Timestamp, 0)
-		if !cpCurrent(at, now) || at.Before(row.SourceUpdatedAt) {
-			continue
-		}
-		if u.Trip.Date != "" && row.ServiceDate != nil && u.Trip.Date != row.ServiceDate.Format("20060102") {
-			continue
-		}
-		if !cpScheduled(u.Trip.Relationship) {
+		if i.Context.Err() != nil {
 			return true
 		}
-		for _, s := range u.Stops {
-			v := i.visit(t, s)
-			if v != nil && v.Sequence == row.StopSequence && !cpScheduled(s.Relationship) {
-				return true
-			}
+		trip := cpTrip(i, u)
+		if !cpBlockingUpdate(trip, u, row, now) {
+			continue
+		}
+		if !cpScheduled(u.Trip.Relationship) || cpSuppressedVisit(i, trip, u, row.StopSequence) {
+			return true
+		}
+	}
+	return false
+}
+func cpBlockingUpdate(trip *ScheduledTrip, u cpUpdate, row api.CPPrediction, now time.Time) bool {
+	if trip == nil || qualify("cp", trip.ID) != row.SourceTripId {
+		return false
+	}
+	at := time.Unix(u.Timestamp, 0)
+	if !cpCurrent(at, now) || at.Before(row.SourceUpdatedAt) {
+		return false
+	}
+	return u.Trip.Date == "" || row.ServiceDate == nil || u.Trip.Date == row.ServiceDate.Format("20060102")
+}
+func cpSuppressedVisit(i *cpIndex, trip *ScheduledTrip, u cpUpdate, sequence int) bool {
+	for _, stop := range u.Stops {
+		if i.Context.Err() != nil {
+			return true
+		}
+		visit := i.visit(trip, stop)
+		if visit != nil && visit.Sequence == sequence && !cpScheduled(stop.Relationship) {
+			return true
 		}
 	}
 	return false

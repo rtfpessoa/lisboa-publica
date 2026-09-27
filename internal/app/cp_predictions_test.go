@@ -3,7 +3,10 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -45,7 +48,7 @@ func TestCPDelayOnlyUsesExactMappingCalendarAndOriginalClock(t *testing.T) {
 	d, now := cpTestData()
 	old := cpTestUpdate(now, 200, true)
 	fresh := cpTestUpdate(now, 2, false)
-	result, err := normalizeCP(cpTestFeed(now, old, fresh), d, now)
+	result, err := normalizeCP(context.Background(), cpTestFeed(now, old, fresh), d, now)
 	if err != nil || len(result.Rows) != 1 {
 		t.Fatalf("safe prediction missing: %v %+v", err, result)
 	}
@@ -108,7 +111,7 @@ func TestCPUnprovableAndConflictingAssociationsFailClosed(t *testing.T) {
 				fresh.Timestamp = now.Add(-90 * time.Second).Unix()
 			}
 			feed.Updates[1] = fresh
-			result, err := normalizeCP(feed, d, now)
+			result, err := normalizeCP(context.Background(), feed, d, now)
 			if err != nil || len(result.Rows) != 0 {
 				t.Fatalf("unproven prediction admitted: %v %+v", err, result)
 			}
@@ -123,7 +126,7 @@ func TestCPDuplicateOrderingCancellationAndSignedDeviation(t *testing.T) {
 	newer.Stops[0].Arrival.Delay = ptr(-30)
 	newer.Stops[0].Arrival.Time = ptr(now.Add(570 * time.Second).Unix())
 	for _, rows := range [][]cpUpdate{{base, newer}, {newer, base}, {base, newer, newer}} {
-		result, err := normalizeCP(cpTestFeed(now, rows...), d, now)
+		result, err := normalizeCP(context.Background(), cpTestFeed(now, rows...), d, now)
 		if err != nil || len(result.Rows) != 1 || *result.Rows[0].DelaySeconds != -30 {
 			t.Fatal("ordering/negative deviation", err, result)
 		}
@@ -132,7 +135,7 @@ func TestCPDuplicateOrderingCancellationAndSignedDeviation(t *testing.T) {
 	conflict.Stops = append([]cpStopUpdate(nil), newer.Stops...)
 	conflict.Stops[0].Arrival.Delay = ptr(0)
 	conflict.Stops[0].Arrival.Time = ptr(now.Add(600 * time.Second).Unix())
-	result, err := normalizeCP(cpTestFeed(now, newer, conflict), d, now)
+	result, err := normalizeCP(context.Background(), cpTestFeed(now, newer, conflict), d, now)
 	if err != nil || len(result.Rows) != 0 {
 		t.Fatal("equal-time conflict admitted")
 	}
@@ -144,7 +147,7 @@ func TestCPDuplicateOrderingCancellationAndSignedDeviation(t *testing.T) {
 		} else {
 			block.Stops[0].Relationship = relationship
 		}
-		result, err = normalizeCP(cpTestFeed(now, newer, block), d, now)
+		result, err = normalizeCP(context.Background(), cpTestFeed(now, newer, block), d, now)
 		if err != nil || len(result.Rows) != 0 {
 			t.Fatal("cancelled/skipped call resurrected", relationship)
 		}
@@ -170,7 +173,7 @@ func TestCPOfficialSanitizedMixedFeedAdmitsOrienteWithoutCredentials(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := normalizeCP(feed, data, now)
+	result, err := normalizeCP(context.Background(), feed, data, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +214,7 @@ func TestCPFeedSemanticsAndResourceBounds(t *testing.T) {
 		u.Trip.ID = "[plan][N18KL]" + trip.ID
 		feed.Updates = append(feed.Updates, u)
 	}
-	if _, err := normalizeCP(feed, d, now); err == nil {
+	if _, err := normalizeCP(context.Background(), feed, d, now); err == nil {
 		t.Fatal("service overflow")
 	}
 }
@@ -228,7 +231,7 @@ func TestCPContradictoryChronologyAndDescriptorClock(t *testing.T) {
 		if reverse {
 			u.Stops[0], u.Stops[1] = u.Stops[1], u.Stops[0]
 		}
-		got, err := normalizeCP(cpTestFeed(now, u), d, now)
+		got, err := normalizeCP(context.Background(), cpTestFeed(now, u), d, now)
 		if err != nil || len(got.Rows) != 0 {
 			t.Fatalf("contradictory calls admitted reverse=%v: %v %+v", reverse, err, got)
 		}
@@ -239,7 +242,7 @@ func TestCPContradictoryChronologyAndDescriptorClock(t *testing.T) {
 		d.CPHasFrequencies = frequencies
 		u := cpTestUpdate(now, 2, true)
 		u.Trip.StartTime = "99:99:99"
-		got, err := normalizeCP(cpTestFeed(now, u), d, now)
+		got, err := normalizeCP(context.Background(), cpTestFeed(now, u), d, now)
 		if err != nil || len(got.Rows) != 0 {
 			t.Fatalf("malformed start time admitted: %v %+v", err, got)
 		}
@@ -268,5 +271,61 @@ func TestCPDecoderRejectsAmplificationAndCancellation(t *testing.T) {
 	}
 	if _, err = decodeCPFeedContext(ctx, blob); err == nil {
 		t.Fatal("cancelled decode admitted")
+	}
+}
+
+// Cancel a real context while normalization is running, without timing-sensitive sleeps.
+type cpCancelChecks struct {
+	context.Context
+	cancel    context.CancelFunc
+	remaining int
+}
+
+func (c *cpCancelChecks) Err() error {
+	c.remaining--
+	if c.remaining <= 0 {
+		c.cancel()
+	}
+	return c.Context.Err()
+}
+func TestCPNormalizationCancellation(t *testing.T) {
+	for _, checks := range []int{1, 12, 1200, 2500} {
+		t.Run(fmt.Sprint(checks), func(t *testing.T) {
+			data, now := cpTestData()
+			update := cpTestUpdate(now, 2, true)
+			updates := make([]cpUpdate, 512)
+			for n := range updates {
+				updates[n] = update
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			controlled := &cpCancelChecks{Context: ctx, cancel: cancel, remaining: checks}
+			started := time.Now()
+			_, err := normalizeCP(controlled, cpTestFeed(now, updates...), data, now)
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("normalization ignored cancellation: %v", err)
+			}
+			if time.Since(started) > time.Second {
+				t.Fatal("cancellation did not return promptly")
+			}
+		})
+	}
+}
+
+func TestCPCanceledNormalizationKeepsFallbackClocks(t *testing.T) {
+	data, now := cpTestData()
+	previous, err := normalizeCP(context.Background(), cpTestFeed(now, cpTestUpdate(now, 2, true)), data, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err = normalizeCP(ctx, cpTestFeed(now, cpTestUpdate(now, 1, true)), data, now.Add(time.Second))
+	if err == nil {
+		t.Fatal("cancellation ignored")
+	}
+	fallback := failedCP(previous, data.PlanID, now.Add(time.Second))
+	if !reflect.DeepEqual(previous.Rows, fallback.Rows) {
+		t.Fatal("failed normalization renewed source clocks")
 	}
 }
