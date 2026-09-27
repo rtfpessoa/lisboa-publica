@@ -86,7 +86,7 @@ func churnVehicles(p provider, tick int, now time.Time) []api.Vehicle {
 	rows := make([]api.Vehicle, sourceRows)
 	for i := range rows {
 		id := stringID(uint64(tick*sourceRows + i))
-		rows[i] = api.Vehicle{Id: qualify(p.ID, id), SourceId: id, OperatorId: p.ID, ObservedAt: now, CollectedAt: now, PositionKind: api.VehiclePositionKindReported, Lat: 38.72, Lon: -9.15, CurrentStatus: ptr(api.STOPPEDAT), SourceStopId: ptr("published-stop"), StopId: ptr(qualify(p.ID, "published-stop")), StopName: ptr("Published terminal"), OperationalDate: ptr("2026-09-26"), Model: ptr("Published model"), LicensePlate: ptr("Sample plate"), SourceUrl: hubBase}
+		rows[i] = api.Vehicle{Id: qualify(p.ID, id), SourceId: id, OperatorId: p.ID, ObservedAt: now, CollectedAt: now, PositionKind: api.VehiclePositionKindReported, Lat: 38.72, Lon: -9.15, CurrentStatus: ptr(api.STOPPEDAT), SourceStopId: ptr("published-stop"), StopId: ptr(qualify(p.ID, "published-stop")), StopName: ptr("Published terminal"), OperationalDate: ptr("2026-09-26"), Model: ptr("Published model"), LicensePlate: ptr("Sample plate"), SeatedCapacity: ptr(42), TotalCapacity: ptr(80), WheelchairAccessible: ptr(true), Contactless: ptr(false), SourceUrl: hubBase}
 		if p.ID == "cp" {
 			rows[i].ScheduledService = &api.ScheduledEndpoints{OriginSourceStopId: "outside-origin", OriginName: "Published origin outside Lisbon", DestinationSourceStopId: "outside-destination", DestinationName: "Published destination outside Lisbon", SourceUrl: hubBase, ServiceDate: "2026-09-26"}
 		}

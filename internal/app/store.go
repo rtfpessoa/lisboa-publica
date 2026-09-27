@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS snapshots (
  PRIMARY KEY(operator_id,vehicle_id,observed_at));
 ALTER TABLE snapshots ADD COLUMN IF NOT EXISTS first_observed_at TIMESTAMPTZ;
 ALTER TABLE snapshots ADD COLUMN IF NOT EXISTS speed_sample_count INT NOT NULL DEFAULT 1;
+ALTER TABLE snapshots ADD COLUMN IF NOT EXISTS payload_archive BYTEA;
 CREATE INDEX IF NOT EXISTS snapshots_time ON snapshots(observed_at,operator_id,generation);
 CREATE INDEX IF NOT EXISTS snapshots_route ON snapshots(route_id,observed_at);
 CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, email TEXT NOT NULL, name TEXT NOT NULL, auth_kind TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL);
@@ -46,6 +47,7 @@ type Store struct {
 	writeMu         sync.Mutex
 	historyMu       sync.Mutex
 	collector       *historyCollector
+	archiveCursor   *snapshotArchiveKey
 	budget          *storageBudget
 	PublishMu       sync.Mutex
 }

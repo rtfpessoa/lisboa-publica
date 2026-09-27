@@ -127,6 +127,9 @@ func (f *Fetcher) Run(ctx context.Context) {
 				if e := f.Store.prune(ctx); e != nil {
 					f.Log.Warn("retention cleanup failed", zap.Error(e))
 				}
+				if e := f.Store.compactSnapshots(ctx); e != nil {
+					f.Log.Warn("optional snapshot compaction skipped")
+				}
 			}
 		}
 	}()
