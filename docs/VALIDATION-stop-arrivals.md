@@ -36,3 +36,5 @@ As fixtures TML conservam os IDs oficiais e a proveniência da captura. Os teste
 A recolha CM, tradução/visitas TML, prova da data, seleção imutável, associação ao veículo e composição HTTP foram separadas por responsabilidade. O transporte, ciclos de recolha e ligação das viagens GTFS têm módulos próprios; limites de retenção e aquisição têm nomes explícitos. Nenhum cap, relógio, workload ou threshold foi relaxado.
 
 Após a extração, a bateria completa PostgreSQL com race detector passou novamente; vet, build e geração determinística também passaram. O ensaio de redes completas foi repetido com a mesma carga. [Race após Maat](research/stop-arrivals/validation/post-maat-race.txt) e [recursos após Maat](research/stop-arrivals/validation/post-maat-resource.txt).
+
+O commit final passa o gate normal Maat no âmbito Go da aplicação: **87/delta0**, zero regressões críticas e zero supressões. TypeScript é validado separadamente; não se afirma cumprimento do threshold absoluto95. [Veredito do hook](research/stop-arrivals/validation/maat.json). O novo pico do ensaio é **1002,09 MiB**, inferior a1024MiB.
