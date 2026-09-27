@@ -1,0 +1,107 @@
+{
+  "site_status": 200,
+  "html_matches_local_build": true,
+  "served_assets_match": true,
+  "health": {
+    "database": "ok",
+    "status": "ok"
+  },
+  "config": {
+    "dev_auth": false,
+    "history_retention_days": 30,
+    "history_storage_limit_bytes": 5000000000,
+    "history_collection_status": "collecting",
+    "live_refresh_seconds": 5
+  },
+  "operators": [
+    {
+      "id": "carris",
+      "status": "ok",
+      "static_status": "ok",
+      "reported_positions": 233,
+      "estimated_positions": 0,
+      "last_known_positions": 36,
+      "static_updated_at": "2026-09-27T15:17:52.418285513Z"
+    },
+    {
+      "id": "cm",
+      "status": "ok",
+      "static_status": "ok",
+      "reported_positions": 386,
+      "estimated_positions": 0,
+      "last_known_positions": 157,
+      "static_updated_at": "2026-09-27T15:51:16.776383362Z"
+    },
+    {
+      "id": "tcb",
+      "status": "ok",
+      "static_status": "ok",
+      "reported_positions": 11,
+      "estimated_positions": 0,
+      "last_known_positions": 4,
+      "static_updated_at": "2026-09-27T15:18:46.509574576Z"
+    },
+    {
+      "id": "mobi",
+      "status": "ok",
+      "static_status": "ok",
+      "reported_positions": 34,
+      "estimated_positions": 0,
+      "last_known_positions": 13,
+      "static_updated_at": "2026-09-27T15:18:48.386635212Z"
+    },
+    {
+      "id": "metro",
+      "status": "ok",
+      "static_status": "ok",
+      "reported_positions": 0,
+      "estimated_positions": 26,
+      "last_known_positions": 2,
+      "static_updated_at": "2026-09-27T12:41:08.28977224Z"
+    },
+    {
+      "id": "cp",
+      "status": "ok",
+      "static_status": "ok",
+      "reported_positions": 0,
+      "estimated_positions": 0,
+      "last_known_positions": 0,
+      "static_updated_at": "2026-09-27T15:18:50.794484328Z"
+    },
+    {
+      "id": "ttsl",
+      "status": "ok",
+      "static_status": "ok",
+      "reported_positions": 2,
+      "estimated_positions": 0,
+      "last_known_positions": 5,
+      "static_updated_at": "2026-09-27T15:18:52.851151969Z"
+    },
+    {
+      "id": "fertagus",
+      "status": "ok",
+      "static_status": "ok",
+      "reported_positions": 7,
+      "estimated_positions": 0,
+      "last_known_positions": 6,
+      "static_updated_at": "2026-09-27T15:18:53.167285567Z"
+    }
+  ],
+  "cm_vehicle_count": 543,
+  "cm_patterns_present": 3,
+  "cm_calls": {
+    "status": 200,
+    "coverage": "complete_published_route",
+    "availability": "available",
+    "rows": 20,
+    "total": 77,
+    "geometry_present": true,
+    "progress": "unknown",
+    "invented_times": false
+  },
+  "cm_second_page": {
+    "rows": 20,
+    "same_revision": true,
+    "geometry_absent": true
+  }
+}

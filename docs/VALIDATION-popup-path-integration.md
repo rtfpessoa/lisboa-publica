@@ -31,3 +31,13 @@ The first final reviewer found no runtime/merge/safety/resource blocker, but req
 ## Final local acceptance
 
 The separate fresh quasar-alpha/xhigh final reviewer recommends local acceptance without blockers after the documentation correction. Main confirms preservation of both feature sets and all required gates. [Final review](research/popup-path-integration/final-review.md). Seven affected canonical documents have no missing local file links; both Git whitespace checks pass. Production acceptance will follow the actual rollout checks.
+
+## Production acceptance
+
+Main deployed `f3ca17c5704c1724d7f5e471a80554cc5c58647d` after normal Maat commit gates and a fast-forward push preserving `e99acd3`. A Linux/ARM64 executable compiled from that committed source and matching frontend assets were packaged off-host. The initial BuildKit attempt treated an image ID as a remote repository and failed before changing the service; main tagged the same verified local runtime and retried successfully.
+
+The existing Compose dashboard is healthy. [Deployment evidence](research/popup-path-integration/production/deployment.json) confirms artifact hashes, identical container environment/isolation/limits, protected rollback backups and eight other containers unchanged. Existing Caddy and external Cockroach configuration remain in use; rollback runtime image is retained. A normal-production memory sample was 719.2 MiB of the 1280 MiB cap.
+
+[Public checks](research/popup-path-integration/production/public-checks.json): HTTPS root and compiled assets match the local build, health/database are OK, all eight source states reported OK at the sample time, and the legacy CM cache updated through the normal collector. A real CM example returned 77 complete published visits, 20 per page, exact geometry on opted-in page zero, the same revision on page two, no geometry on page two, unknown progress and no invented times. Source clocks and missing data remain explicit; an OK source does not imply nonempty reports (CP was empty at this observation). Configuration reports 30-day retention, 5,000,000,000-byte history limit and collection active.
+
+[Browser smoke](research/popup-path-integration/production/browser-smoke.json): real production desktop/mobile UI defaults to Metro, opens a searched station and closes its details, with no page JavaScript errors. External map tiles were deliberately blocked in this limited smoke; production tile rendering is not claimed by it. Real MapLibre geometry/collision/gesture behavior was covered by the 87 controlled local checks. No authenticated account journey or load test was run. Main confirms production acceptance for this release.
