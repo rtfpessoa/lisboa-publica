@@ -78,8 +78,8 @@ func TestPopupContractAcrossOperators(t *testing.T) {
 			}
 			journey := popupGET[api.VehicleJourney](t, s, "/api/v1/vehicles/"+url.PathEscape(p.ID+":v")+"/journey")
 			if p.ID == "metro" {
-				if journey.Association != "unresolved" || len(journey.Data) != 0 {
-					t.Fatal("guessed Metro journey exposed")
+				if journey.Association != "published_route" || journey.JourneyId != nil || len(journey.Data) != 3 || journey.Data[0].Arrival.Kind != "unavailable" || journey.Data[0].Departure.Kind != "unavailable" {
+					t.Fatal("Metro published route missing or gained timed journey evidence")
 				}
 				return
 			}

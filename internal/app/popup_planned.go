@@ -38,6 +38,7 @@ func (p plannedPopupJourney) call(v StopTime) api.StopCall {
 			copy := stop
 			call.Stop = &copy
 			call.StopStaticUpdatedAt = &d.Updated
+			call.StopPlanId = optional(d.PlanID)
 			break
 		}
 	}

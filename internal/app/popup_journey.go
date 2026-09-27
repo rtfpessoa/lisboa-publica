@@ -42,7 +42,9 @@ func (s *Server) GetVehicleJourney(ctx context.Context, r api.GetVehicleJourneyR
 		return nil, err
 	}
 	read.identify()
-	if read.trip != nil {
+	if read.result.Association == "published_route" {
+		err = read.readMetroRoutePage()
+	} else if read.trip != nil {
 		err = read.readPage()
 	}
 	return api.GetVehicleJourney200JSONResponse(read.result), err
@@ -86,6 +88,10 @@ func (r *journeyPopupRead) initialResult() {
 	r.result.Page, _ = paginate(r.result.Data, r.filter, r.revision)
 }
 func (r *journeyPopupRead) identify() {
+	if r.operator == "metro" {
+		r.identifyMetroRoute()
+		return
+	}
 	if r.data == nil || r.data.Schedule == nil || r.vehicle.TripId == nil {
 		return
 	}

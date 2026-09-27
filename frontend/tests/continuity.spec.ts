@@ -40,7 +40,7 @@ test('selected CP warns at five minutes and expires at ten even without new data
  const markerState=()=>page.evaluate(()=>(window as unknown as {vehicleFeatures:{properties:{icon:string,old:boolean}}[]}).vehicleFeatures.map(f=>({icon:f.properties.icon,old:f.properties.old})));
  await expect.poll(markerState).toEqual([{icon:'cp',old:false}]);
  await expect(page.locator('.detail-panel')).toContainText('Última atualização do veículo');
- await expect(page.locator('.detail-panel')).toContainText('Recebido pela aplicação');
+ await expect(page.locator('.detail-panel')).not.toContainText('Recebido pela aplicação');
  await expect(page.locator('.popup-footnotes')).not.toContainText('Sem atualização há pelo menos 5 minutos');
  await page.clock.runFor(2000);
  await expect.poll(markerState).toEqual([{icon:'cp-old',old:true}]);

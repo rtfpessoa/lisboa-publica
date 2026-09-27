@@ -174,6 +174,8 @@ CM paths share one validated stop sequence per published pattern and reference e
 
 The complete timed journey appears only with a safe plan/route/trip/date association. The existing CM published-pattern path and next-stop fallback remain separately available when a timed journey cannot be identified. UI polling does not change the provenance, observation clock or highlighted path.
 
+The same journey endpoint can expose a Metro published route with an explicitly separate association, null journey identity and unavailable individual stop times. Matching uses the existing immutable static index plus the captured route/trip or a fresh direct destination; it neither fetches upstream data nor reads stop events. It reuses the frozen journey revision and read-result limits. The route-only projection is response data, not a new durable vehicle state, observation or retained historical journey.
+
 The popup schedule retains a single visit sequence when the local and complete journeys coincide.
 Cache restoration streams individual trips and interns stop identities,
 so decoding does not buffer the whole expanded timetable.

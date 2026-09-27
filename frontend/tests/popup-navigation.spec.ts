@@ -10,7 +10,7 @@ async function fixture(page:Page,operator='cp',mode='train',count=1){
  const next={...stop,id:`${operator}:next`,source_id:'next',name:'Alcântara',lat:38.751,lon:-9.165};
  const v={id:reference.vehicle_id,source_id:'public-unit',operator_id:operator,plan_id:'plan',trip_id:`${operator}:trip`,operational_date:day,route_name:operator==='cp'?'IC':operator==='metro'?'Vm':'100',service_label:'18456',vehicle_ref:reference,position_kind:operator==='metro'?'estimated':'reported',current_status:'STOPPED_AT',stop_id:stop.id,stop_name:stop.name,lat:stop.lat,lon:stop.lon,observed_at:iso(epoch-360000),collected_at:iso(epoch),last_known:true,stale:true,source_url:'https://go.tmlmobilidade.pt/',speed_kmh:null,seated_capacity:0,contactless:false};
  const paged=(data:unknown[])=>({data,page:{limit:500,offset:0,total:data.length,has_more:false,revision:'fixture'}});
- let failure=false,delay=false,serviceChanged=false,stationFailure=false,networkChanged=false,noPlan=false;const requests:{path:string,query:URLSearchParams}[]=[];
+ let failure=false,delay=false,serviceChanged=false,stationFailure=false,networkChanged=false,noPlan=false,publishedRoute=false;const requests:{path:string,query:URLSearchParams}[]=[];
  await page.addInitScript(()=>{const original=Worker.prototype.postMessage;(window as any).features={};Worker.prototype.postMessage=function(message,...args){if(message?.data?.data?.features)(window as any).features[message.data.source]=message.data.data.features;return Reflect.apply(original,this,[message,...args])}});
  await page.route('https://tiles.openfreemap.org/styles/positron',r=>r.fulfill({json:{version:8,sources:{},layers:[{id:'background',type:'background',paint:{'background-color':'#fff'}}]}}));
  await page.route('**/api/v1/**',async r=>{
@@ -24,7 +24,8 @@ async function fixture(page:Page,operator='cp',mode='train',count=1){
   const coverage={status:'partial',message:'Percurso completo por confirmar.',actual_arrivals:false,actual_departures:false,history_collection_status:'collecting',source_updated_at:iso(epoch)};
   if(path.endsWith('/board'))data={stop_id:stop.id,revision:'fixture',directions:[{line_key:`${operator}:route`,line_name:v.route_name,direction_key:'destination',label:'Lisboa Oriente',count:1}],coverage};
   if(path.endsWith('/board/calls'))data={...paged([{id:'arrival',operator_id:operator,stop_id:stop.id,stop_name:stop.name,stop_sequence:1,phase:'future',destination:'Lisboa Oriente',service_label:'18456',vehicle_ref:reference,arrival:{kind:'schedule',actual:null,prediction:null,schedule:{at:iso(epoch+600000),source_url:v.source_url,source_updated_at:iso(epoch),collected_at:iso(epoch)}},departure:{kind:'unavailable',actual:null,prediction:null,schedule:null}}]),coverage};
-  if(path.endsWith('/journey'))data={association:'unresolved',message:'',progress:'unknown',next_index:null,complete:false,...paged([]),coverage};
+  if(path.endsWith('/journey'))data={association:'unresolved',message:'Sem associação segura à viagem; percurso e tempos indisponíveis.',progress:'unknown',next_index:null,complete:false,...paged([]),coverage};
+  if(path.endsWith('/journey')&&publishedRoute)data={association:'published_route',message:'',journey_id:null,direction:'Alcântara',destination:'Alcântara',progress:'estimated',next_index:1,complete:true,...paged([stop,next].map((s,i)=>({id:'route:'+i,stop_id:s.id,stop_name:s.name,stop:s,stop_static_updated_at:iso(epoch),stop_plan_id:'plan',stop_sequence:i+1,line_key:'metro:line:vermelha',phase:i?'future':'previous',arrival:{kind:'unavailable',reason:'Chegada não publicada para este comboio'},departure:{kind:'unavailable',reason:'Partida não publicada para este comboio'}}))),coverage:{...coverage,message:'Percurso publicado para a linha e sentido; tempos deste comboio indisponíveis.'}};
   if(path.endsWith('/cp/predictions'))data={...paged([]),availability:{status:'ok',message:'Sem previsões verificadas'}};
   if(path.includes('/vehicles/')&&path.endsWith('/calls')){
    if(delay)await new Promise(resolve=>setTimeout(resolve,800));
@@ -33,10 +34,33 @@ async function fixture(page:Page,operator='cp',mode='train',count=1){
   }
   await r.fulfill({json:data}).catch(()=>{});
  });
- return {v,stop,next,requests,fail:()=>failure=true,delay:()=>delay=true,changeService:()=>serviceChanged=true,noPlan:()=>{noPlan=true;Object.assign(v,{plan_id:undefined,operational_date:undefined})},replaceNetwork:()=>networkChanged=true,stationFail:()=>stationFailure=true,current:(status=true)=>Object.assign(v,{observed_at:iso(epoch),last_known:false,stale:false,current_status:status?'STOPPED_AT':null}),move:()=>Object.assign(v,{observed_at:iso(epoch+6000),stop_id:next.id,stop_name:next.name,last_known:false,stale:false,vehicle_ref:{...reference,reference:'updated-observation'}})};
+ return {v,stop,next,requests,publishedRoute:()=>publishedRoute=true,fail:()=>failure=true,delay:()=>delay=true,changeService:()=>serviceChanged=true,noPlan:()=>{noPlan=true;Object.assign(v,{plan_id:undefined,operational_date:undefined})},replaceNetwork:()=>networkChanged=true,stationFail:()=>stationFailure=true,current:(status=true)=>Object.assign(v,{observed_at:iso(epoch),last_known:false,stale:false,current_status:status?'STOPPED_AT':null}),move:()=>Object.assign(v,{observed_at:iso(epoch+6000),stop_id:next.id,stop_name:next.name,last_known:false,stale:false,vehicle_ref:{...reference,reference:'updated-observation'}})};
 }
 async function chooseStation(page:Page){await page.getByLabel('Pesquisar carreira ou paragem').fill('Oriente');await page.locator('.search-results button').last().click()}
 async function selectProvider(page:Page,operator:string){if(operator==='metro')return;if(operator==='cm')await page.getByRole('button',{name:'Carris Metropolitana',exact:true}).click();else if(operator==='carris')await page.locator('.main-operator').first().click();else await page.getByRole('button',{name:operator==='cp'?'CP':'TTSL',exact:true}).click();await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click()}
+
+for(const operator of ['metro','cp'])test(`${operator} shows an association warning only when journey matching is supported`,async({page})=>{
+ await fixture(page,operator,operator==='metro'?'metro':'train');await page.goto('/');await selectProvider(page,operator);await chooseStation(page);await page.locator('.station-vehicles button').first().click();
+ await expect(page.locator('.vehicle-journey')).toContainText('Percurso completo por confirmar.');
+ const warning=page.locator('.vehicle-journey').getByText('Sem associação segura à viagem; percurso e tempos indisponíveis.',{exact:true});
+ await expect(warning).toHaveCount(operator==='metro'?0:1);
+});
+for(const delay of [0,1000,120000])test(`vehicle timestamp presentation preserves meaningful receipt differences (${delay}ms)`,async({page})=>{
+ const f=await fixture(page,'metro','metro');
+ const observed=Date.now()-60000;const stamp=Math.floor(observed/60000)*60000+10000;
+ f.v.observed_at=new Date(stamp).toISOString();f.v.collected_at=new Date(stamp+delay).toISOString();
+ await page.clock.install({time:new Date(stamp+delay+10000)});await page.goto('/');await chooseStation(page);await page.locator('.station-vehicles button').first().click();
+ const panel=page.locator('.detail-panel');await expect(panel.locator('.vehicle-update-age')).toContainText('Última atualização do veículo');
+ await expect(panel.getByText(/^Recebido pela aplicação:/)).toHaveCount(delay>=120000?1:0);
+ await expect(panel.locator('.vehicle-update-age time')).toHaveAttribute('datetime',f.v.observed_at);
+ if(delay>=120000)await expect(panel.getByText(/^Recebido pela aplicação:/).locator('time')).toHaveAttribute('datetime',f.v.collected_at);
+});
+test('Metro published route shows ordered stops without train times and preserves navigation',async({page})=>{
+ const f=await fixture(page,'metro','metro');f.current();f.publishedRoute();await page.goto('/');await chooseStation(page);await page.locator('.station-vehicles button').first().click();
+ const route=page.locator('.vehicle-journey');await expect(route.locator('h4')).toContainText('Percurso da linha');await expect(route).toContainText('ligação estimada ao comboio');await expect(route).toContainText('Progresso estimado');
+ await expect(route.locator('.journey-timeline .stop-link')).toHaveText(['Lisboa Oriente','Alcântara']);await expect(route.locator('time,.call-head,.call-missing')).toHaveCount(0);await expect(page.locator('.vehicle-calls')).toHaveCount(0);await expect(page.locator('.detail-panel')).not.toContainText('Sem associação segura');
+ await route.getByRole('button',{name:'Alcântara',exact:true}).click();await expect(page.locator('.detail-panel h3')).toContainText('Alcântara');
+});
 
 for(const [operator,mode] of [['cp','train'],['metro','metro'],['ttsl','ferry'],['carris','bus']])test(`${mode} station to vehicle to next stop uses frozen references`,async({page})=>{
  const f=await fixture(page,operator,mode);await page.goto('/');await selectProvider(page,operator);await chooseStation(page);

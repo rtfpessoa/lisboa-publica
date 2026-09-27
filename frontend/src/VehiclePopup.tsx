@@ -47,13 +47,14 @@ export default function VehiclePopup({vehicle:v,mode,operatorName,now,onClose,on
  useEffect(()=>{if(predictionsExpired&&offset===0)reload()},[predictionsExpired,v.vehicle_ref?.reference]);
  const previous=v.last_known||v.stale||now-Date.parse(v.observed_at)>180000;
  const expired=now>=positionDeadline(v);
+ const observedTime=observationTime(v.observed_at,now),collectedTime=observationTime(v.collected_at,now);
  const warnings:string[]=[];
  if(previous)warnings.push('A aguardar atualização; mostramos o último registo conhecido.');
  if(observationAge(v.observed_at,now)==='hora não confirmada')warnings.push('A hora da observação não pôde ser confirmada.');
  if(expired)warnings.push('Sinal expirado. Esta observação deixou de estar disponível no mapa.');
  if(positionIsOld(v,now)&&!expired)warnings.push(`Sem atualização há pelo menos 5 minutos · ${observationAge(v.observed_at,now)}.`);
  if(v.position_kind==='estimated'&&v.operator_id!=='metro')warnings.push('A posição é estimada pela fonte; não representa uma observação GPS. A velocidade amostral não é suportada para estas posições.');
- if(calls.data&&notices[calls.data.availability])warnings.push(notices[calls.data.availability]);
+ if(calls.data&&notices[calls.data.availability]&&!(v.operator_id==='metro'&&calls.data.availability==='unidentified_service'))warnings.push(notices[calls.data.availability]);
  if(v.operator_id==='cp'&&calls.data?.availability==='available'&&!calls.data.data.some(row=>row.kind==='predicted'))warnings.push('Sem previsões verificadas para este serviço; mostramos o horário planeado.');
  if(calls.error)warnings.push(errorText(calls.error));
  if(geometryError)warnings.push(`Percurso no mapa indisponível: ${errorText(geometryError)}`);
@@ -75,13 +76,13 @@ export default function VehiclePopup({vehicle:v,mode,operatorName,now,onClose,on
   <div className="section-head vehicle-heading"><h3><Icon size={20}/>{v.service_label?`${mode==='train'?'Comboio':'Serviço'} ${v.service_label}`:`${operatorName} · ${v.source_id}`}</h3><div>{unique.length>0&&<button className="quiet warning-jump" onClick={jump} aria-label={`Ver ${unique.length} avisos`}><AlertTriangle size={18}/><span>{unique.length}</span></button>}<button className="quiet" aria-label="Fechar detalhes" onClick={onClose}><X size={18}/></button></div></div>
   {v.position_kind==='estimated'&&v.operator_id!=='metro'&&<span className="pill estimated">Posição estimada</span>}
   {state&&<p className="vehicle-status">{state.replace('Último estado:','Último registo:')}</p>}
-  <p className="subtle vehicle-update-age">Última atualização do veículo: <time dateTime={v.observed_at} title={Number.isFinite(Date.parse(v.observed_at))?new Date(v.observed_at).toLocaleString('pt-PT',{timeZone:'Europe/Lisbon'}):'Hora não confirmada'}>{observationTime(v.observed_at,now)}</time></p>
-  <p className="subtle">Recebido pela aplicação: <time dateTime={v.collected_at}>{observationTime(v.collected_at,now)}</time></p>
+  <p className="subtle vehicle-update-age">Última atualização do veículo: <time dateTime={v.observed_at} title={Number.isFinite(Date.parse(v.observed_at))?new Date(v.observed_at).toLocaleString('pt-PT',{timeZone:'Europe/Lisbon'}):'Hora não confirmada'}>{observedTime}</time></p>
+  {collectedTime!==observedTime&&<p className="subtle">Recebido pela aplicação: <time dateTime={v.collected_at}>{collectedTime}</time></p>}
   <>
    {v.scheduled_service&&<p className="journey">{passengerName(v.operator_id,v.scheduled_service.origin_name)} → {passengerName(v.operator_id,v.scheduled_service.destination_name)} <small>Serviço planeado</small></p>}
    {fields.length>0&&<div className="detail-grid">{fields.map(([label,value])=><span key={label}>{label}<strong>{value}</strong></span>)}</div>}
    <VehicleSpecifications vehicle={v}/>
-   <JourneyPopup vehicle={v} onResolved={setJourneyResolved} onStop={onStop}/>{reference&&<section className="vehicle-calls" aria-busy={calls.isFetching||geometry.isFetching}><h4>{calls.data?.coverage==='complete_published_route'?'Percurso completo publicado':calls.data?.availability==='next_stop_only'?'Próxima paragem publicada':v.operator_id==='cm'?'Paragens publicadas':previous||frozen?'Percurso do último serviço observado':predicted?'Próximas paragens previstas':calls.data?.progress==='known'?'Próximas paragens planeadas':'Percurso planeado na área de Lisboa'}</h4>
+   <JourneyPopup vehicle={v} onResolved={setJourneyResolved} onStop={onStop}/>{reference&&!(v.operator_id==='metro'&&journeyResolved)&&<section className="vehicle-calls" aria-busy={calls.isFetching||geometry.isFetching}><h4>{calls.data?.coverage==='complete_published_route'?'Percurso completo publicado':calls.data?.availability==='next_stop_only'?'Próxima paragem publicada':v.operator_id==='cm'?'Paragens publicadas':previous||frozen?'Percurso do último serviço observado':predicted?'Próximas paragens previstas':calls.data?.progress==='known'?'Próximas paragens planeadas':'Percurso planeado na área de Lisboa'}</h4>
     {v.operator_id==='cm'&&v.pattern_id&&<label className="path-toggle"><input type="checkbox" checked={showPath} onChange={e=>onShowPath(e.target.checked)}/>Mostrar percursos de autocarro no mapa</label>}
     {frozen&&calls.data&&<p className="subtle">Paragens associadas ao registo de {observationTime(calls.data.vehicle.observed_at,now)}. <button className="quiet" onClick={reload}>Atualizar percurso</button></p>}
     {navigationBusy&&<p role="status">A abrir paragem…</p>}

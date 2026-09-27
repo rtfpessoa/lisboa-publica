@@ -512,6 +512,8 @@ export type StopCall = {
     service_label?: string | null;
     stop?: Stop;
     stop_static_updated_at?: string;
+    /** Static plan that supplied the stop, used with stop_static_updated_at to revalidate navigation. Absent when the static source has no plan identity. */
+    stop_plan_id?: string;
     vehicle_ref?: VehicleReference;
 };
 export type StopCallPage = {
@@ -520,7 +522,7 @@ export type StopCallPage = {
     coverage: PopupCoverage;
 };
 export type VehicleJourney = {
-    association: "resolved" | "unresolved" | "ambiguous";
+    association: "resolved" | "published_route" | "unresolved" | "ambiguous";
     message: string;
     journey_id: string | null;
     line_name: string;

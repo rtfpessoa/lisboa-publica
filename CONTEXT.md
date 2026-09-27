@@ -12,6 +12,8 @@ Lisbon public transport services and their observed operation.
 
 **Journey destination**: The endpoint of a particular journey. It can differ from the usual terminus for its direction.
 
+**Published route**: An ordered sequence of passenger stops for a line and direction. Associating it with a vehicle does not identify a dated journey or establish that vehicle's arrival and departure times.
+
 **Stop**: A place where passengers board or leave a service.
 
 **Stop visit**: One occurrence of a passenger stop in the ordered journey. Repeated visits to the same stop are distinct occurrences.
@@ -22,6 +24,9 @@ Lisbon public transport services and their observed operation.
 
 **Vehicle observation**: A provider report of a vehicle's location at a stated time.
 _Avoid_: Live vehicle when the report is stale
+
+**Vehicle reporting state**: The availability of up-to-date provider reporting for a vehicle. It is separate from physical movement, published stop status and whether the vehicle is in service.
+_Avoid_: Stopped vehicle solely because reporting is missing
 
 **Published stop status**: A provider's statement about a vehicle's progress relative to a passenger stop, such as approaching, standing at the stop, or travelling towards it. A statement derived from estimated operation is not physical confirmation.
 

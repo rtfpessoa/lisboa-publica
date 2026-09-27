@@ -4128,6 +4128,10 @@
             "type": "string",
             "format": "date-time"
           },
+          "stop_plan_id": {
+            "type": "string",
+            "description": "Static plan that supplied the stop, used with stop_static_updated_at to revalidate navigation. Absent when the static source has no plan identity."
+          },
           "vehicle_ref": {
             "$ref": "#/components/schemas/VehicleReference"
           }
@@ -4270,11 +4274,13 @@
       },
       "VehicleJourney": {
         "type": "object",
+        "description": "A timed journey association or a published Metro line/direction route. published_route identifies an estimated route association only: journey_id is null and individual arrival/departure times are unavailable.",
         "properties": {
           "association": {
             "type": "string",
             "enum": [
               "resolved",
+              "published_route",
               "unresolved",
               "ambiguous"
             ]
