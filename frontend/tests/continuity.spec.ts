@@ -20,7 +20,7 @@ async function continuityFixture(page:Page){
   if(u.pathname.endsWith('/metrics'))data={reported_vehicles:0,estimated_vehicles:0,speed_kmh:null,distance_km:null,detected_trips:null,first_snapshot:null,revision:'fixture',from:iso(epoch-3600000),to:iso(epoch),unavailable_fields:['trip_completion_percent','frequency_minutes'],live_coverage:'complete',unavailable_live_operators:[]} satisfies Metrics;
   if(u.pathname.endsWith('/vehicles')){
    const known=phase==='missing'||phase==='error',observed=phase==='recovery'?collected:epoch;
-   const vehicle:Vehicle={id:'cp:train',source_id:'train',operator_id:'cp',route_name:'Sintra',route_id:null,trip_id:null,lat:38.731,lon:-9.145,observed_at:iso(observed),collected_at:iso(observed),position_kind:'reported',source_url:'https://go.tmlmobilidade.pt/hub/api/v1/vehicles/positions',speed_kmh:known?null:10,bearing:null,model:'Publicado',license_plate:null,stale:known,plan_id:'plan',typology:null,propulsion:null,last_known:known,inactive_at:iso(observed+300000),last_known_expires_at:iso(observed+86400000)};
+   const vehicle:Vehicle={id:'cp:train',source_id:'train',operator_id:'cp',route_name:'Sintra',route_id:null,trip_id:null,lat:38.731,lon:-9.145,observed_at:iso(observed),collected_at:iso(observed),position_kind:'reported',source_url:'https://go.tmlmobilidade.pt/hub/api/v1/vehicles/positions',speed_kmh:known?null:10,bearing:null,model:'Publicado',license_plate:null,stale:known,plan_id:'plan',typology:null,propulsion:null,last_known:known,inactive_at:iso(observed+300000),last_known_expires_at:iso(observed+600000)};
    data=paged((u.searchParams.get('operators')??'').includes('cp')?[vehicle]:[]);
   }
   await r.fulfill({json:data});
@@ -28,27 +28,58 @@ async function continuityFixture(page:Page){
  return {epoch,operator,setPhase:(value:typeof phase,at=epoch)=>{phase=value;collected=at}};
 }
 
-test('selected CP retains one unchanged marker, truthful counts and no-update detail through gaps',async({page})=>{
+test('selected CP warns at five minutes and expires at ten even without new data',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));const fixture=await continuityFixture(page);await page.clock.install({time:new Date(fixture.epoch)});
  await page.goto('/');await page.getByRole('button',{name:'CP',exact:true}).click();await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click();
  const count=()=>page.evaluate(()=>(window as unknown as {vehicleFeatures:unknown[]}).vehicleFeatures.length);
  await expect.poll(count).toBe(1);await expect(page.locator('.live-metrics .metric').first()).toContainText('1');
  fixture.setPhase('missing');await page.clock.fastForward(6000);await expect(page.locator('.live-metrics')).toContainText('1 no mapa · 0 atualizados · 1 a aguardar sinal');await expect(page.locator('.live-metrics .metric').first()).toContainText('0');await expect.poll(count).toBe(1);
  const map=page.locator('.map canvas');await expect(map).toBeVisible();const box=await map.boundingBox();await page.mouse.click(box!.x+box!.width/2,box!.y+box!.height/2);await expect(page.locator('.detail-panel')).toContainText('Última posição conhecida');await expect(page.locator('.detail-panel')).toContainText('Publicado');
- fixture.setPhase('error');await page.clock.fastForward(300000);await expect(page.locator('.detail-panel')).toContainText('A aguardar atualização');await expect(page.locator('.live-metrics .metric').first()).toContainText('—');await expect(page.getByRole('button',{name:'CP',exact:true})).toHaveAttribute('aria-pressed','true');
- await expect(page.locator('.detail-panel')).not.toContainText('Posição antiga');
- await page.getByRole('button',{name:'Fechar detalhes'}).click();
- const clip={x:box!.x+box!.width/2-20,y:box!.y+box!.height/2-20,width:40,height:40};
- const mapBefore=await page.screenshot({clip});
- const iconsBefore=await page.evaluate(()=>(window as unknown as {vehicleFeatures:{properties:{icon:string}}[]}).vehicleFeatures.map(f=>f.properties.icon));
- await page.clock.fastForward(300000);await expect.poll(count).toBe(1);
- expect((await page.screenshot({clip})).equals(mapBefore)).toBe(true);
- expect(await page.evaluate(()=>(window as unknown as {vehicleFeatures:{properties:{icon:string}}[]}).vehicleFeatures.map(f=>f.properties.icon))).toEqual(iconsBefore);
- await page.mouse.click(box!.x+box!.width/2,box!.y+box!.height/2);await expect(page.locator('.detail-panel')).toContainText('Posição antiga');
- await page.clock.setSystemTime(fixture.epoch+86400000);await page.clock.fastForward(5000);await expect.poll(count).toBe(0);await expect(page.locator('.detail-panel')).toContainText('Sinal expirado');await expect(page.locator('.detail-panel')).toContainText('Publicado');
- fixture.setPhase('recovery',fixture.epoch+86410000);await page.clock.fastForward(10000);await expect.poll(count).toBe(1);await expect(page.locator('.detail-panel')).not.toContainText('Sinal expirado');expect(errors).toEqual([]);
+ await page.clock.pauseAt(new Date(fixture.epoch+60000));
+ fixture.setPhase('error');await page.clock.setSystemTime(fixture.epoch+298000);await page.clock.runFor(1000);
+ const markerState=()=>page.evaluate(()=>(window as unknown as {vehicleFeatures:{properties:{icon:string,old:boolean}}[]}).vehicleFeatures.map(f=>({icon:f.properties.icon,old:f.properties.old})));
+ await expect.poll(markerState).toEqual([{icon:'cp',old:false}]);
+ await expect(page.locator('.detail-panel')).toContainText('Última atualização do veículo');
+ await expect(page.locator('.detail-panel')).toContainText('Recebido pela aplicação');
+ await expect(page.locator('.popup-footnotes')).not.toContainText('Sem atualização há pelo menos 5 minutos');
+ await page.clock.runFor(2000);
+ await expect.poll(markerState).toEqual([{icon:'cp-old',old:true}]);
+ await expect(page.locator('.popup-footnotes')).toContainText('Sem atualização há pelo menos 5 minutos');
+ await expect(page.locator('.vehicle-update-age')).toContainText('há 5 min');
+ await expect(page.locator('.live-metrics .metric').first()).toContainText('—');
+ await page.route('**/api/v1/vehicles?**',r=>r.abort());
+ await page.clock.setSystemTime(fixture.epoch+599000);await page.clock.fastForward(1);await expect.poll(count).toBe(1);
+ await page.clock.runFor(2000);await expect.poll(count).toBe(0);
+ await expect(page.locator('.detail-panel')).toContainText('Sinal expirado');await expect(page.locator('.detail-panel')).toContainText('Publicado');
+ await page.unroute('**/api/v1/vehicles?**');fixture.setPhase('recovery',fixture.epoch+602000);await page.clock.runFor(15000);
+ await expect.poll(count).toBe(1);await expect(page.locator('.detail-panel')).not.toContainText('Sinal expirado');
+ await expect.poll(markerState).toEqual([{icon:'cp',old:false}]);expect(errors).toEqual([]);
 });
 
+
+test('all eight operators age their markers and expire offline',async({page})=>{
+ const fixture=await continuityFixture(page),iso=(n:number)=>new Date(n).toISOString();
+ const modes:Record<string,Operator['mode']>={carris:'bus',cm:'bus',tcb:'bus',mobi:'bus',metro:'metro',cp:'train',ttsl:'ferry',fertagus:'train'};
+ const paged=(data:unknown[])=>({data,page:{limit:500,offset:0,total:data.length,has_more:false,revision:'fixture'}});
+ await page.route('**/api/v1/operators?**',r=>r.fulfill({json:paged(Object.entries(modes).map(([id,mode])=>({...fixture.operator(id),id,mode,reported_positions:id==='metro'?0:1,estimated_positions:id==='metro'?1:0})))}));
+ await page.route('**/api/v1/vehicles?**',r=>{
+  const selected=(new URL(r.request().url()).searchParams.get('operators')??'').split(',');
+  return r.fulfill({json:paged(Object.keys(modes).filter(id=>selected.includes(id)).map((id,i)=>({id:id+':v',source_id:'v',operator_id:id,route_name:'Published line',position_kind:id==='metro'?'estimated':'reported',lat:38.731,lon:-9.145+i*.0007,observed_at:iso(fixture.epoch),collected_at:iso(fixture.epoch),source_url:'https://official.example/positions',last_known:false,stale:false,inactive_at:iso(fixture.epoch+300000),last_known_expires_at:iso(fixture.epoch+86400000)})))});
+ });
+ await page.clock.install({time:new Date(fixture.epoch)});await page.goto('/');await page.getByRole('button',{name:'Todos',exact:true}).click();
+ const features=()=>page.evaluate(()=>(window as unknown as {vehicleFeatures:{properties:{icon:string,old:boolean}}[]}).vehicleFeatures);
+ await expect.poll(async()=>(await features()).length).toBe(8);
+ await page.clock.pauseAt(new Date(fixture.epoch+60000));
+ await page.route('**/api/v1/**',r=>r.abort());
+ await page.clock.setSystemTime(fixture.epoch+298000);await page.clock.runFor(1000);
+ expect((await features()).every(f=>!f.properties.old)).toBe(true);
+ await page.clock.runFor(2000);
+ await expect.poll(async()=>(await features()).map(f=>f.properties.icon).sort()).toEqual(Object.keys(modes).map(id=>id+(id==='metro'?'-estimated':'')+'-old').sort());
+ await expect(page.locator('.map')).toHaveAccessibleName(/8 veículos sem atualização/);
+ await page.clock.setSystemTime(fixture.epoch+599000);await page.clock.runFor(1);
+ expect((await features()).length).toBe(8);
+ await page.clock.runFor(2000);await expect.poll(async()=>(await features()).length).toBe(0);
+});
 
 test('healthy repeated reports keep current counts between 90 and 180 seconds',async({page})=>{
  const fixture=await continuityFixture(page);await page.clock.install({time:new Date(fixture.epoch)});await page.goto('/');await page.getByRole('button',{name:'CP',exact:true}).click();await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click();
@@ -101,12 +132,16 @@ for(const width of [1280,390])test(`full official geometry remains responsive th
  console.log(JSON.stringify({width,variants:shapes.length,points:shapes.reduce((n,s)=>n+s.geometry.length,0),first_all_geometry_ms:Math.round(elapsed),main_js_heap_bytes:heap,operator_refreshes:refresh,unchanged_network_posts:before.posts}));expect(heap).toBeLessThan(512*1024*1024);expect((await measure()).workerErrors).toBe(0);expect(errors).toEqual([]);
 });
 
-for(const operator of ['carris','cm','tcb','mobi','metro','cp','ttsl','fertagus'])test(`${operator} age detail is separate from 24-hour retention`,()=>{
+for(const operator of ['carris','cm','tcb','mobi','metro','cp','ttsl','fertagus'])test(`${operator} warns at five minutes with a ten-minute display deadline`,()=>{
  const epoch=Date.parse('2026-09-27T10:00:00Z');
  const vehicle={operator_id:operator,observed_at:new Date(epoch).toISOString()} as Vehicle;
- const threshold=(operator==='cp'?10:5)*60000;
+ const threshold=5*60000;
  expect(positionIsOld(vehicle,epoch+threshold-1)).toBe(false);
  expect(positionIsOld(vehicle,epoch+threshold)).toBe(true);
- expect(positionDeadline(vehicle)).toBe(epoch+86400000);
+ expect(positionDeadline(vehicle)).toBe(epoch+600000);
+ vehicle.last_known_expires_at=new Date(epoch+86400000).toISOString();
+ expect(positionDeadline(vehicle)).toBe(epoch+600000);
+ vehicle.last_known_expires_at=new Date(epoch+400000).toISOString();
+ expect(positionDeadline(vehicle)).toBe(epoch+400000);
  expect(epoch+threshold).toBeLessThan(positionDeadline(vehicle));
 });

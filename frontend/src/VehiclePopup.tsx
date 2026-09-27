@@ -51,7 +51,8 @@ export default function VehiclePopup({vehicle:v,mode,operatorName,now,onClose,on
  if(previous)warnings.push('A aguardar atualização; mostramos o último registo conhecido.');
  if(observationAge(v.observed_at,now)==='hora não confirmada')warnings.push('A hora da observação não pôde ser confirmada.');
  if(expired)warnings.push('Sinal expirado. Esta observação deixou de estar disponível no mapa.');
- if(v.position_kind==='estimated')warnings.push('A posição é estimada pela fonte; não representa uma observação GPS. A velocidade amostral não é suportada para estas posições.');
+ if(positionIsOld(v,now)&&!expired)warnings.push(`Sem atualização há pelo menos 5 minutos · ${observationAge(v.observed_at,now)}.`);
+ if(v.position_kind==='estimated'&&v.operator_id!=='metro')warnings.push('A posição é estimada pela fonte; não representa uma observação GPS. A velocidade amostral não é suportada para estas posições.');
  if(calls.data&&notices[calls.data.availability])warnings.push(notices[calls.data.availability]);
  if(v.operator_id==='cp'&&calls.data?.availability==='available'&&!calls.data.data.some(row=>row.kind==='predicted'))warnings.push('Sem previsões verificadas para este serviço; mostramos o horário planeado.');
  if(calls.error)warnings.push(errorText(calls.error));
@@ -72,10 +73,10 @@ export default function VehiclePopup({vehicle:v,mode,operatorName,now,onClose,on
  const frozen=!!calls.data&&(calls.data.vehicle.observed_at!==v.observed_at||calls.data.vehicle.stop_id!==v.stop_id||calls.data.vehicle.last_known!==v.last_known);
  return <>
   <div className="section-head vehicle-heading"><h3><Icon size={20}/>{v.service_label?`${mode==='train'?'Comboio':'Serviço'} ${v.service_label}`:`${operatorName} · ${v.source_id}`}</h3><div>{unique.length>0&&<button className="quiet warning-jump" onClick={jump} aria-label={`Ver ${unique.length} avisos`}><AlertTriangle size={18}/><span>{unique.length}</span></button>}<button className="quiet" aria-label="Fechar detalhes" onClick={onClose}><X size={18}/></button></div></div>
-  {v.position_kind==='estimated'&&<span className="pill estimated">Posição estimada</span>}
+  {v.position_kind==='estimated'&&v.operator_id!=='metro'&&<span className="pill estimated">Posição estimada</span>}
   {state&&<p className="vehicle-status">{state.replace('Último estado:','Último registo:')}</p>}
-  <p className="subtle"><time dateTime={v.observed_at} title={Number.isFinite(Date.parse(v.observed_at))?new Date(v.observed_at).toLocaleString('pt-PT',{timeZone:'Europe/Lisbon'}):'Hora não confirmada'}>{observationTime(v.observed_at,now)}</time></p>
-  {positionIsOld(v,now)&&!expired&&<p className="subtle">Posição antiga · {observationAge(v.observed_at,now)}</p>}
+  <p className="subtle vehicle-update-age">Última atualização do veículo: <time dateTime={v.observed_at} title={Number.isFinite(Date.parse(v.observed_at))?new Date(v.observed_at).toLocaleString('pt-PT',{timeZone:'Europe/Lisbon'}):'Hora não confirmada'}>{observationTime(v.observed_at,now)}</time></p>
+  <p className="subtle">Recebido pela aplicação: <time dateTime={v.collected_at}>{observationTime(v.collected_at,now)}</time></p>
   <>
    {v.scheduled_service&&<p className="journey">{passengerName(v.operator_id,v.scheduled_service.origin_name)} → {passengerName(v.operator_id,v.scheduled_service.destination_name)} <small>Serviço planeado</small></p>}
    {fields.length>0&&<div className="detail-grid">{fields.map(([label,value])=><span key={label}>{label}<strong>{value}</strong></span>)}</div>}

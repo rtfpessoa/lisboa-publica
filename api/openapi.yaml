@@ -2252,7 +2252,7 @@
           },
           "last_known_truncated": {
             "type": "boolean",
-            "description": "Legacy cache truncation indicator; new publications retain all admitted identities until their 24-hour source-clock deadline."
+            "description": "Legacy cache truncation indicator; new publications retain all admitted identities until their ten-minute source-clock deadline."
           }
         },
         "required": [
@@ -2493,13 +2493,13 @@
           "inactive_at": {
             "type": "string",
             "format": "date-time",
-            "description": "Legacy observation-plus-five-minutes timestamp; never controls marker appearance, membership or metrics. Old-position detail uses ten minutes for CP and five for other operators. Neither threshold establishes physical inactivity."
+            "description": "Legacy observation-plus-five-minutes timestamp. Clients derive the five-minute no-update warning from observed_at for every operator; this field does not control membership or metrics and does not establish physical inactivity."
           },
           "last_known_expires_at": {
             "type": "string",
             "format": "date-time",
             "nullable": true,
-            "description": "Position display deadline, 24 hours after original observation, including current rows so disconnected clients can expire cached data. Clients must remove expired positions even from pinned pages."
+            "description": "Position display deadline, ten minutes after original observation, including current rows so disconnected clients can expire cached data. Clients must remove expired positions even from pinned pages."
           },
           "current_status": {
             "type": "string",

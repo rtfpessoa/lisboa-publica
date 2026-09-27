@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	lastKnownLifetime = 24 * time.Hour
+	lastKnownLifetime = 10 * time.Minute
 	inactiveAfter     = 5 * time.Minute
 	maxContinuityIDs  = 2000
 )

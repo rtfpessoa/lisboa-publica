@@ -70,7 +70,7 @@ export type Operator = {
     direct_error: string | null;
     direct_updated_at: string | null;
     last_known_positions: number;
-    /** Legacy cache truncation indicator; new publications retain all admitted identities until their 24-hour source-clock deadline. */
+    /** Legacy cache truncation indicator; new publications retain all admitted identities until their ten-minute source-clock deadline. */
     last_known_truncated: boolean;
 };
 export type Page = {
@@ -155,9 +155,9 @@ export type Vehicle = {
     propulsion: string | null;
     /** Previous position, excluded from current metrics. */
     last_known: boolean;
-    /** Legacy observation-plus-five-minutes timestamp; never controls marker appearance, membership or metrics. Old-position detail uses ten minutes for CP and five for other operators. Neither threshold establishes physical inactivity. */
+    /** Legacy observation-plus-five-minutes timestamp. Clients derive the five-minute no-update warning from observed_at for every operator; this field does not control membership or metrics and does not establish physical inactivity. */
     inactive_at: string;
-    /** Position display deadline, 24 hours after original observation, including current rows so disconnected clients can expire cached data. Clients must remove expired positions even from pinned pages. */
+    /** Position display deadline, ten minutes after original observation, including current rows so disconnected clients can expire cached data. Clients must remove expired positions even from pinned pages. */
     last_known_expires_at: string | null;
     /** Published progress relative to a stop, not measured movement; estimated positions imply estimated status. */
     current_status?: ("STOPPED_AT" | "INCOMING_AT" | "IN_TRANSIT_TO") | null;

@@ -232,7 +232,7 @@ func TestContinuityPaginationStoppedCollector(t *testing.T) {
 	f, s := continuityFetcher()
 	now := time.Now().UTC()
 	p, _ := providerByID("cp")
-	f.saveLive(context.Background(), p, []api.Vehicle{continuityVehicle("a", now.Add(-59*time.Minute)), continuityVehicle("b", now.Add(-58*time.Minute))}, now)
+	f.saveLive(context.Background(), p, []api.Vehicle{continuityVehicle("a", now.Add(-9*time.Minute)), continuityVehicle("b", now.Add(-8*time.Minute))}, now)
 	s.Cache.mu.Lock()
 	s.Cache.current.Created = now.Add(-10 * time.Minute)
 	s.Cache.mu.Unlock()
@@ -358,7 +358,7 @@ func TestHistorySamplesDoNotAccumulateInRevisions(t *testing.T) {
 	}
 }
 
-func TestAllProvidersRetainOriginalClockFor24Hours(t *testing.T) {
+func TestAllProvidersRetainOriginalClockForTenMinutes(t *testing.T) {
 	for _, p := range providers {
 		t.Run(p.ID, func(t *testing.T) {
 			now := time.Now().UTC()
@@ -370,16 +370,23 @@ func TestAllProvidersRetainOriginalClockFor24Hours(t *testing.T) {
 				v.PositionKind = api.VehiclePositionKindEstimated
 			}
 			live, _ := nextLive(nil, op, []api.Vehicle{v}, now)
-			for _, age := range []time.Duration{5 * time.Minute, 10 * time.Minute, 23 * time.Hour, lastKnownLifetime - time.Nanosecond} {
+			for _, age := range []time.Duration{5 * time.Minute, 9 * time.Minute, 10*time.Minute - time.Nanosecond} {
 				live, _ = nextLive(live, op, []api.Vehicle{v}, now.Add(age))
 				rows, _, _, _, truncated := projectLive(live, op, nil, now.Add(age))
-				if len(rows) != 1 || truncated || !rows[0].ObservedAt.Equal(now) || !rows[0].CollectedAt.Equal(now) || !rows[0].LastKnownExpiresAt.Equal(now.Add(lastKnownLifetime)) || len(live.Samples) != 0 {
+				if len(rows) != 1 || truncated || !rows[0].ObservedAt.Equal(now) || !rows[0].CollectedAt.Equal(now) || !rows[0].LastKnownExpiresAt.Equal(now.Add(10*time.Minute)) || len(live.Samples) != 0 {
 					t.Fatal("repeat renewed/removed position or created history", age)
 				}
 			}
-			rows, _, _, _, _ := projectLive(restoreLive(live, now.Add(23*time.Hour)), op, nil, now.Add(lastKnownLifetime))
-			if len(rows) != 0 {
-				t.Fatal("restart renewed position deadline")
+			missing, _ := nextLive(live, op, nil, now.Add(10*time.Minute-time.Nanosecond))
+			for name, candidate := range map[string]*LiveData{
+				"repeated": live,
+				"omitted":  missing,
+				"restored": restoreLive(live, now.Add(9*time.Minute)),
+			} {
+				rows, _, _, _, _ := projectLive(candidate, op, nil, now.Add(10*time.Minute))
+				if len(rows) != 0 {
+					t.Fatal(name, "renewed position deadline")
+				}
 			}
 		})
 	}

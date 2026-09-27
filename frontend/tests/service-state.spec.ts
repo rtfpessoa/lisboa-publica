@@ -9,7 +9,7 @@ test('plate presentation respects road modes and raw unknown registrations',()=>
 async function fixture(page:Page,operator='carris',known=false,status:string|null='STOPPED_AT',specs:Record<string,unknown>={}){
  const now=Date.now(),at=new Date(now-(known?360000:0)).toISOString();
  const service={origin_source_stop_id:'O',origin_name:'Porto',destination_source_stop_id:'D',destination_name:'Faro',service_date:'2026-09-26',source_url:'https://official.example/gtfs'};
- const v={id:operator+':v',source_id:'v',operator_id:operator,position_kind:operator==='metro'?'estimated':'reported',lat:38.731,lon:-9.145,observed_at:at,collected_at:at,current_status:status,stop_name:'Oriente',license_plate:'CE29PV',source_url:'https://go.tmlmobilidade.pt',last_known:known,stale:known,inactive_at:new Date(Date.parse(at)+300000).toISOString(),last_known_expires_at:new Date(Date.parse(at)+86400000).toISOString(),...(operator==='cp'?{scheduled_service:service}:{}),...specs};
+ const v={id:operator+':v',source_id:'v',operator_id:operator,position_kind:operator==='metro'?'estimated':'reported',lat:38.731,lon:-9.145,observed_at:at,collected_at:at,current_status:status,stop_name:'Oriente',license_plate:'CE29PV',source_url:'https://go.tmlmobilidade.pt',last_known:known,stale:known,inactive_at:new Date(Date.parse(at)+300000).toISOString(),last_known_expires_at:new Date(Date.parse(at)+600000).toISOString(),...(operator==='cp'?{scheduled_service:service}:{}),...specs};
  const operators=[{id:'metro',name:'Metro de Lisboa',mode:'metro',color:'#e22'},{id:operator,name:operator==='cp'?'CP':'Carris',mode:operator==='cp'?'train':'bus',color:'#2a2'}].filter((v,i,a)=>a.findIndex(x=>x.id===v.id)===i).map(o=>({...o,status:'ok',static_status:'ok',live_updated_at:new Date(now).toISOString(),reported_positions:1,estimated_positions:1}));
  const paged=(data:unknown[])=>({data,page:{limit:500,offset:0,total:data.length,has_more:false}});
  await page.route('https://tiles.openfreemap.org/styles/positron',r=>r.fulfill({json:{version:8,sources:{},layers:[{id:'background',type:'background',paint:{'background-color':'#fff'}}]}}));
@@ -45,12 +45,12 @@ for(const width of [1280,390])test(`normal stopped bus, formatted plate and flee
 test('last-known stop remains a previous statement and original clocks expire',async({page})=>{
  await fixture(page,'carris',true);await page.clock.install();await page.goto('/');await openVehicle(page);
  await expect(page.locator('.detail-panel')).toContainText('Último registo: Parado em Oriente');await expect(page.locator('.detail-panel')).toContainText('A aguardar atualização');await expect(page.locator('.live-metrics')).toContainText('1 no mapa · 0 atualizados · 1 a aguardar sinal');await expect(page.locator('.live-metrics')).not.toContainText('inativas');await expect(page.locator('.detail-panel')).not.toContainText('Inativo');
- await expect(page.locator('.detail-panel')).toContainText('Posição antiga');await page.clock.fastForward(24*60*60000);await expect(page.locator('.detail-panel')).toContainText('Sinal expirado');
+ await expect(page.locator('.detail-panel')).toContainText('Sem atualização há pelo menos 5 minutos');await page.clock.fastForward(10*60000);await expect(page.locator('.detail-panel')).toContainText('Sinal expirado');
 });
 
 test('silence without stop state does not imply stopped and Metro state is estimated',async({page})=>{
  await fixture(page,'carris',true,null);await page.goto('/');await openVehicle(page);await expect(page.locator('.detail-panel')).toContainText('Última posição conhecida');await expect(page.locator('.detail-panel')).not.toContainText('Parado em');
- await fixture(page,'metro');await page.reload();await openVehicle(page);await expect(page.locator('.detail-panel')).toContainText('Estado estimado: Parado');await expect(page.locator('.detail-panel')).toContainText('não representa uma observação GPS');
+ await fixture(page,'metro');await page.reload();await openVehicle(page);await expect(page.locator('.detail-panel')).toContainText('Estado estimado: Parado');await expect(page.locator('.detail-panel')).not.toContainText('não representa uma observação GPS');await expect(page.locator('.detail-panel .pill.estimated')).toHaveCount(0);
 });
 
 test('CP full endpoints are explicitly scheduled with realtime delay unavailable',async({page})=>{
