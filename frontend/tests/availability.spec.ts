@@ -186,3 +186,15 @@ for(const width of [1280,390])test(`historical ranked route opens live detail at
  await expect(page.locator('.detail-panel')).toContainText('Linha Azul');await expect(page.locator('.detail-panel')).not.toContainText('Roma');await page.locator('.detail-panel').getByRole('heading').click();if(width<760)await expect(page.locator('.sidebar')).not.toHaveClass(/visible/);
  await expect(page.getByRole('button',{name:'Metro de Lisboa',exact:true})).toHaveAttribute('aria-pressed','true');
 });
+
+for(const width of [1440,390])test(`traffic pointer controls stay fixed across loading at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:900});await fixture(page);
+ let release:()=>void=()=>{};const gate=new Promise<void>(resolve=>release=resolve);
+ await page.route('**/api/v1/traffic?**',async r=>{await gate;await r.fulfill({json:{data:[],page:{limit:500,offset:0,total:0,has_more:false,revision:'test'}}})});
+ await page.goto('/');await page.locator(width<760?'.compact-nav':'.tab-icons').getByRole('button',{name:'Trânsito',exact:true}).click();
+ const panel=page.locator('.traffic-panel'),weekdays=page.getByLabel('Excluir fins de semana'),terminals=page.getByLabel('Mostrar terminais');
+ await expect(panel).toHaveAttribute('aria-busy','true');const before=await weekdays.boundingBox();release();await expect(panel).toHaveAttribute('aria-busy','false');
+ const after=await weekdays.boundingBox();expect(after!.y).toBe(before!.y);
+ await weekdays.check();await expect(weekdays).toBeChecked();await terminals.check();await expect(terminals).toBeChecked();
+ await expect(panel.getByText('Identificação de terminais indisponível nestes feeds.')).toBeVisible();
+});

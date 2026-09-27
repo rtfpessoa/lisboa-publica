@@ -18,3 +18,5 @@
 .search-popup{margin-bottom:12px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 20px #0f172a10;overflow:hidden}.search-popup-head{margin:0;padding:6px 10px;font-size:11px}.search-popup .search-results{margin:0;border:0;border-radius:0;box-shadow:none}.search-popup-head button{padding:4px}.layer-panel .section-head{gap:4px}.layer-panel .section-head h3{font-size:12px}.layer-panel .section-head button{padding:4px}
 
 .route-filter{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#fff3d6;border-radius:6px;font-size:12px}
+
+.traffic-panel .query-status-slot{height:28px}
