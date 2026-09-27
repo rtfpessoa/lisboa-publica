@@ -1,0 +1,19 @@
+{
+  "version": "cd78d80065b2fc63c9e3d4f4c0c89cbecfb11cd8",
+  "image": "sha256:4310899d4eddcce579eb334b69ca2a15b1f24c696cd7c34a8a471cb3ec47abbc",
+  "rollback_image": "sha256:a968bbfa8e1346de4808355df418ae57231f70779710fc446e6bbbde7c17bb43",
+  "health": "ok",
+  "database": "ok",
+  "runtime_environment": "unchanged",
+  "runtime_limits": "unchanged",
+  "other_containers": "unchanged",
+  "protected_backup": "/root/lisboa-reporting-rollout/20260927",
+  "checked_date": "2026-09-27",
+  "public_url": "https://lisboapublica.rtfpessoa.xyz",
+  "server_sha256": "f22ad79ad5021d3cf7c0065c48dee2896352daf9cba8d86714ef4d38940523e4",
+  "frontend_entry_sha256": "c5d3e7b4ba9b1e616e32175ae7049ca561d29aa4b27fea67144228009f87fcbb",
+  "artifact_sha256": "0a0a22d6e85945586fa0d8f87b788d1b3bb9e5d142b621733c647aa8b35fdbed",
+  "restart_count": 0,
+  "first_attempt": "Automatic rollback on environment ordering comparison; effective environment mappings were equal. Corrected comparator passed on retry.",
+  "memory_observation": "514.2MiB / 1.25GiB (one post-rollout sample, not a peak-memory guarantee)"
+}

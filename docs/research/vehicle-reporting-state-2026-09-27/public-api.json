@@ -1,0 +1,191 @@
+{
+  "health": {
+    "database": "ok",
+    "status": "ok"
+  },
+  "sampled_vehicles": 447,
+  "reporting_present": 447,
+  "durable_latest": 126,
+  "state_counts": [
+    {
+      "operator": "carris",
+      "state": "not_reporting",
+      "reason": "missing_from_snapshot",
+      "count": 16
+    },
+    {
+      "operator": "carris",
+      "state": "reporting",
+      "reason": "current",
+      "count": 110
+    },
+    {
+      "operator": "cm",
+      "state": "reporting",
+      "reason": "current",
+      "count": 212
+    },
+    {
+      "operator": "cm",
+      "state": "not_reporting",
+      "reason": "missing_from_snapshot",
+      "count": 43
+    },
+    {
+      "operator": "fertagus",
+      "state": "reporting",
+      "reason": "current",
+      "count": 5
+    },
+    {
+      "operator": "metro",
+      "state": "reporting",
+      "reason": "current",
+      "count": 24
+    },
+    {
+      "operator": "metro",
+      "state": "not_reporting",
+      "reason": "missing_from_snapshot",
+      "count": 1
+    },
+    {
+      "operator": "mobi",
+      "state": "reporting",
+      "reason": "current",
+      "count": 19
+    },
+    {
+      "operator": "mobi",
+      "state": "not_reporting",
+      "reason": "missing_from_snapshot",
+      "count": 1
+    },
+    {
+      "operator": "tcb",
+      "state": "reporting",
+      "reason": "current",
+      "count": 8
+    },
+    {
+      "operator": "tcb",
+      "state": "not_reporting",
+      "reason": "missing_from_snapshot",
+      "count": 2
+    },
+    {
+      "operator": "ttsl",
+      "state": "reporting",
+      "reason": "current",
+      "count": 4
+    },
+    {
+      "operator": "ttsl",
+      "state": "not_reporting",
+      "reason": "missing_from_snapshot",
+      "count": 2
+    }
+  ],
+  "metro_journeys": [
+    {
+      "vehicle_id": "metro:001A",
+      "association": "published_route",
+      "visits": 18,
+      "journey_id": null,
+      "keys": [
+        "association",
+        "complete",
+        "coverage",
+        "data",
+        "destination",
+        "direction",
+        "journey_id",
+        "line_name",
+        "message",
+        "next_index",
+        "page",
+        "progress"
+      ]
+    },
+    {
+      "vehicle_id": "metro:003A",
+      "association": "published_route",
+      "visits": 18,
+      "journey_id": null,
+      "keys": [
+        "association",
+        "complete",
+        "coverage",
+        "data",
+        "destination",
+        "direction",
+        "journey_id",
+        "line_name",
+        "message",
+        "next_index",
+        "page",
+        "progress"
+      ]
+    },
+    {
+      "vehicle_id": "metro:004A",
+      "association": "published_route",
+      "visits": 18,
+      "journey_id": null,
+      "keys": [
+        "association",
+        "complete",
+        "coverage",
+        "data",
+        "destination",
+        "direction",
+        "journey_id",
+        "line_name",
+        "message",
+        "next_index",
+        "page",
+        "progress"
+      ]
+    },
+    {
+      "vehicle_id": "metro:005A",
+      "association": "published_route",
+      "visits": 18,
+      "journey_id": null,
+      "keys": [
+        "association",
+        "complete",
+        "coverage",
+        "data",
+        "destination",
+        "direction",
+        "journey_id",
+        "line_name",
+        "message",
+        "next_index",
+        "page",
+        "progress"
+      ]
+    },
+    {
+      "vehicle_id": "metro:006A",
+      "association": "published_route",
+      "visits": 18,
+      "journey_id": null,
+      "keys": [
+        "association",
+        "complete",
+        "coverage",
+        "data",
+        "destination",
+        "direction",
+        "journey_id",
+        "line_name",
+        "message",
+        "next_index",
+        "page",
+        "progress"
+      ]
+    }
+  ]
+}
