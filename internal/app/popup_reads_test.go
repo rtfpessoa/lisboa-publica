@@ -307,7 +307,7 @@ func TestCMPlanAssociationAndOperationalDate(t *testing.T) {
 	v.OperationalDate = nil
 	v.PlanId = nil
 	v.ObservedAt = v.ObservedAt.Truncate(time.Second)
-	raw := hubPosition{ID: v.SourceId, Agency: "LA77N", Trip: t0.ID, At: v.ObservedAt.Unix(), OperationalDate: 20260927}
+	raw := hubPosition{ID: v.SourceId, Agency: "LA77N", Trip: t0.ID, At: v.ObservedAt.UnixMilli(), OperationalDate: 20260927}
 	rows := []api.Vehicle{v}
 	enrichCMOperationalDates(rows, []hubPosition{raw})
 	if rows[0].OperationalDate == nil || rows[0].PlanId == nil {
@@ -449,5 +449,38 @@ func TestRoadOperatorParsersRetainCompleteIndependentVisits(t *testing.T) {
 				t.Fatal("exact published station membership lost")
 			}
 		})
+	}
+}
+
+func TestCMOperationalDateJoinRejectsAmbiguousAndDifferentIdentities(t *testing.T) {
+	at := time.UnixMilli(1790500000123).UTC()
+	v := api.Vehicle{SourceId: "[LA77N]vehicle", TripId: ptr("cm:[plan][LA77N]trip"), ObservedAt: at}
+	exact := hubPosition{ID: v.SourceId, Trip: "[plan][LA77N]trip", At: at.UnixMilli(), OperationalDate: 20260927}
+	for _, kind := range []string{"vehicle", "trip", "clock", "duplicate"} {
+		t.Run(kind, func(t *testing.T) {
+			raw := exact
+			switch kind {
+			case "vehicle":
+				raw.ID = "[BNA17]vehicle"
+			case "trip":
+				raw.Trip = "[other][LA77N]trip"
+			case "clock":
+				raw.At++
+			}
+			positions := []hubPosition{raw}
+			if kind == "duplicate" {
+				positions = append(positions, exact)
+			}
+			rows := []api.Vehicle{v}
+			enrichCMOperationalDates(rows, positions)
+			if rows[0].OperationalDate != nil || rows[0].PlanId != nil {
+				t.Fatal("unverified join enriched CM position")
+			}
+		})
+	}
+	rows := []api.Vehicle{v}
+	enrichCMOperationalDates(rows, []hubPosition{exact})
+	if rows[0].OperationalDate == nil || stringValue(rows[0].PlanId) != "plan" {
+		t.Fatal("millisecond-clock exact join rejected")
 	}
 }

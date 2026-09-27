@@ -90,7 +90,7 @@ func enrichCMOperationalDates(vehicles []api.Vehicle, positions []hubPosition) {
 		}
 		var matches []hubPosition
 		for _, raw := range positions {
-			if raw.ID == v.SourceId && qualify("cm", raw.Trip) == *v.TripId && time.Unix(raw.At, 0).Equal(v.ObservedAt) {
+			if raw.ID == v.SourceId && qualify("cm", raw.Trip) == *v.TripId && time.UnixMilli(raw.At).Equal(v.ObservedAt) {
 				matches = append(matches, raw)
 			}
 		}
