@@ -1,3 +1,5 @@
+Production rollout on2026-09-27 is recorded in [production acceptance](VALIDATION-stop-arrivals-production.md). The local evidence below predates publication.
+
 # Próximas passagens e navegação de paragens
 
 Implementado em `rodrigo/fix-carris-metropolitana`. Esta validação é local; não representa publicação em produção.
