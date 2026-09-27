@@ -50,7 +50,12 @@ func loadOfficialGeometry(t *testing.T, feed officialGeometryFeed) *StaticData {
 	}
 	var data *StaticData
 	if p.ID == "cm" {
-		data, err = readCMNetwork(blob, &hubPlan{ID: feed.Plan, Agency: feed.Agency}, p, hubBase, time.Now().UTC())
+		plan := &hubPlan{ID: feed.Plan, Agency: feed.Agency, From: feed.From, Until: feed.Until}
+		data, err = readCMNetwork(blob, plan, p, hubBase, time.Now().UTC())
+		if err == nil {
+			data.Schedule = &Schedule{Calendars: map[string]Calendar{}, Exceptions: map[string]map[string]int{}, Parents: map[string]string{}, StopNames: map[string]string{}, CompleteJourneys: true}
+			err = (cmJourneyImport{network: data, plan: plan, provider: p, source: hubBase}).merge(blob)
+		}
 	} else {
 		data, err = readGTFS(blob, p, feed.Plan, fmt.Sprint(feed.From), fmt.Sprint(feed.Until), hubBase, time.Now().UTC())
 	}
@@ -63,7 +68,30 @@ func loadOfficialGeometry(t *testing.T, feed officialGeometryFeed) *StaticData {
 func mergeCMFixture(network, data *StaticData) {
 	network.Shapes = append(network.Shapes, data.Shapes...)
 	network.CMPaths = append(network.CMPaths, data.CMPaths...)
+	if data.Schedule != nil {
+		if network.Schedule == nil {
+			network.Schedule = &Schedule{Calendars: map[string]Calendar{}, Exceptions: map[string]map[string]int{}, Parents: map[string]string{}, StopNames: map[string]string{}, CompleteJourneys: true}
+		}
+		mergeFixtureSchedules(network.Schedule, data.Schedule)
+	}
 	for id, metadata := range data.Models {
 		network.Models[id] = metadata
 	}
+}
+
+func mergeFixtureSchedules(target, source *Schedule) {
+	target.Trips = append(target.Trips, source.Trips...)
+	for id, value := range source.Calendars {
+		target.Calendars[id] = value
+	}
+	for id, value := range source.Exceptions {
+		target.Exceptions[id] = value
+	}
+	for id, value := range source.Parents {
+		target.Parents[id] = value
+	}
+	for id, value := range source.StopNames {
+		target.StopNames[id] = value
+	}
+	target.HasFrequencies = target.HasFrequencies || source.HasFrequencies
 }

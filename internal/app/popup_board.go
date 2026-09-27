@@ -110,7 +110,7 @@ func boardCatalogue(d *StaticData, operator, stop string) []api.BoardDirection {
 	}
 	idx := d.journeys(operator)
 	seen := map[string]bool{}
-	for _, t := range idx.stops[stop] {
+	for _, t := range idx.stopTrips(d, operator, stop) {
 		line := idx.lines[t]
 		if !seen[line] {
 			dirs = append(dirs, idx.directions[line]...)

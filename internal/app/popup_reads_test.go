@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -338,7 +339,7 @@ func TestCMReusesArchiveForFullSchedule(t *testing.T) {
 	if err := (cmJourneyImport{out, plan, p, hubBase}).merge(shapeArchive(t, true)); err != nil {
 		t.Fatal(err)
 	}
-	if len(out.Schedule.Trips) != 3 || out.Schedule.Trips[0].Route != "1001" || out.Schedule.Trips[0].SourcePlan != "plan" || len(out.Schedule.Trips[0].JourneyTimes) != 1 {
+	if len(out.Schedule.Trips) != 3 || out.Schedule.Trips[0].Route != "1001" || out.Schedule.Trips[0].SourcePlan != "plan" || len(journeyTimes(&out.Schedule.Trips[0])) != 1 {
 		t.Fatal("CM schedule or provenance lost")
 	}
 }
@@ -377,5 +378,35 @@ func TestStoppedVehicleFocusesFollowingVisitWithoutInventingArrival(t *testing.T
 	conflict := missingCallTime("Registos reais contraditórios na fonte")
 	if pastCallTime(conflict, time.Now()).Reason != conflict.Reason {
 		t.Fatal("past-time selection hid a source conflict")
+	}
+}
+
+func TestLocalJourneyVisitsShareRetentionAndSurviveStreamingRestore(t *testing.T) {
+	p, _ := providerByID("cp")
+	blob := replaceGTFS(t, shapeArchive(t, false), map[string]string{"stop_times.txt": "trip_id,arrival_time,departure_time,stop_id,stop_sequence\nA,10:00:00,10:01:00,S,1\nA,,10:03:00,S,2\nA,10:05:00,,S,3\n"})
+	data, err := readGTFS(blob, p, "plan", "20260101", "20261231", hubBase, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	trip := &data.Schedule.Trips[0]
+	visits := journeyTimes(trip)
+	if len(visits) != 3 || len(trip.JourneyTimes) != 0 || visits[1].Arrival != -1 || visits[2].Departure != -1 {
+		t.Fatal("local retention duplicated or lost independent visits")
+	}
+	encoded, err := encodeCache(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader, err := gzip.NewReader(bytes.NewReader(encoded))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	var restored StaticData
+	if err = decodeStaticCacheJSON(reader, &restored); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(visits, journeyTimes(&restored.Schedule.Trips[0])) {
+		t.Fatal("streaming restore changed repeated visits or missing clocks")
 	}
 }

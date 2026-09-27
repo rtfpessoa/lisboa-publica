@@ -180,11 +180,13 @@ func (g *gtfsReader) stopTime(m map[string]string) error {
 	if e != nil {
 		return e
 	}
-	visit := StopTime{m["stop_id"], int32(a), int32(dep), seq}
-	t.JourneyTimes = append(t.JourneyTimes, visit)
-	if g.stops[m["stop_id"]] != nil {
-		t.Times = append(t.Times, visit)
+	stop := m["stop_id"]
+	if local := g.stops[stop]; local != nil {
+		// Reuse catalog identity instead of retaining each CSV record's backing string.
+		stop = local.SourceId
 	}
+	visit := StopTime{stop, int32(a), int32(dep), seq}
+	t.JourneyTimes = append(t.JourneyTimes, visit)
 	return nil
 }
 

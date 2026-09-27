@@ -224,13 +224,13 @@ type scheduledCallSource struct {
 
 func appendPlannedCalls(ctx context.Context, result *vehicleCallResult, source scheduledCallSource) error {
 	v, d, trip, day := source.Vehicle, source.Data, source.Trip, source.Day
-	result.First, result.Known = vehicleProgress(v, trip.Times)
+	result.First, result.Known = vehicleProgress(v, localJourneyTimes(trip))
 	if result.Known {
 		result.Progress = "known"
 	}
 	var err error
 	stops := callStops(d)
-	for _, visit := range trip.Times {
+	for _, visit := range localJourneyTimes(trip) {
 		if err = ctx.Err(); err != nil {
 			break
 		}

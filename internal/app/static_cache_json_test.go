@@ -61,7 +61,12 @@ func TestStaticCacheJSONCompatibilityAndBoundedWrites(t *testing.T) {
 		if err = json.Unmarshal(original, &legacyRestored); err != nil {
 			t.Fatal(err)
 		}
-		err = json.NewDecoder(reader).Decode(&restored)
+		if data == nil {
+			err = json.NewDecoder(reader).Decode(&restored)
+		} else {
+			restored = &StaticData{}
+			err = decodeStaticCacheJSON(reader, restored)
+		}
 		reader.Close()
 		if err != nil || !reflect.DeepEqual(legacyRestored, restored) {
 			t.Fatalf("durable cache roundtrip changed data: %v", err)

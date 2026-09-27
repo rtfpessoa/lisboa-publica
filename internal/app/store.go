@@ -195,7 +195,7 @@ func (s *Store) loadCache(ctx context.Context, p, kind string, dst any) (bool, e
 		return false, err
 	}
 	defer archive.Close()
-	err = json.NewDecoder(io.LimitReader(archive, maxGTFSExpandedBytes)).Decode(dst)
+	err = decodeStoredCacheJSON(io.LimitReader(archive, maxGTFSExpandedBytes), dst)
 	return err == nil, err
 }
 func writeCache(ctx context.Context, tx pgx.Tx, p, kind string, blob []byte) error {

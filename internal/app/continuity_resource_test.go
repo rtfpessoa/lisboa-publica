@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -36,7 +35,7 @@ func TestProviderContinuityResourceEnvelope(t *testing.T) {
 	base := time.Now().Add(-time.Hour)
 	// Reproduce one-hour extreme churn, saturating both caps and all retained versions.
 	runContinuityChurn(t, cache, store, base)
-	cpVersions := resourceCPPredictions(t, cache)
+	cpVersions := resourceProviderPredictions(t, cache)
 	if len(cache.versions) != maxCachedVersions {
 		t.Fatal("churn did not saturate pagination retention")
 	}
@@ -165,6 +164,7 @@ func loadResourceNetworks(t *testing.T, cache *Cache, f *Fetcher, feeds []offici
 			verifyResourceStaticUpdate(t, cache, feed.Operator, d)
 		}
 		cache.update(feed.Operator, d, nil, staticHealth(cache.operator(feed.Operator), d))
+		d.journeys(feed.Operator)
 	}
 	publishResourceCM(t, cache, f, network)
 }
@@ -187,6 +187,7 @@ func publishResourceCM(t *testing.T, cache *Cache, f *Fetcher, network *StaticDa
 	}
 	cm.Shapes, cm.Models = network.Shapes, network.Models
 	cm.CMPaths = network.CMPaths
+	cm.Schedule = network.Schedule
 	sort.Slice(cm.CMPaths, func(i, j int) bool { return cm.CMPaths[i].ID < cm.CMPaths[j].ID })
 	verifyResourceCMPaths(t, cm)
 	cm.GeometryUpdated = ptr(time.Now())
@@ -196,6 +197,7 @@ func publishResourceCM(t *testing.T, cache *Cache, f *Fetcher, network *StaticDa
 		t.Fatal("CM geometry admission")
 	}
 	cache.update("cm", cm, nil, op)
+	cm.journeys("cm")
 }
 
 func verifyResourceCMPaths(t *testing.T, d *StaticData) {
@@ -216,7 +218,7 @@ func verifyResourceCMPaths(t *testing.T, d *StaticData) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = json.NewDecoder(reader).Decode(&restored); err != nil {
+	if err = decodeStaticCacheJSON(reader, &restored); err != nil {
 		t.Fatal(err)
 	}
 	if err = reader.Close(); err != nil {

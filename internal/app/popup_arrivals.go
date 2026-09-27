@@ -140,7 +140,7 @@ func identifyPublishedPopupCall(call *api.StopCall, d *StaticData, op string, f 
 }
 func publishedPopupOrientation(idx *journeyIndex, d *StaticData, f Filter, row api.Arrival) *string {
 	keys := map[string]*string{}
-	for _, t := range idx.stops[f.Stop] {
+	for _, t := range idx.stopTrips(d, row.OperatorId, f.Stop) {
 		if idx.lines[t] == row.RouteId && normalizeName(tripDestination(d.Schedule, t)) == normalizeName(row.Headsign) {
 			key := idx.direction[t]
 			keys[boardSelection(row.RouteId, key)] = key

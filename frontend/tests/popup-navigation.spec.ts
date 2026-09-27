@@ -21,9 +21,12 @@ async function fixture(page:Page,operator='cp',mode='train',count=1){
   if(path.endsWith('/vehicles')&&stationFailure&&q.has('stop_id'))return r.fulfill({status:503,json:{message:'Fonte temporariamente indisponível'}});
   if(path.endsWith('/vehicles'))data=paged(Array.from({length:count},(_,i)=>({...v,id:i?`${operator}:v${i}`:v.id,vehicle_ref:i?{...v.vehicle_ref,vehicle_id:`${operator}:v${i}`} :v.vehicle_ref})));
   if(path.endsWith('/route-shapes'))data={...paged([]),coverage:[]};
-  if(path.endsWith('/arrivals'))data=paged([{id:'arrival',operator_id:operator,stop_id:stop.id,route_id:`${operator}:route`,trip_id:'dated-trip',headsign:'Lisboa Oriente',service_label:'18456',kind:'scheduled',scheduled_at:iso(epoch+600000),vehicle_ref:reference}]);
+  const coverage={status:'partial',message:'Percurso completo por confirmar.',actual_arrivals:false,actual_departures:false,history_collection_status:'collecting',source_updated_at:iso(epoch)};
+  if(path.endsWith('/board'))data={stop_id:stop.id,revision:'fixture',directions:[{line_key:`${operator}:route`,line_name:v.route_name,direction_key:'destination',label:'Lisboa Oriente',count:1}],coverage};
+  if(path.endsWith('/board/calls'))data={...paged([{id:'arrival',operator_id:operator,stop_id:stop.id,stop_name:stop.name,stop_sequence:1,phase:'future',destination:'Lisboa Oriente',service_label:'18456',vehicle_ref:reference,arrival:{kind:'schedule',actual:null,prediction:null,schedule:{at:iso(epoch+600000),source_url:v.source_url,source_updated_at:iso(epoch),collected_at:iso(epoch)}},departure:{kind:'unavailable',actual:null,prediction:null,schedule:null}}]),coverage};
+  if(path.endsWith('/journey'))data={association:'unresolved',message:'',progress:'unknown',next_index:null,complete:false,...paged([]),coverage};
   if(path.endsWith('/cp/predictions'))data={...paged([]),availability:{status:'ok',message:'Sem previsões verificadas'}};
-  if(path.endsWith('/calls')){
+  if(path.includes('/vehicles/')&&path.endsWith('/calls')){
    if(delay)await new Promise(resolve=>setTimeout(resolve,800));
    if(failure)return r.fulfill({status:410,json:{message:'Ligação expirada; atualize a origem.'}}).catch(()=>{});
    data={vehicle:serviceChanged?{...v,trip_id:'different-service'}:v,...paged(v.stop_id===next.id?[]:[{id:'visit',stop_id:next.id,stop_name:next.name,stop:next,kind:'scheduled',scheduled_at:iso(epoch+600000),source_url:v.source_url,stop_plan_id:noPlan?undefined:'plan',stop_static_updated_at:iso(epoch)}]),availability:'partial',coverage:'regional_subset',progress:'unknown'};
@@ -41,8 +44,15 @@ for(const [operator,mode] of [['cp','train'],['metro','metro'],['ttsl','ferry'],
  const panel=page.locator('.detail-panel');await expect(panel).not.toContainText('Indisponível');await expect(panel.locator('.specifications')).toContainText('0');await expect(panel.locator('.specifications')).toContainText('Não indicado pela fonte');await expect(panel).toContainText('há 6 min');
  if(operator==='cp')await page.screenshot({path:'../docs/research/popup-map-navigation/validation/popup-desktop.png'});
  await page.getByRole('button',{name:/Ver \d+ avisos/}).click();await expect(page.getByRole('region',{name:'Avisos e fontes'})).toBeFocused();
- await page.locator('.stop-link').click();await expect(panel.locator('h3')).toContainText('Alcântara');expect(f.requests.filter(r=>r.path.endsWith('/calls')).every(r=>r.query.get('reference')==='frozen-service')).toBe(true);
+ await page.locator('.stop-link').click();await expect(panel.locator('h3')).toContainText('Alcântara');expect(f.requests.filter(r=>r.path.includes('/vehicles/')&&r.path.endsWith('/calls')).every(r=>r.query.get('reference')==='frozen-service')).toBe(true);
  await page.keyboard.press('Escape');await expect(panel).toHaveCount(0);
+});
+test('direction call opens the vehicle using its frozen service reference',async({page})=>{
+ const f=await fixture(page);await page.goto('/');await selectProvider(page,'cp');await chooseStation(page);
+ await page.locator('.direction-detail').getByRole('button',{name:'Abrir veículo'}).click();
+ await expect(page.locator('.vehicle-heading h3')).toContainText('18456');
+ const navigation=f.requests.filter(r=>r.path.includes('/vehicles/')&&r.path.endsWith('/calls'));
+ expect(navigation.length).toBeGreaterThan(0);expect(navigation.every(r=>r.query.get('reference')==='frozen-service')).toBe(true);
 });
 for(const dpr of [1,2])test(`overlapping station and train have independent touch targets at DPR ${dpr}`,async({browser})=>{
  const context=await browser.newContext({viewport:{width:390,height:800},deviceScaleFactor:dpr});const page=await context.newPage();const renderWarnings:string[]=[];page.on('console',m=>{if(m.type()==='warning'&&m.text().includes('layers[vehicle-points]'))renderWarnings.push(m.text())});await fixture(page);await page.goto('/');await page.getByRole('button',{name:'Abrir operadores'}).click();await selectProvider(page,'cp');await page.getByRole('button',{name:'Fechar operadores'}).click();
@@ -62,7 +72,7 @@ for(const dpr of [1,2])test(`overlapping station and train have independent touc
  await page.getByRole('button',{name:'Fechar detalhes'}).click();await page.getByRole('button',{name:'Camadas do mapa'}).click();await page.getByRole('checkbox',{name:'Paragens'}).uncheck();await expect.poll(()=>page.evaluate(()=>{const p=(window as any).features.vehicles?.[0]?.properties;return [p?.offsetX,p?.offsetY]})).toEqual([0,0]);await context.close();
 });
 test('expired or changed station link keeps origin and never jumps to latest ID',async({page})=>{
- const f=await fixture(page);await page.goto('/');await selectProvider(page,'cp');await chooseStation(page);f.fail();await page.locator('.station-vehicles button').first().click();await expect(page.getByRole('alert')).toContainText('Ligação expirada');await expect(page.locator('.detail-panel h3')).toContainText('Lisboa Oriente');expect(f.requests.filter(r=>r.path.endsWith('/calls')).every(r=>r.query.has('reference'))).toBe(true);
+ const f=await fixture(page);await page.goto('/');await selectProvider(page,'cp');await chooseStation(page);f.fail();await page.locator('.station-vehicles button').first().click();await expect(page.getByRole('alert')).toContainText('Ligação expirada');await expect(page.locator('.detail-panel h3')).toContainText('Lisboa Oriente');expect(f.requests.filter(r=>r.path.includes('/vehicles/')&&r.path.endsWith('/calls')).every(r=>r.query.has('reference'))).toBe(true);
 });
 test('closing origin cancels delayed navigation without reopening details',async({page})=>{
  const f=await fixture(page);await page.goto('/');await selectProvider(page,'cp');await chooseStation(page);f.delay();await page.locator('.station-vehicles button').first().click();await expect(page.getByRole('status').filter({hasText:'A abrir veículo'})).toBeVisible();await page.getByRole('button',{name:'Fechar detalhes'}).click();await page.waitForTimeout(1000);await expect(page.locator('.detail-panel')).toHaveCount(0);
@@ -80,7 +90,7 @@ test('names, original-clock age and service identity remain unambiguous',()=>{
 
 test('same service new observation rebinds remaining calls without showing passed stops',async({page})=>{
  const f=await fixture(page);f.current();await page.clock.install();await page.goto('/');await selectProvider(page,'cp');await chooseStation(page);await page.locator('.station-vehicles button').first().click();await expect(page.locator('.vehicle-calls')).toContainText('Alcântara');f.move();await page.clock.fastForward(10000);
- await expect.poll(()=>f.requests.some(r=>r.path.endsWith('/calls')&&r.query.get('reference')==='updated-observation')).toBe(true);await expect(page.locator('.vehicle-calls .stop-link')).toHaveCount(0);await expect(page.locator('.vehicle-status')).toContainText('Parado em Alcântara');
+ await expect.poll(()=>f.requests.some(r=>r.path.includes('/vehicles/')&&r.path.endsWith('/calls')&&r.query.get('reference')==='updated-observation')).toBe(true);await expect(page.locator('.vehicle-calls .stop-link')).toHaveCount(0);await expect(page.locator('.vehicle-status')).toContainText('Parado em Alcântara');
 });
 test('frozen calls cannot navigate a stop replaced by a different static plan',async({page})=>{
  const f=await fixture(page);await page.goto('/');await selectProvider(page,'cp');await chooseStation(page);await page.locator('.station-vehicles button').first().click();await expect(page.locator('.stop-link')).toContainText('Alcântara');f.replaceNetwork();await page.locator('.stop-link').click();await expect(page.locator('.popup-footnotes')).toContainText('A rede publicada mudou');await expect(page.locator('.vehicle-heading')).toContainText('Comboio 18456');

@@ -170,3 +170,9 @@ CM paths share one validated stop sequence per published pattern and reference e
 [Direction boards and journeys](VEHICLE-POPUPS.md) add cached reads alongside the existing calls/navigation operations. GTFS schedules retain full visits separately from local map visits and build an immutable lazy trip/stop/direction index once per static generation. TML ETA decoding is shared between CP, bounded per-operator publications and requested-stop arrival collection; the native CM collector keeps its existing demand and request budgets. A board `b|` revision combines the frozen network with an existing bounded arrival-result lease. Journey `j:` revisions pin network/observation, read time and committed stop-event generation. Actual events are served only after persistence; no current upstream adapter produces certified occurrences.
 
 The complete timed journey appears only with a safe plan/route/trip/date association. The existing CM published-pattern path and next-stop fallback remain separately available when a timed journey cannot be identified. UI polling does not change the provenance, observation clock or highlighted path.
+
+The popup schedule retains a single visit sequence when the local and complete journeys coincide.
+Cache restoration streams individual trips and interns stop identities,
+so decoding does not buffer the whole expanded timetable.
+The station-to-trip lookup is lazy and bounded to 32 selected stops and 4 MiB per immutable network revision;
+a cache miss scans the retained local visits without dropping calls.

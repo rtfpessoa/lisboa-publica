@@ -56,6 +56,8 @@ type ScheduledTrip struct {
 	SourcePlan                          string        `json:"source_plan,omitempty"`
 	Agency                              string        `json:"agency,omitempty"`
 	Direction                           *int          `json:"direction,omitempty"`
+	PackedCount                         int           `json:"packed_count,omitempty"`
+	PackedTimes                         []byte        `json:"packed_times,omitempty"`
 	JourneyTimes                        []StopTime    `json:"journey_times,omitempty"`
 	Label                               string        `json:",omitempty"`
 	ArrivalTiming                       uint64        `json:"arrival_timing,omitempty"`
@@ -183,7 +185,8 @@ func (q scheduleQuery) day(day time.Time) ([]api.Trip, []api.Arrival, error) {
 		if err := q.ctx.Err(); err != nil {
 			return nil, nil, err
 		}
-		if !q.includesTrip(t, day) {
+		t, included := q.localTrip(t, day)
+		if !included {
 			continue
 		}
 		trip := q.trip(t, day)
@@ -207,7 +210,7 @@ func (q scheduleQuery) day(day time.Time) ([]api.Trip, []api.Arrival, error) {
 }
 
 func (q scheduleQuery) includesTrip(t ScheduledTrip, day time.Time) bool {
-	return (q.filter.Route == "" || q.filter.Route == qualify(q.operator, t.Route)) && q.data.Schedule.active(t.Service, day) && len(t.Times) > 0
+	return (q.filter.Route == "" || q.filter.Route == qualify(q.operator, t.Route)) && q.data.Schedule.active(t.Service, day) && journeyLocalCount(&t) > 0
 }
 
 func (q scheduleQuery) trip(t ScheduledTrip, day time.Time) api.Trip {
@@ -221,7 +224,7 @@ func (q scheduleQuery) stopVisits(t ScheduledTrip, trip api.Trip, day time.Time)
 	arrivals := []api.Arrival{}
 
 	if stop != "" {
-		for _, v := range t.Times {
+		for _, v := range localJourneyTimes(&t) {
 			if err := q.ctx.Err(); err != nil {
 				return nil, err
 			}
@@ -263,4 +266,13 @@ func (q scheduleQuery) plannedArrival(t ScheduledTrip, trip api.Trip, day time.T
 
 func (q scheduleQuery) includesDeparture(t ScheduledTrip, trip api.Trip) bool {
 	return q.filter.Stop == "" && t.Times[0].Departure >= 0 && t.Times[len(t.Times)-1].Arrival >= 0 && !trip.PlannedDeparture.Before(q.filter.From) && trip.PlannedDeparture.Before(q.filter.To)
+}
+
+func (q scheduleQuery) localTrip(trip ScheduledTrip, day time.Time) (ScheduledTrip, bool) {
+	if !q.includesTrip(trip, day) {
+		return trip, false
+	}
+	trip.Times = localJourneyTimes(&trip)
+	trip.PackedTimes = nil
+	return trip, len(trip.Times) > 0
 }

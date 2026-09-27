@@ -76,3 +76,33 @@ func concurrentCPDecode(t *testing.T) {
 	}
 	t.Logf("cp_concurrent_decode_bytes=%d workers=2", len(blob))
 }
+
+// Exercise distinct retained forecast revisions for every collected operator.
+func resourceProviderPredictions(t *testing.T, cache *Cache) []*CPData {
+	cp := resourceCPPredictions(t, cache)
+	state, _ := cache.state("")
+	retained := append([]*CPData(nil), cp...)
+	for version := range cp {
+		results := map[string]*CPData{"cp": cp[version]}
+		for _, p := range providers {
+			if p.ID == "cp" {
+				continue
+			}
+			d := *cp[version]
+			d.PlanID = state.Static[p.ID].PlanID
+			d.Rows = make([]api.CPPrediction, len(cp[version].Rows))
+			for n, row := range cp[version].Rows {
+				row.OperatorId = p.ID
+				row.StopName = strings.Clone(row.StopName)
+				row.RouteName = strings.Clone(row.RouteName)
+				row.DestinationName = strings.Clone(row.DestinationName)
+				d.Rows[n] = row
+			}
+			results[p.ID] = &d
+			retained = append(retained, &d)
+		}
+		cache.updateProviderPredictions(state.Static, results)
+	}
+	t.Logf("all_operator_forecast_snapshots=%d", len(retained))
+	return retained
+}

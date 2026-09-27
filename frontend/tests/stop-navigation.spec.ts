@@ -13,7 +13,14 @@ async function fixture(page:Page){
   if(u.pathname.endsWith('/metrics'))data={speed_kmh:null};
   if(u.pathname.endsWith('/route-shapes'))data={...paged([]),coverage:[]};
   if(u.pathname.endsWith('/stops'))data=paged(stops.filter(s=>(u.searchParams.get('operators')??'').split(',').includes(s.operator_id)&&(!u.searchParams.get('q')||s.name.toLowerCase().includes(u.searchParams.get('q')!.toLowerCase()))));
-  if(u.pathname.endsWith('/arrivals')){if(failure)return r.fulfill({status:503,json:{message:'Fonte indisponível'}});const stop=u.searchParams.get('stop_id')!;requests.push(stop);data={...paged([{id:stop,operator_id:'cm',stop_id:stop,route_id:'cm:1',route_name:stop==='cm:A'?'Linha Alfa':'Linha Beta',trip_id:'trip',headsign:'Destino publicado',kind:'prediction',scheduled_at:null,expected_at:new Date(Date.now()+expectedDelta).toISOString(),observed_at:null,source_url:'https://api.carrismetropolitana.pt/v2',valid_until:new Date(Date.now()+30000).toISOString()}]),availability:{status:'ok',planned_status:'ok',message:'Previsões publicadas pelo operador.',source_url:'https://api.carrismetropolitana.pt/v2'}}}
+  const coverage={status:'partial',message:'Previsões publicadas pelo operador.',actual_arrivals:false,actual_departures:false,history_collection_status:'collecting',source_updated_at:now};
+  if(u.pathname.endsWith('/board')){if(failure)return r.fulfill({status:503,json:{message:'Fonte indisponível'}});const stop=decodeURIComponent(u.pathname.split('/').at(-2)!);requests.push(stop);data={stop_id:stop,revision:'fixture',directions:[{line_key:'cm:1',line_name:stop==='cm:A'?'Linha Alfa':'Linha Beta',direction_key:'destination',label:'Destino publicado',count:1}],coverage};}
+  if(u.pathname.endsWith('/board/calls')){
+   if(failure)return r.fulfill({status:503,json:{message:'Fonte indisponível'}});
+   const stop=decodeURIComponent(u.pathname.split('/').at(-3)!);requests.push(stop);
+   const prediction={at:new Date(Date.now()+expectedDelta).toISOString(),source_url:'https://api.carrismetropolitana.pt/v2',source_updated_at:now,collected_at:now,valid_until:new Date(Date.now()+30000).toISOString()};
+   data={...paged([{id:stop,operator_id:'cm',stop_id:stop,stop_name:stop,stop_sequence:1,phase:'future',destination:'Destino publicado',arrival:{kind:'prediction',actual:null,prediction,schedule:null},departure:{kind:'unavailable',actual:null,prediction:null,schedule:null,reason:'Partida não publicada'}}]),coverage};
+  }
   await r.fulfill({json:data});
  });return {requests,epoch,setFailure:(value:boolean)=>failure=value,setExpectedDelta:(value:number)=>expectedDelta=value};
 }
@@ -43,8 +50,8 @@ test('map offers overlapping stops as explicit targets',async({page})=>{
 
 test('a failed refresh never keeps a past ETA in upcoming passages',async({page})=>{
  const f=await fixture(page);f.setExpectedDelta(5000);await page.clock.install({time:new Date(f.epoch)});await page.goto('/');await page.getByRole('button',{name:'Carris Metropolitana',exact:true}).click();await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click();
- await page.getByLabel('Pesquisar carreira ou paragem').fill('Alfa');await page.locator('.search-results button').last().click();const panel=page.locator('.detail-panel');await expect(panel.locator('.arrival')).toHaveCount(1);
- f.setFailure(true);await page.clock.fastForward(12000);await expect(panel.locator('.arrival')).toHaveCount(0);await expect(panel).toContainText('Sem próximas passagens publicadas nesta recolha.');
+ await page.getByLabel('Pesquisar carreira ou paragem').fill('Alfa');await page.locator('.search-results button').last().click();const panel=page.locator('.detail-panel');await expect(panel.locator('.direction-detail time')).toHaveCount(1);
+ f.setFailure(true);await page.clock.fastForward(12000);await expect(panel.locator('.direction-detail time')).toHaveCount(0);await expect(panel).toContainText('Sem registo real');await expect(panel).toContainText('Fonte indisponível');
 });
 
 for(const width of [1280,390])test(`returning map drag keeps the stop group at ${width}px`,async({page})=>{

@@ -10,7 +10,7 @@ import (
 
 type journeyIndex struct {
 	trips      map[string][]*ScheduledTrip
-	stops      map[string][]*ScheduledTrip
+	stops      journeyStopIndex
 	directions map[string][]api.BoardDirection
 	direction  map[*ScheduledTrip]*string
 	lines      map[*ScheduledTrip]string
@@ -30,7 +30,7 @@ func journeyTimes(t *ScheduledTrip) []StopTime {
 	if len(t.JourneyTimes) > 0 {
 		return t.JourneyTimes
 	}
-	return t.Times
+	return localJourneyTimes(t)
 }
 func lineForTrip(d *StaticData, operator string, t *ScheduledTrip) (string, string, string) {
 	id := qualify(operator, t.Route)
@@ -68,7 +68,7 @@ type journeyCatalogBuilder struct {
 }
 
 func indexJourneys(d *StaticData, operator string) *journeyIndex {
-	idx := &journeyIndex{trips: map[string][]*ScheduledTrip{}, stops: map[string][]*ScheduledTrip{}, directions: map[string][]api.BoardDirection{}, direction: map[*ScheduledTrip]*string{}, lines: map[*ScheduledTrip]string{}}
+	idx := &journeyIndex{trips: map[string][]*ScheduledTrip{}, directions: map[string][]api.BoardDirection{}, direction: map[*ScheduledTrip]*string{}, lines: map[*ScheduledTrip]string{}}
 	builder := journeyCatalogBuilder{data: d, operator: operator, index: idx, representatives: map[string][]*ScheduledTrip{}}
 	for _, t := range orderedJourneyTrips(d.Schedule) {
 		builder.addTrip(t)
@@ -81,7 +81,7 @@ func orderedJourneyTrips(s *Schedule) []*ScheduledTrip {
 		trips = append(trips, &s.Trips[n])
 	}
 	sort.Slice(trips, func(i, j int) bool {
-		a, b := len(journeyTimes(trips[i])), len(journeyTimes(trips[j]))
+		a, b := journeyVisitCount(trips[i]), journeyVisitCount(trips[j])
 		if a == b {
 			return trips[i].ID < trips[j].ID
 		}
@@ -94,22 +94,9 @@ func (b *journeyCatalogBuilder) addTrip(t *ScheduledTrip) {
 	b.index.lines[t] = line
 	key := qualify(b.operator, t.ID)
 	b.index.trips[key] = append(b.index.trips[key], t)
-	b.addStops(t)
 	direction := b.tripDirection(t, line)
 	b.index.direction[t] = direction
 	b.addDirection(t, api.BoardDirection{LineKey: line, LineName: name, Color: color, DirectionKey: direction})
-}
-func (b *journeyCatalogBuilder) addStops(t *ScheduledTrip) {
-	seen := map[string]bool{}
-	for _, v := range t.Times {
-		for _, stop := range []string{v.Stop, b.data.Schedule.Parents[v.Stop]} {
-			if stop != "" && !seen[stop] {
-				key := qualify(b.operator, stop)
-				b.index.stops[key] = append(b.index.stops[key], t)
-				seen[stop] = true
-			}
-		}
-	}
 }
 func (b *journeyCatalogBuilder) tripDirection(t *ScheduledTrip, line string) *string {
 	var key *string

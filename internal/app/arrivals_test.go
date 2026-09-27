@@ -406,6 +406,10 @@ func TestCMArrivalSharedRequestsAndCancellation(t *testing.T) {
 	entered := make(chan struct{})
 	release := make(chan struct{})
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/realtime/eta/gtfs" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		if attempts.Add(1) == 1 {
 			close(entered)
 		}
@@ -418,6 +422,7 @@ func TestCMArrivalSharedRequestsAndCancellation(t *testing.T) {
 	defer upstream.Close()
 	f := NewFetcher(nil, cache, zap.NewNop())
 	f.CM = upstream.URL
+	f.Hub = upstream.URL
 	path := "/api/v1/arrivals?operators=cm&stop_id=cm:S"
 	_ = securityRequest(h, "GET", path, "", nil)
 	done := make(chan struct{})

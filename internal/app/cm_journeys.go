@@ -49,6 +49,9 @@ func (i cmJourneyImport) mergeTrips(d *StaticData, lines map[string]string) erro
 		t.ID = i.namespace() + t.ID
 		t.Service = i.namespace() + t.Service
 		t.Route, t.SourcePlan, t.Agency = line, i.plan.ID, i.plan.Agency
+		t.PackedCount = len(t.Times)
+		t.PackedTimes = packVisits(t.Times)
+		t.Times = nil
 		i.network.Schedule.Trips = append(i.network.Schedule.Trips, t)
 	}
 	return nil

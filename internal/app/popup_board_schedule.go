@@ -59,7 +59,7 @@ func (r *plannedBoardRead) collect() error {
 }
 func (r *plannedBoardRead) collectDay(day time.Time) error {
 	var err error
-	for _, t := range r.index.stops[r.filter.Stop] {
+	for _, t := range r.index.stopTrips(r.data, r.operator, r.filter.Stop) {
 		err = r.ctx.Err()
 		if err == nil && popupServiceActive(r.data, t, day) {
 			err = r.collectTrip(t, day)
@@ -71,7 +71,7 @@ func (r *plannedBoardRead) collectDay(day time.Time) error {
 	return err
 }
 func (r *plannedBoardRead) collectTrip(t *ScheduledTrip, day time.Time) error {
-	for _, v := range t.Times {
+	for _, v := range localJourneyTimes(t) {
 		if !r.matchesStop(v) {
 			continue
 		}
