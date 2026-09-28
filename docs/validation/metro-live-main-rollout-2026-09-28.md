@@ -1,4 +1,4 @@
-# Metro live main release preparation, 2026-09-28
+# Metro live main release and production verification, 2026-09-28
 
 This follow-up is authorized to repair Maat findings, commit, push to main and
 then deploy a clean committed revision. Earlier replay reports retain their
@@ -98,3 +98,19 @@ After 1Password was unlocked, normal signed commit `7a6f4228f9090c96ce44efaa33ff
 Native public HTTP checks passed snapshots, ETag304, complete SSE reset/frame delivery and a Yellow-line station board. Actual browser inspection then exposed empty Alameda direction/train content at1280px and390px. That initial browser smoke checked stream delivery and page health but did not fail on empty station content; its successful exit is not evidence of working Alameda popups.
 
 Read-only cached catalog inspection confirmed Alameda's parent plus four same-name child platforms. The inverse popup projection counted them as five independent candidates and fell back to `metro:AM`, while the selected catalog station was `metro:ML11060001`. A synthetic integration test failed with an empty direction catalogue before correction. The correction collapses only valid published Metro parent families, retains ambiguity across distinct roots, and rejects missing/cyclic/other-operator/mismatched parents. No provider calls, source clocks, physical-arrival claims or departure models change.
+
+## Station correction validation
+
+Signed commit `0d69c10300bbd86950c1a54079d7f95c95426dae` passed the normal pinned gate for `internal/app`: **Go96/delta0**, no critical regressions and zero suppressions. This scoped score is compared with the same app scope in the feature baseline; it is not a drop from the preceding whole-project97 result. [Gate evidence](metro-live-station-maat-2026-09-28.json) retains scope and coverage limitations.
+
+After correction, all Go packages passed race tests (app47.759s, patterns14.305s), without a database URL; database-dependent tests still skip. `go vet ./...`, local documentation checks (6 Markdown files,102 targets,9 fragments,248 OpenAPI references) and `git diff --check` passed. The initial failed compile from an unused import was repaired before these successful checks. The public contract and frontend source did not change in this correction.
+
+## Corrected production rollout
+
+Revision `0d69c10300bbd86950c1a54079d7f95c95426dae` deployed at2026-09-28T20:09:27Z. [Deployment metadata](metro-live-production-deployment-2026-09-28.json) records the immutable image, rollback image, protected backup location and artifact checks. Public application/database health passed, restart count was0, environment/cadence/resource limits and persistent mounts were preserved, and database/unrelated container identities were unchanged.
+
+The [bounded public checks](metro-live-production-public-2026-09-28.json) passed complete snapshot/SSE reset and frame delivery, increasing cursors, selected journey/stop scoping and conditional reads. Alameda now has4 line/direction entries,15 train episodes and6 verified vehicle links in that captured frame; these are observed snapshot counts, not service-wide inventory guarantees.
+
+The [native production browser checks](metro-live-production-browser-2026-09-28.json) passed at1280px and390px with real application data and native EventSource, without API fixtures. Both widths displayed all4 Alameda directions, station train rows and countdowns, switched each direction, then opened a linked vehicle timeline with13 calls. Stream events continued, with zero JavaScript errors and no horizontal overflow. Counts and predictions can change with original publications. These checks establish content/navigation and live delivery after this deployment, not a new32-client latency benchmark or physical arrival/departure accuracy.
+
+The [initial public](metro-live-initial-public-2026-09-28.json) and [initial browser](metro-live-initial-browser-2026-09-28.json) captures preserve the earlier rollout's successful transport checks and missing Alameda content. The corrective test and stronger browser assertions close that gap. The final documentation-only follow-up records these observations without changing executable source, API types or runtime configuration.

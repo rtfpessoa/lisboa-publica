@@ -1,0 +1,17 @@
+{
+  "version": "0d69c10300bbd86950c1a54079d7f95c95426dae",
+  "image": "sha256:5881dad894ba7a34a910c5f9adeb654fe9471bf2d062ab493153d1a8128f17cf",
+  "rollback_image": "sha256:8e021d5a43db2147a54cadc8693ec561b586642abf4002cc757c77bc0cdbfb78",
+  "health": "ok",
+  "database": "ok",
+  "runtime_environment": "preserved; METRO_REFRESH_MILLISECONDS=500",
+  "runtime_limits": "unchanged",
+  "persistent_mounts": "unchanged",
+  "database_and_other_containers_unchanged": true,
+  "artifact_hashes_match": true,
+  "public_frontend_hash_matches": true,
+  "restart_count": 0,
+  "protected_backup": "/root/lisboa-metro-live-main-release/0d69c10300bb",
+  "public_url": "https://lisboapublica.rtfpessoa.xyz",
+  "deployed_at_utc": "2026-09-28T20:09:27Z"
+}

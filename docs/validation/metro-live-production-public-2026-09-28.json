@@ -1,0 +1,101 @@
+{
+  "base_url": "https://lisboapublica.rtfpessoa.xyz",
+  "checked_at_utc": "2026-09-28T20:09:34Z",
+  "scope": "bounded public application reads; no direct provider calls or physical-reference validation",
+  "health": {
+    "database": "ok",
+    "status": "ok"
+  },
+  "snapshot": {
+    "http_status": 200,
+    "status": "ok",
+    "revision": "f1b7e03dcf5426cfae57e2d6a017aea621107848d1f8e54c144dd32d124bf868",
+    "history_status": "pending",
+    "vehicle_count": 28,
+    "train_count": 15,
+    "supported_train_count": 15,
+    "payload_bytes": 33201,
+    "etag": "\"f1b7e03dcf5426cfae57e2d6a017aea621107848d1f8e54c144dd32d124bf868\"",
+    "source_checked_at": "2026-09-28T20:09:34.096739232Z"
+  },
+  "conditional_snapshot": {
+    "http_status": 200,
+    "payload_bytes": 33201,
+    "changed_source_allowed": true
+  },
+  "native_stream": {
+    "events": [
+      {
+        "event": "reset",
+        "id": "1",
+        "revision": "6e5ca1e20292c599caac004c8080ae376d1472cb75147bb8e87eebb5ff516022",
+        "status": "ok",
+        "payload_bytes": 33200,
+        "elapsed_ms": 317
+      },
+      {
+        "event": "frame",
+        "id": "2",
+        "revision": "dfd07e21afa35a40be21042f2060992cb6b0c9e0ea4ace220ab876a42a8e2061",
+        "status": "ok",
+        "payload_bytes": 33199,
+        "elapsed_ms": 838
+      },
+      {
+        "event": "frame",
+        "id": "3",
+        "revision": "576a576de1742754862fdb4c06fcf73e8519d88805a9004132ecde8d0387649a",
+        "status": "ok",
+        "payload_bytes": 33225,
+        "elapsed_ms": 2351
+      }
+    ],
+    "full_frames": true,
+    "initial_reset": true,
+    "increasing_cursors": true,
+    "source_checked_at": [
+      "2026-09-28T20:09:34.790918948Z",
+      "2026-09-28T20:09:35.34886133Z",
+      "2026-09-28T20:09:36.01601127Z"
+    ]
+  },
+  "selected_journey": {
+    "journey_id": "metro:run:173c400a2bd94f2c8fd911a0",
+    "association": "supported",
+    "call_count": 12,
+    "inferred_arrival_count": 0,
+    "departure_kinds": [
+      "unavailable"
+    ]
+  },
+  "station": {
+    "stop_id": "metro:ML11060073",
+    "train_inventory_count": 15,
+    "directions": [
+      {
+        "color": "#ff3366",
+        "count": 2,
+        "direction_key": "38",
+        "label": "S\u00e3o Sebasti\u00e3o",
+        "line_key": "metro:4_0",
+        "line_name": "Vermelha"
+      },
+      {
+        "color": "#ff3366",
+        "count": 0,
+        "direction_key": "60",
+        "label": "Aeroporto",
+        "line_key": "metro:4_0",
+        "line_name": "Vermelha"
+      }
+    ],
+    "unassociated_forecast_count": 4
+  },
+  "alameda": {
+    "stop_id": "metro:ML11060001",
+    "direction_count": 4,
+    "train_count": 15,
+    "linked_vehicle_count": 6
+  },
+  "revision": "0d69c10300bbd86950c1a54079d7f95c95426dae"
+}

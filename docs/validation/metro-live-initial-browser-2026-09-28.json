@@ -1,0 +1,131 @@
+{
+  "scope": "native production EventSource and public application data; no API fixtures",
+  "widths": [
+    {
+      "width": 1280,
+      "station": {
+        "text": "Refer\u00eancias e progresso inferidos; as posi\u00e7\u00f5es s\u00e3o estimadas. As horas inferidas n\u00e3o s\u00e3o tempos reais medidos.\n\nSentido indispon\u00edvel ou alterado; selecione um sentido atual.\n\nPrevis\u00f5es oficiais sem associa\u00e7\u00e3o \u00e0 viagem",
+        "direction_count": 0,
+        "train_rows": 0,
+        "has_countdown": false
+      },
+      "vehicle": null,
+      "events": [
+        {
+          "event": "reset",
+          "url": "/api/v1/metro/live/stream?",
+          "id": "1",
+          "revision": "39dbe4ffb1380c576bb03d691c729858c605e0d698fb5e850f9d5e1a1421f0a8",
+          "trains": 27,
+          "status": "ok"
+        },
+        {
+          "event": "reset",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "1",
+          "revision": "df56845aff9f18c29c3f9df6aff9e58f76160951481659b4bf2e03f3dd42f51c",
+          "trains": 27,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "2",
+          "revision": "f24a7a100477bc93bc217d28e25bfdbcc889f4c195baf36ca1c0b4f99d7ed676",
+          "trains": 27,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "3",
+          "revision": "47d5421410287fdfeefab2d328bde24a93e116331052751f9199615741134493",
+          "trains": 27,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "4",
+          "revision": "9e5a277d40caca4dc51187938473a400773e73100d269fac9b0bbade7a1ae43a",
+          "trains": 27,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "5",
+          "revision": "3cae2268920d9a6d21683478d6fcfe828d62d4f144fbda77a117959be61b260d",
+          "trains": 27,
+          "status": "ok"
+        }
+      ],
+      "page_errors": [],
+      "no_horizontal_overflow": true
+    },
+    {
+      "width": 390,
+      "station": {
+        "text": "Refer\u00eancias e progresso inferidos; as posi\u00e7\u00f5es s\u00e3o estimadas. As horas inferidas n\u00e3o s\u00e3o tempos reais medidos.\n\nSentido indispon\u00edvel ou alterado; selecione um sentido atual.\n\nPrevis\u00f5es oficiais sem associa\u00e7\u00e3o \u00e0 viagem",
+        "direction_count": 0,
+        "train_rows": 0,
+        "has_countdown": false
+      },
+      "vehicle": null,
+      "events": [
+        {
+          "event": "reset",
+          "url": "/api/v1/metro/live/stream?",
+          "id": "1",
+          "revision": "51b6a5957394b30bd55b6aa44940cb46eee82d8042a4028c40ebf09e3305784e",
+          "trains": 27,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?",
+          "id": "2",
+          "revision": "85362fd236c5b30cd6110bccd92e35ec8c5d63475a04e8593386d741800e5c51",
+          "trains": 27,
+          "status": "ok"
+        },
+        {
+          "event": "reset",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "1",
+          "revision": "73e8bbd2df6af11d5a04eb5018f013c87bda38ad41c94d9c724b362fe9ed950a",
+          "trains": 27,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "2",
+          "revision": "bbcfe16b167af3e41692dc9f6ce474895ee1a4b3b2f9dfae1ee5204ed6503ea5",
+          "trains": 27,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "3",
+          "revision": "532018caa455ce94b349b0d54c43a1d1ff1ab566016913f0a195f215e300cc61",
+          "trains": 27,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "4",
+          "revision": "a0e4ce66de267e778448d271d8b48e33ad0bd43ae959af571d094082a430e253",
+          "trains": 27,
+          "status": "ok"
+        }
+      ],
+      "page_errors": [],
+      "no_horizontal_overflow": true
+    }
+  ],
+  "revision": "7a6f4228f9090c96ce44efaa33ff937e8aabf755",
+  "limitation": "Initial rollout evidence: Alameda direction/train content was empty. Successful transport and page-health checks did not establish complete popup behavior."
+}

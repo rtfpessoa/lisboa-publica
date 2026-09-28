@@ -1,0 +1,96 @@
+{
+  "base_url": "https://lisboapublica.rtfpessoa.xyz",
+  "checked_at_utc": "2026-09-28T16:59:03Z",
+  "scope": "bounded public application reads; no direct provider calls or physical-reference validation",
+  "health": {
+    "database": "ok",
+    "status": "ok"
+  },
+  "snapshot": {
+    "http_status": 200,
+    "status": "ok",
+    "revision": "f82827de9027af98b9dd909a855333be653d65f90f483c259573df8fe699e8c1",
+    "history_status": "collecting",
+    "vehicle_count": 40,
+    "train_count": 27,
+    "supported_train_count": 26,
+    "payload_bytes": 49129,
+    "etag": "\"f82827de9027af98b9dd909a855333be653d65f90f483c259573df8fe699e8c1\"",
+    "source_checked_at": "2026-09-28T16:59:02.114160361Z"
+  },
+  "conditional_snapshot": {
+    "http_status": 304,
+    "payload_bytes": 0,
+    "changed_source_allowed": true
+  },
+  "native_stream": {
+    "events": [
+      {
+        "event": "reset",
+        "id": "1",
+        "revision": "f82827de9027af98b9dd909a855333be653d65f90f483c259573df8fe699e8c1",
+        "status": "ok",
+        "payload_bytes": 49129,
+        "elapsed_ms": 264
+      },
+      {
+        "event": "frame",
+        "id": "2",
+        "revision": "b5f297ed95625d6d58b49ed62b4e5a370a3e8149aa6680ac006e887d00c65827",
+        "status": "ok",
+        "payload_bytes": 49200,
+        "elapsed_ms": 1789
+      },
+      {
+        "event": "frame",
+        "id": "3",
+        "revision": "2786ca849b956dc09b64cbb8650071d4985055a304de86f3a3c3add58ee3fd21",
+        "status": "ok",
+        "payload_bytes": 49196,
+        "elapsed_ms": 3274
+      }
+    ],
+    "full_frames": true,
+    "initial_reset": true,
+    "increasing_cursors": true,
+    "source_checked_at": [
+      "2026-09-28T16:59:02.831166563Z",
+      "2026-09-28T16:59:04.251395377Z",
+      "2026-09-28T16:59:05.6143861Z"
+    ]
+  },
+  "selected_journey": {
+    "journey_id": "metro:run:03cacd7bb33b83ef981ff9a3",
+    "association": "supported",
+    "call_count": 13,
+    "inferred_arrival_count": 0,
+    "departure_kinds": [
+      "unavailable"
+    ]
+  },
+  "station": {
+    "stop_id": "metro:ML11060053",
+    "train_inventory_count": 27,
+    "directions": [
+      {
+        "color": "#ffcc00",
+        "count": 4,
+        "direction_key": "43",
+        "label": "Odivelas",
+        "line_key": "metro:2_0",
+        "line_name": "Amarela"
+      },
+      {
+        "color": "#ffcc00",
+        "count": 4,
+        "direction_key": "48",
+        "label": "Rato",
+        "line_key": "metro:2_0",
+        "line_name": "Amarela"
+      }
+    ],
+    "unassociated_forecast_count": 0
+  },
+  "revision": "7a6f4228f9090c96ce44efaa33ff937e8aabf755",
+  "limitation": "Initial rollout evidence: Alameda direction/train content was empty. Successful transport and page-health checks did not establish complete popup behavior."
+}

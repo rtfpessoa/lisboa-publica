@@ -68,5 +68,5 @@ the synthetic CLI checks and the absence of independent physical observations.
 [Metro failure/recovery validation](validation/metro-live-recovery-2026-09-28.md) records the completed
 32-client mixed replay, fallback/correction fixes, measured profile and remaining evidence boundaries.
 
-[Metro main release preparation](validation/metro-live-main-rollout-2026-09-28.md) records
+[Metro main release and production verification](validation/metro-live-main-rollout-2026-09-28.md) records
 Maat repairs, post-refactor checks, commit dependency closure and production rollout verification.

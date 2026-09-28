@@ -1,0 +1,228 @@
+{
+  "scope": "native production EventSource and public application data; no API fixtures",
+  "widths": [
+    {
+      "width": 1280,
+      "station": {
+        "text": "Refer\u00eancias e progresso inferidos; as posi\u00e7\u00f5es s\u00e3o estimadas. As horas inferidas n\u00e3o s\u00e3o tempos reais medidos.\n\nVerde\nTelheiras\nCais do Sodr\u00e9\nVermelha\nS\u00e3o Sebasti\u00e3o\nAeroporto\nA chegar a esta esta\u00e7\u00e3o\nComboio 28C\n\u2192 Telheiras\nAbrir comboio\n8 min 15 s\nPrevis\u00e3o oficial\nh\u00e1 5 s\nPr\u00f3pria: sem previs\u00e3o atual\nOutros neste sentido\n\n1 comboios identificados neste sentido. A fonte pode n\u00e3o publicar todos os comboios.\n\nPrevis\u00f5es oficiais sem associa\u00e7\u00e3o \u00e0 viagem\nComboio 22C\n\u2192 Telheiras\n4 min 19 s\nPrevis\u00e3o oficial\nh\u00e1 5 s\nComboio 24C\n\u2192 Telheiras\n12 min 00 s\nPrevis\u00e3o oficial\nh\u00e1 5 s",
+        "direction_count": 4,
+        "train_rows": 1,
+        "has_countdown": true
+      },
+      "direction_results": [
+        {
+          "label": "Telheiras",
+          "train_rows": 1
+        },
+        {
+          "label": "Cais do Sodr\u00e9",
+          "train_rows": 0
+        },
+        {
+          "label": "S\u00e3o Sebasti\u00e3o",
+          "train_rows": 2
+        },
+        {
+          "label": "Aeroporto",
+          "train_rows": 0
+        }
+      ],
+      "vehicle": {
+        "call_count": 13,
+        "text": "Comboio 28C\n\nA receber atualiza\u00e7\u00f5es\n\nEstado estimado: Entre paragens\n\n\u00daltima atualiza\u00e7\u00e3o do ve\u00edculo: 21:09 \u00b7 agora\n\nLinha\nLinha Verde\nComboio 28C \u2192 Telheiras\n\nRefer\u00eancias e progresso inferidos; as posi\u00e7\u00f5es s\u00e3o estimadas. As horas inferidas n\u00e3o s\u00e3o tempos reais medidos.\n\nViagem inferida com suporte atual\n\nVer pr\u00f3xima esta\u00e7\u00e3o\nA seguir comboio\nEsta\u00e7\u00e3o\nChegada\nPartida\nEsta\u00e7\u00e3o anterior\nCais do Sodr\u00e9\nSem previs\u00e3o atual\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nPr\u00f3xima esta\u00e7\u00e3o estimada\nBaixa/Chiado\n0 min 37 s\nPrevis\u00e3o oficial\nh\u00e1 9 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nRossio\n1 min 50 s\nPrevis\u00e3o oficial\nh\u00e1 9 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nMartim Moniz\n3 min 06 s\nPrevis\u00e3o oficial\nh\u00e1 8 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nIntendente\n4 min 25 s\nPrevis\u00e3o oficial\nh\u00e1 10 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nAnjos\n5 min 32 s\nPrevis\u00e3o oficial\nh\u00e1 7 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nArroios\n7 min 04 s\nPrevis\u00e3o oficial\nh\u00e1 7 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nAlameda\n8 min 12 s\nPrevis\u00e3o oficial\nh\u00e1 8 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nAreeiro\n9 min 39 s\nPrevis\u00e3o oficial\nh\u00e1 9 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nRoma\n11 min 36 s\nPrevis\u00e3o oficial\nh\u00e1 7 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nAlvalade\n12 min 53 s\nPrevis\u00e3o oficial\nh\u00e1 8 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nCampo Grande\n15 min 54 s\nPrevis\u00e3o oficial\nh\u00e1 9 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nTelheiras\nSem previs\u00e3o atual\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\n\nO estado de sinal apresentado ainda aguarda grava\u00e7\u00e3o.\n\nFonte \u00b7 Metro de Lisboa"
+      },
+      "events": [
+        {
+          "event": "reset",
+          "url": "/api/v1/metro/live/stream?",
+          "id": "1",
+          "revision": "dfd07e21afa35a40be21042f2060992cb6b0c9e0ea4ace220ab876a42a8e2061",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "reset",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "1",
+          "revision": "46f9fdbb1d2b4024e96558ddbaaf5cedf72f4dda388a9153c4a8dd6c027b32d7",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "2",
+          "revision": "7b6b20c92bd9055815433979e2a865390467e03cc7f42529f468ddfd8a5fb4e1",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "3",
+          "revision": "e6d2f9f08e97471c5edad3990149817ac0ea3c52b87a9d68e2a401dd36216fc8",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "4",
+          "revision": "6d7e467b231d0562e79659ec871e42a6b7cbc859385e3a1ac43e58b9b9c68b3b",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "5",
+          "revision": "05a5be9b36d07bc10fc52b819338d129d5a4789c827278e0ce2e24fb1c517c81",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "6",
+          "revision": "5171feeccfaffabcf8108f4c87907ef5228ad6c33e4a6c772f558f6e9f6b6541",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "reset",
+          "url": "/api/v1/metro/live/stream?vehicle_id=metro%3A28C",
+          "id": "1",
+          "revision": "f8f635d1d65f2ffb405f13dd7f38607ad8a3704d0be2a7a8fd82098e3d8355b4",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "reset",
+          "url": "/api/v1/metro/live/stream?vehicle_id=metro%3A28C&journey_id=metro%3Arun%3A6af7e2ab077b2a03866c9db1",
+          "id": "1",
+          "revision": "f8f635d1d65f2ffb405f13dd7f38607ad8a3704d0be2a7a8fd82098e3d8355b4",
+          "trains": 15,
+          "status": "ok"
+        }
+      ],
+      "page_errors": [],
+      "no_horizontal_overflow": true
+    },
+    {
+      "width": 390,
+      "station": {
+        "text": "Refer\u00eancias e progresso inferidos; as posi\u00e7\u00f5es s\u00e3o estimadas. As horas inferidas n\u00e3o s\u00e3o tempos reais medidos.\n\nVerde\nTelheiras\nCais do Sodr\u00e9\nVermelha\nS\u00e3o Sebasti\u00e3o\nAeroporto\nA chegar a esta esta\u00e7\u00e3o\nComboio 28C\n\u2192 Telheiras\nAbrir comboio\n8 min 02 s\nPrevis\u00e3o oficial\nh\u00e1 5 s\nPr\u00f3pria: sem previs\u00e3o atual\nOutros neste sentido\n\n1 comboios identificados neste sentido. A fonte pode n\u00e3o publicar todos os comboios.\n\nPrevis\u00f5es oficiais sem associa\u00e7\u00e3o \u00e0 viagem\nComboio 22C\n\u2192 Telheiras\n4 min 05 s\nPrevis\u00e3o oficial\nh\u00e1 5 s\nComboio 24C\n\u2192 Telheiras\n11 min 50 s\nPrevis\u00e3o oficial\nh\u00e1 5 s",
+        "direction_count": 4,
+        "train_rows": 1,
+        "has_countdown": true
+      },
+      "direction_results": [
+        {
+          "label": "Telheiras",
+          "train_rows": 1
+        },
+        {
+          "label": "Cais do Sodr\u00e9",
+          "train_rows": 0
+        },
+        {
+          "label": "S\u00e3o Sebasti\u00e3o",
+          "train_rows": 2
+        },
+        {
+          "label": "Aeroporto",
+          "train_rows": 0
+        }
+      ],
+      "vehicle": {
+        "call_count": 13,
+        "text": "Comboio 28C\n\nA receber atualiza\u00e7\u00f5es\n\nEstado estimado: Entre paragens\n\n\u00daltima atualiza\u00e7\u00e3o do ve\u00edculo: 21:09 \u00b7 agora\n\nLinha\nLinha Verde\nComboio 28C \u2192 Telheiras\n\nRefer\u00eancias e progresso inferidos; as posi\u00e7\u00f5es s\u00e3o estimadas. As horas inferidas n\u00e3o s\u00e3o tempos reais medidos.\n\nViagem inferida com suporte atual\n\nVer pr\u00f3xima esta\u00e7\u00e3o\nA seguir comboio\nEsta\u00e7\u00e3o\nChegada\nPartida\nEsta\u00e7\u00e3o anterior\nCais do Sodr\u00e9\nSem previs\u00e3o atual\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nPr\u00f3xima esta\u00e7\u00e3o estimada\nBaixa/Chiado\n0 min 25 s\nPrevis\u00e3o oficial\nh\u00e1 8 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nRossio\n1 min 39 s\nPrevis\u00e3o oficial\nh\u00e1 7 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nMartim Moniz\n2 min 54 s\nPrevis\u00e3o oficial\nh\u00e1 7 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nIntendente\n4 min 13 s\nPrevis\u00e3o oficial\nh\u00e1 8 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nAnjos\n5 min 20 s\nPrevis\u00e3o oficial\nh\u00e1 5 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nArroios\n6 min 53 s\nPrevis\u00e3o oficial\nh\u00e1 5 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nAlameda\n8 min 00 s\nPrevis\u00e3o oficial\nh\u00e1 7 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nAreeiro\n9 min 27 s\nPrevis\u00e3o oficial\nh\u00e1 7 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nRoma\n11 min 25 s\nPrevis\u00e3o oficial\nh\u00e1 5 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nAlvalade\n12 min 41 s\nPrevis\u00e3o oficial\nh\u00e1 6 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nCampo Grande\n15 min 43 s\nPrevis\u00e3o oficial\nh\u00e1 7 s\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\nProgresso por confirmar\nTelheiras\nSem previs\u00e3o atual\nPr\u00f3pria: sem previs\u00e3o atual\nSem dados de partida\n\nO estado de sinal apresentado ainda aguarda grava\u00e7\u00e3o.\n\nFonte \u00b7 Metro de Lisboa"
+      },
+      "events": [
+        {
+          "event": "reset",
+          "url": "/api/v1/metro/live/stream?",
+          "id": "1",
+          "revision": "86945bf9e405a84a99feeab6698e676420ea3173086497d2b6ae14bf664efca1",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?",
+          "id": "2",
+          "revision": "6db090092367a2a774796aaaf75a20d4b776b8a21f5e7065371ccb3306cb8dcc",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "reset",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "1",
+          "revision": "4bb53d5060dbce98b65db8a8c113e59eecad3f181c96332fa15c8f9505b58907",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "2",
+          "revision": "11710a3bdf5f66ab4eff5dded2a485410979dcee1bf3cbd258c662234b744ad7",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "3",
+          "revision": "f22e475b444cc33bd76716fd84b177b09118af698031fd84d67c5cf6ea61101f",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "4",
+          "revision": "c045d224a900705771e33f10db209066fc5c7951acaa8766c7699a589cf82776",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "5",
+          "revision": "8ef7e8c05d1024ebedc92a452ec3d8d24e5ba1258d088e3c5d95ec209bae1495",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "frame",
+          "url": "/api/v1/metro/live/stream?stop_id=metro%3AML11060001",
+          "id": "6",
+          "revision": "d49e15753b76869c76db098c7f90ae69969a3daa3531957e53d902c7f1c82468",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "reset",
+          "url": "/api/v1/metro/live/stream?vehicle_id=metro%3A28C",
+          "id": "1",
+          "revision": "e6b8015244e045a54e334247da90aab96f043045ba1afda6debef9618c35a0cb",
+          "trains": 15,
+          "status": "ok"
+        },
+        {
+          "event": "reset",
+          "url": "/api/v1/metro/live/stream?vehicle_id=metro%3A28C&journey_id=metro%3Arun%3A6af7e2ab077b2a03866c9db1",
+          "id": "1",
+          "revision": "e6b8015244e045a54e334247da90aab96f043045ba1afda6debef9618c35a0cb",
+          "trains": 15,
+          "status": "ok"
+        }
+      ],
+      "page_errors": [],
+      "no_horizontal_overflow": true
+    }
+  ],
+  "revision": "0d69c10300bbd86950c1a54079d7f95c95426dae"
+}
