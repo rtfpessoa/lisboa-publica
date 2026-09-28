@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"go.uber.org/zap"
 	"lisboapublica/internal/api"
 	"lisboapublica/internal/patterns"
@@ -13,7 +14,12 @@ import (
 // Run refreshes provider data until its context is cancelled.
 func (f *Fetcher) Run(ctx context.Context) {
 	var wg sync.WaitGroup
-	wg.Add(providerCollectorCount)
+	wg.Add(providerCollectorCount + 1)
+	f.positionsMu.Lock()
+	f.positionsOwned = true
+	f.positions = hubObservationBatch{err: fmt.Errorf("positions awaiting first scheduled receipt")}
+	f.positionsMu.Unlock()
+	ready := make(chan struct{})
 	if f.Patterns != nil {
 		f.historyOperators = f.Patterns.EnabledOperators()
 		f.history = make(chan patterns.ProviderReceipt, 8)
@@ -24,31 +30,40 @@ func (f *Fetcher) Run(ctx context.Context) {
 	go func() { defer wg.Done(); f.staticLoop(ctx) }()
 	go func() { defer wg.Done(); f.cpLoop(ctx) }()
 	go func() { defer wg.Done(); f.cmArrivalLoop(ctx) }()
-	go func() {
-		defer wg.Done()
-		ticker := time.NewTicker(providerRefreshInterval)
-		defer ticker.Stop()
-		prune := time.NewTicker(staticRefreshInterval)
-		defer prune.Stop()
-		f.refreshLive(ctx)
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				f.refreshLive(ctx)
-			case <-prune.C:
-				if e := f.Store.prune(ctx); e != nil {
-					f.Log.Warn("retention cleanup failed", zap.Error(e))
-				}
-				if e := f.Store.compactSnapshots(ctx); e != nil {
-					f.Log.Warn("optional snapshot compaction skipped")
-				}
-			}
-		}
-	}()
+	go func() { defer wg.Done(); f.positionsLoop(ctx, ready) }()
+	go func() { defer wg.Done(); f.sharedLiveLoop(ctx, ready) }()
+
 	wg.Wait()
 }
+func (f *Fetcher) sharedLiveLoop(ctx context.Context, ready <-chan struct{}) {
+
+	select {
+	case <-ctx.Done():
+		return
+	case <-ready:
+	}
+	ticker := time.NewTicker(providerRefreshInterval)
+	defer ticker.Stop()
+	prune := time.NewTicker(staticRefreshInterval)
+	defer prune.Stop()
+	f.refreshLive(ctx)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			f.refreshLive(ctx)
+		case <-prune.C:
+			if e := f.Store.prune(ctx); e != nil {
+				f.Log.Warn("retention cleanup failed", zap.Error(e))
+			}
+			if e := f.Store.compactSnapshots(ctx); e != nil {
+				f.Log.Warn("optional snapshot compaction skipped")
+			}
+		}
+	}
+}
+
 func (f *Fetcher) staticLoop(ctx context.Context) {
 	f.refreshStatic(ctx)
 	timer := time.NewTimer(staticRefreshInterval)

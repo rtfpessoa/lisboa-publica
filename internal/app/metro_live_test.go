@@ -30,6 +30,12 @@ func metroLiveFixture(t *testing.T) (*Server, *StaticData, *MetroData, time.Time
 	if err != nil {
 		t.Fatal(err)
 	}
+	archive, err := patterns.Open(patterns.DefaultConfig(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { archive.Close() })
+	s.Patterns = archive
 	return s, static, data, now
 }
 func metroTestRow(now time.Time, stop, train, value string) MetroWait {
@@ -37,6 +43,12 @@ func metroTestRow(now time.Time, stop, train, value string) MetroWait {
 }
 func publishMetroTest(s *Server, d *StaticData, data *MetroData, now time.Time) {
 	s.Cache.metroRuntime.observe(data, d, s.Patterns, now)
+	// Most behavior fixtures use an already durable baseline. Dedicated tests
+	// exercise uncommitted admission and commit failure without this helper.
+	s.Cache.metroRuntime.flushCheckpoints(context.Background(), s.Patterns, now)
+	s.Cache.metroRuntime.mu.Lock()
+	data.Trains = s.Cache.metroRuntime.current(now)
+	s.Cache.metroRuntime.mu.Unlock()
 	s.Cache.updateMetro(data, s.Cache.operator("metro"))
 }
 func TestMetroStrictWaits(t *testing.T) {
@@ -232,14 +244,18 @@ func TestMetroProgressRegressionAndETAOrderRejectBeforeEvents(t *testing.T) {
 
 func TestMetroNoArchiveDoesNotPromiseDurability(t *testing.T) {
 	s, d, data, now := metroLiveFixture(t)
+	s.Patterns = nil
 	data.Waits = []MetroWait{metroTestRow(now, "RM", "7", "10")}
 	publishMetroTest(s, d, data, now)
 	next := *data
 	next.Waits = []MetroWait{metroTestRow(now.Add(time.Second), "RM", "7", "0")}
 	publishMetroTest(s, d, &next, now.Add(time.Second))
-	e := next.Trains[0].Calls[0].Arrival.Inferred
-	if e == nil || e.Persistence != "unavailable" || len(s.Cache.metroRuntime.pending) != 0 {
-		t.Fatal("absent archive claimed pending durability", e)
+	if len(next.Trains) != 0 || len(s.Cache.metroRuntime.pending) != 0 {
+		t.Fatal("absent archive exposed selectable identity", next.Trains)
+	}
+	frame, _, err := s.metroFrame(context.Background(), metroInterest{Stop: "metro:gtfs-rm"})
+	if err != nil || len(frame.Trains) != 0 || frame.SelectedJourneyId != nil {
+		t.Fatal("absent baseline exposed journey", frame, err)
 	}
 }
 
@@ -631,7 +647,9 @@ func TestMetroArrivalUsesCompletedResponseReceiptNotCycleStart(t *testing.T) {
 	client.lastPersist = time.Now()
 	client.tokenValue = "cached-synthetic-token"
 	client.expires = time.Now().Add(time.Hour)
+	client.History = s.Patterns
 	client.Refresh(context.Background())
+	s.Cache.metroRuntime.flushCheckpoints(context.Background(), s.Patterns, time.Now())
 	client.lastAttempt = time.Now().Add(-time.Second)
 	latest := client.Refresh(context.Background())
 	if len(latest.Trains) != 1 || latest.Trains[0].Calls[0].Arrival.Inferred == nil {

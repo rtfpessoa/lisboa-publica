@@ -17,10 +17,11 @@ type metroFrameRequest struct {
 }
 type metroFrameBuilder struct {
 	metroFrameRequest
-	state  *State
-	static *StaticData
-	now    time.Time
-	frame  api.MetroLiveFrame
+	state    *State
+	static   *StaticData
+	now      time.Time
+	frame    api.MetroLiveFrame
+	contexts []api.MetroForecastContext
 }
 
 func (s *Server) newMetroFrameBuilder(ctx context.Context, i metroInterest) (*metroFrameBuilder, error) {
@@ -32,12 +33,37 @@ func (s *Server) newMetroFrameBuilder(ctx context.Context, i metroInterest) (*me
 		return nil, err
 	}
 	b := &metroFrameBuilder{metroFrameRequest: metroFrameRequest{server: s, ctx: ctx, interest: i}, state: state, static: state.Static["metro"], now: time.Now().UTC()}
+	historyStatus := b.readRuntimeView()
+
 	b.initialize()
+	b.frame.HistoryStatus = historyStatus
 	err = b.checkInventory()
 	return b, err
 }
+func (b *metroFrameBuilder) readRuntimeView() string {
+	state := b.state
+	data, plan, contexts, historyStatus := b.server.Cache.metroRuntime.view(b.now)
+	if data != nil {
+		copy := *state
+		copy.Metro = data
+		b.state, b.static, b.contexts = &copy, plan, contexts
+	} else if state.Metro != nil {
+		// Cached source forecasts survive restart, never cached live association.
+		copy, cached := *state, *state.Metro
+		cached.Trains = []api.MetroTrain{}
+		copy.Metro, b.state = &cached, &copy
+		if b.static != nil {
+			topology := metroTopology(&cached, b.static)
+			classifier := &metroRuntime{metroRuntimeTopology: metroRuntimeTopology{plan: b.static, topology: topology}, metroRuntimePublication: metroRuntimePublication{publication: &cached, batch: collectMetroPoints(&cached, topology, b.now)}}
+			classifier.selectedContexts(classifier.batch, b.now)
+			b.contexts = classifier.forecastContexts(b.now)
+		}
+	}
+	return historyStatus
+}
+
 func (b *metroFrameBuilder) initialize() {
-	b.frame = api.MetroLiveFrame{PublishedAt: b.now, Vehicles: []api.Vehicle{}, Trains: []api.MetroTrain{}, Directions: []api.BoardDirection{}, UnassociatedForecasts: []api.StopCall{}, HistoryStatus: "unavailable", Status: api.MetroStatus{Status: "unconfigured", Message: "API direta sem dados", Lines: []api.MetroLine{}, SourceUrl: metroBase}}
+	b.frame = api.MetroLiveFrame{PublishedAt: b.now, Vehicles: []api.Vehicle{}, Trains: []api.MetroTrain{}, Directions: []api.BoardDirection{}, UnassociatedForecasts: []api.StopCall{}, ForecastContexts: &[]api.MetroForecastContext{}, Recovery: &api.MetroJourneyRecovery{Status: "none"}, HistoryStatus: "unavailable", Status: api.MetroStatus{Status: "unconfigured", Message: "API direta sem dados", Lines: []api.MetroLine{}, SourceUrl: metroBase}}
 	if b.static != nil {
 		b.frame.PlanId = b.static.PlanID
 	}
@@ -56,10 +82,6 @@ func (b *metroFrameBuilder) expiredStatus() bool {
 	return b.frame.Status.CheckedAt == nil || b.now.Sub(*b.frame.Status.CheckedAt) > sourceFreshness
 }
 func (b *metroFrameBuilder) checkInventory() error {
-	runtime := b.server.Cache.metroRuntime
-	runtime.mu.Lock()
-	defer runtime.mu.Unlock()
-	b.frame.HistoryStatus = runtime.historyStatus
 	if b.state.Metro != nil && b.state.Metro.InventoryOverflow {
 		return fail(503, "inventory_capacity", "Inventário Metro excede a capacidade; não é possível apresentar uma lista completa.")
 	}

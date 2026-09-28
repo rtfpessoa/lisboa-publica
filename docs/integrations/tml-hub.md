@@ -12,7 +12,7 @@ The public Hub is the shared integration for seven operators' positions and stat
 | `GET /realtime/eta/gtfs` | JSON wrapper containing GTFS-RT-style `data.header` and `data.entity`; nullable `error` | CP and requested-stop predictions |
 | Discovered normalized GTFS ZIP | Plan `operation_gtfs_normalized_url` | Static network/schedule and optional fleet/shape parsing |
 
-Public source calls do not use a source token. The shared local TML cap is 120 attempts/minute; see [collection policy](README.md#shared-collection-policy). Position and shared ETA loops are nominally five seconds. Static plans/metadata are checked on the five-minute loop, with reusable static cache up to six hours. Source timestamps retain their original meaning.
+Public source calls do not use a source token. The shared local TML cap is 120 attempts/minute; see [collection policy](README.md#shared-collection-policy). Positions use a dedicated one-second minimum-start target; only Metro publishes at that cadence. Other operator publication and shared ETA remain on their existing five-second schedules, consuming the latest shared full positions response. Positions protect 20 Hub/100 global safety slots plus active bounded protected request chains, slow to two/five seconds under pressure and recover one step after a healthy rolling minute. Cooldowns/Retry-After take precedence. Static plans/metadata are checked on the five-minute loop, with reusable static cache up to six hours. Source timestamps retain their original meaning.
 
 ## Position fields
 

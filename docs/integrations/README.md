@@ -50,3 +50,7 @@ Metro direct collection has its own 500 ms target (`METRO_REFRESH_MILLISECONDS`)
 budget; other sources retain their cadence. [Metro frames and inferred evidence](../metro-live-popups.md) describe
 the source-to-popup projection, SSE/snapshot exposure and separate seven-day event journal. Neither fast capture
 nor the guarded uncalibrated departure detector establishes physical timing accuracy.
+
+Hub positions have a dedicated one-second acquisition target with shared-budget priority/headroom and two/five-second pressure backoff; faster publication is scoped to Metro. Other consumers reuse the latest shared response at their existing cadence. Direct Metro waits remain on the separate minimum-500 ms collector. Shared live context classification and complete journey checkpoints now govern selectable identity/recovery; experimental live modeled departure/position qualification remains unavailable. See [Hub](tml-hub.md), [Metro](metro.md) and [popup behavior](../metro-live-popups.md).
+
+The [Metro integration](metro.md) also documents inferred final-visit completion and the optional reviewed wait/station-axis adapter. It consumes existing publications, introduces no endpoint or render-time request, and ships no qualified production configuration.

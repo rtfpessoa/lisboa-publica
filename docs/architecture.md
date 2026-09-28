@@ -236,10 +236,15 @@ reading/focus and manual camera pause. Browser reads never start additional Metr
 Finite frame construction uses read admission; stream lifetime does not occupy a read slot. Per-write deadlines,
 bounded queues/frame bytes/admission, auth expiry/revalidation and full-reset recovery are separate from normal
 JSON deadlines. [Implementation](../internal/app/metro_live.go) and [tests](../internal/app/metro_live_test.go)
-define these boundaries. The inferred-event journal shares the archive owner/budget and restores committed
-partial history without live continuity. The existing 64-version cache remains a separate pagination boundary;
+define these boundaries. The shared classified-context runtime owns admission and vehicle matching; raw destination matching is not rerun by frames. Frames read one runtime snapshot, including journal acknowledgements, rather than waiting for another source collection. Complete latest journey checkpoints share the archive owner/budget, commit before selectable baseline exposure and restore event-free histories without live continuity. Legacy event proofs remain an explicitly partial fallback. Missing pins return explicit recovery state without dangling selected identities. The existing 64-version cache remains a separate pagination boundary;
 complete live frames do not paginate through or promise five-minute retention in that cache.
 
 `METRO_REFRESH_MILLISECONDS` defaults to 500, accepts 500–60000, and does not change `live_refresh_seconds`
 for other feeds. One shared collector/transport must own the subscribed quota; independent external consumers
 are not automatically coordinated. The one-second healthy-SSE P95 objective requires dated validation evidence.
+
+Hub positions acquisition has a separate one-second minimum-start target in [its scheduler](../internal/app/hub_positions.go). Only Metro positions publish at that cadence; the existing five-second general consumer reuses the latest complete Hub response. ETA/static and other operator schedules remain separate. Positions protect 20 Hub/100 global attempt slots and bounded active protected chains under the hard shared caps; sustained pressure changes the target to two/five seconds and cooldowns win. Each recovery step requires a healthy rolling minute. No browser operation adds source requests.
+
+Initial SSE reset projection waits at most one second for the existing two-slot expensive-read admission. The existing process/IP/principal stream limits bound waiters, and cancellation releases admission. Sustained pressure still returns HTTP 503; ordinary snapshots remain fail-fast and established SSE ticks coalesce temporary busy projections. This avoids converting brief scope/pin initialization contention into a five-second fallback cycle without increasing concurrency.
+
+Metro lifecycle revisions are mandatory checkpoint barriers: completion and successor handoff freeze until their complete atomic generation commits. Supported final-visit arrivals close by inference; a return requires three qualified original-source positions on one fixed axis. The optional reviewed `METRO_MODEL_ALLOWLIST` is validated before ingestion; missing or unmatched profiles remain unavailable. Qualified 500 ms browser interpolation adds no upstream calls, stop/departure events or source-clock renewal. Frozen model parameters and source inputs are retained for historical audit; restart never restores detector continuity.

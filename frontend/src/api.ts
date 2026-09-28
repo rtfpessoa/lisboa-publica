@@ -527,6 +527,13 @@ export type CallTime = {
     schedule: (CallTimeEvidence) | null;
     inferred?: (MetroEventEvidence) | null;
 };
+export type MetroDepartureRevision = {
+    revision: number;
+    status: "estimated" | "withdrawn";
+    source_at: string;
+    reason: string;
+    evidence?: MetroEventEvidence;
+};
 export type StopCall = {
     id: string;
     journey_id: string | null;
@@ -546,6 +553,7 @@ export type StopCall = {
     stop_plan_id?: string;
     vehicle_ref?: VehicleReference;
     own_prediction?: (CallTimeEvidence) | null;
+    departure_revisions?: MetroDepartureRevision[];
 };
 export type StopCallPage = {
     data: StopCall[];
@@ -698,6 +706,41 @@ export type MetroPatterns = {
     operators: TransportOperatorHistory[];
     operator: string;
 };
+export type MetroJourneyPersistence = {
+    state: "pending" | "committed" | "unavailable";
+    revision: number;
+    committed_revision: number;
+    generation: string | null;
+    committed_at: string | null;
+};
+export type MetroJourneyLifecycle = {
+    state: "active" | "completed" | "superseded";
+    reason: string;
+    at?: string | null;
+    first_movement_at?: string | null;
+    direction_confirmed_at?: string | null;
+    successor_journey_id?: string | null;
+    predecessor_journey_id?: string | null;
+};
+export type MetroDirectionEvidence = {
+    state: "unknown" | "context" | "confirmed";
+    reason: string;
+    confirmed_at?: string | null;
+    first_movement_at?: string | null;
+    geometry_version?: string | null;
+};
+export type MetroModelProjection = {
+    model_version: string;
+    geometry_version: string;
+    source_updated_at: string;
+    valid_until: string;
+    from_at: string;
+    to_at: string;
+    from_lat: number;
+    from_lon: number;
+    to_lat: number;
+    to_lon: number;
+};
 export type MetroTrain = {
     journey_id: string;
     reference: string;
@@ -713,6 +756,24 @@ export type MetroTrain = {
     vehicle_id: string | null;
     /** Supported current inferred station visit; null if no admissible stopped evidence. */
     current_index?: number | null;
+    persistence?: MetroJourneyPersistence;
+    lifecycle?: MetroJourneyLifecycle;
+    direction_evidence?: MetroDirectionEvidence;
+    model_projection?: MetroModelProjection;
+};
+export type MetroJourneyRecovery = {
+    status: "none" | "current" | "historical" | "partial" | "recovering" | "expired" | "unavailable" | "corrupt";
+    requested_journey_id: string | null;
+    reason: string;
+};
+export type MetroForecastContext = {
+    reference: string;
+    route_id: string;
+    direction_code: string | null;
+    destination: string;
+    status: "admissible" | "incompatible";
+    reason: string;
+    calls: StopCall[];
 };
 export type MetroLiveFrame = {
     revision: string;
@@ -726,6 +787,9 @@ export type MetroLiveFrame = {
     history_status: string;
     /** Usable official predictions without a supported journey association; never a fabricated map link. */
     unassociated_forecasts: StopCall[];
+    recovery?: MetroJourneyRecovery;
+    forecast_contexts?: MetroForecastContext[];
+    association_reason?: string;
 };
 /**
  * getHealth

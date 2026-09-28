@@ -1,3 +1,4 @@
+import {useMetroModelVehicles} from './metroModelPosition';
 import {positionDeadline} from './vehicleFreshness';
 import {StationPopup} from './TransitPopups';
 import {MetroStationPopup} from './MetroPopups';
@@ -79,7 +80,7 @@ export default function App(){const [tab,setTab]=useState<Tab>('live'),[sidebar,
  const metroServiceStatus=metroLive.healthy?directMetroStatus:metroStatus.data??directMetroStatus;
  useEffect(()=>{if(!chart&&!sources&&!auth)return;const previous=document.activeElement as HTMLElement|null;const modal=document.querySelector<HTMLElement>('.modal');const focusable=()=>Array.from(modal?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),a[href]')??[]);focusable()[0]?.focus();const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){setChart(undefined);setSources(false);setAuth(false)}if(e.key==='Tab'){const nodes=focusable(),first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()}}};document.addEventListener('keydown',key);return()=>{document.removeEventListener('keydown',key);previous?.focus()}},[chart,sources,auth]);
  const opData=operators.data??[];
- const metroVehicles=useMemo(()=>metroLive.frame?.vehicles??[],[JSON.stringify(metroLive.frame?.vehicles??[])]);
+ const metroVehicles=useMetroModelVehicles(metroLive.frame);
  const vehicleRows=useMemo(()=>[...(vehicles.data??[]),...(tab==='live'&&selected.includes('metro')?metroVehicles:[])],[vehicles.data,metroVehicles,selectedString,tab]);
  const expiryKey=vehicleRows.map(v=>[positionDeadline(v)>now,now-Date.parse(v.observed_at)>180000]).join('|')+opData.map(o=>!!o.live_updated_at&&now-Date.parse(o.live_updated_at)>90000).join('|');
  const liveData=useMemo(()=>enabled?vehicleRows.filter(v=>positionDeadline(v)>now).map(v=>{const op=opData.find(o=>o.id===v.operator_id);const known=v.last_known||v.stale||now-Date.parse(v.observed_at)>180000||(v.operator_id!=='metro'&&!!vehicles.error)||!!operators.error||!op||!!op.error||!(op.status==='ok'||op.status==='stale')||!op.live_updated_at||now-Date.parse(op.live_updated_at)>90000;return known?{...v,last_known:true,stale:true,speed_kmh:null}:v}):[],[enabled,vehicleRows,vehicles.error,operators.error,opData,expiryKey]);const historyData=enabled?history.data??[]:[];const fleetData=enabled?fleet.data??[]:[];const metricData=enabled?metrics.data:undefined;

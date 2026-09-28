@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Lisboa Pública API",
+    "title": "Lisboa P\u00fablica API",
     "version": "1.0.0",
     "description": "Provider-backed Lisbon transit. apiKey scopes use x-required-scopes; all data lists are paginated. Live revisions expire with410; snapshot revisions freeze committed ingestion membership. Scheduled and estimated data are explicitly classified. Dashboard reads are public for now and rate-limited; supplied API keys still enforce x-required-scopes. Key management requires a Google session. Expensive reads share two fail-fast slots and a 15-second operation deadline (503 busy/timeout). Schedule and historical grouped lists reject over 100000 results with 400 result_limit instead of truncation; narrow operators, route or time window. Busy503 responses include Retry-After."
   },
@@ -2129,7 +2129,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Initial reset projection waits at most one second for the existing bounded read admission; sustained saturation returns 503. Existing stream ticks coalesce temporary read pressure."
       }
     }
   },
@@ -4487,6 +4488,12 @@
               }
             ],
             "nullable": true
+          },
+          "departure_revisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetroDepartureRevision"
+            }
           }
         },
         "required": [
@@ -5451,6 +5458,18 @@
             "type": "integer",
             "nullable": true,
             "description": "Supported current inferred station visit; null if no admissible stopped evidence."
+          },
+          "persistence": {
+            "$ref": "#/components/schemas/MetroJourneyPersistence"
+          },
+          "lifecycle": {
+            "$ref": "#/components/schemas/MetroJourneyLifecycle"
+          },
+          "direction_evidence": {
+            "$ref": "#/components/schemas/MetroDirectionEvidence"
+          },
+          "model_projection": {
+            "$ref": "#/components/schemas/MetroModelProjection"
           }
         },
         "required": [
@@ -5516,6 +5535,18 @@
               "$ref": "#/components/schemas/StopCall"
             },
             "description": "Usable official predictions without a supported journey association; never a fabricated map link."
+          },
+          "recovery": {
+            "$ref": "#/components/schemas/MetroJourneyRecovery"
+          },
+          "forecast_contexts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetroForecastContext"
+            }
+          },
+          "association_reason": {
+            "type": "string"
           }
         },
         "required": [
@@ -5531,6 +5562,282 @@
           "unassociated_forecasts"
         ],
         "description": "Complete immutable dynamic frame for a Metro interest. Static stops/geometry are read separately. Revision is an opaque content validator, not a sortable stream cursor."
+      },
+      "MetroJourneyPersistence": {
+        "type": "object",
+        "required": [
+          "state",
+          "revision",
+          "committed_revision",
+          "generation",
+          "committed_at"
+        ],
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "committed",
+              "unavailable"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "committed_revision": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "generation": {
+            "type": "string",
+            "nullable": true
+          },
+          "committed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "description": "A selectable journey has a committed complete baseline. Later progress may be pending; commit clocks never renew source evidence."
+      },
+      "MetroJourneyRecovery": {
+        "type": "object",
+        "required": [
+          "status",
+          "requested_journey_id",
+          "reason"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "none",
+              "current",
+              "historical",
+              "partial",
+              "recovering",
+              "expired",
+              "unavailable",
+              "corrupt"
+            ]
+          },
+          "requested_journey_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "description": "Explicit result for a pinned identity. Selected journey ID is null unless its record is present in this frame."
+      },
+      "MetroForecastContext": {
+        "type": "object",
+        "required": [
+          "reference",
+          "route_id",
+          "direction_code",
+          "destination",
+          "status",
+          "reason",
+          "calls"
+        ],
+        "properties": {
+          "reference": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          },
+          "direction_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "destination": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "admissible",
+              "incompatible"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "calls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StopCall"
+            }
+          }
+        },
+        "description": "Published reference forecasts in a scoped possible context. Coexisting contexts are not simultaneous active journeys or physical vehicle allocation."
+      },
+      "MetroJourneyLifecycle": {
+        "type": "object",
+        "required": [
+          "state",
+          "reason"
+        ],
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "active",
+              "completed",
+              "superseded"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "first_movement_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "direction_confirmed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "successor_journey_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "predecessor_journey_id": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "MetroDirectionEvidence": {
+        "type": "object",
+        "required": [
+          "state",
+          "reason"
+        ],
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "context",
+              "confirmed"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "confirmed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "first_movement_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "geometry_version": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "MetroDepartureRevision": {
+        "type": "object",
+        "required": [
+          "revision",
+          "status",
+          "source_at",
+          "reason"
+        ],
+        "properties": {
+          "revision": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "estimated",
+              "withdrawn"
+            ]
+          },
+          "source_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/MetroEventEvidence"
+          }
+        }
+      },
+      "MetroModelProjection": {
+        "type": "object",
+        "required": [
+          "model_version",
+          "geometry_version",
+          "source_updated_at",
+          "valid_until",
+          "from_at",
+          "to_at",
+          "from_lat",
+          "from_lon",
+          "to_lat",
+          "to_lon"
+        ],
+        "properties": {
+          "model_version": {
+            "type": "string"
+          },
+          "geometry_version": {
+            "type": "string"
+          },
+          "source_updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "from_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "from_lat": {
+            "type": "number",
+            "format": "double"
+          },
+          "from_lon": {
+            "type": "number",
+            "format": "double"
+          },
+          "to_lat": {
+            "type": "number",
+            "format": "double"
+          },
+          "to_lon": {
+            "type": "number",
+            "format": "double"
+          }
+        }
       }
     }
   }

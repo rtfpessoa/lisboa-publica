@@ -135,11 +135,21 @@ An admitted hot day also remains in memory while a current association reference
 The [inferred popup journal](../../internal/patterns/metro_event_journal.go) retains event revisions and minimal
 contributing original samples in the existing allocated-byte archive budget. The target is seven days, independently
 of the sampled raw-response archive; global FIFO can shorten it. Proofs are capped at 64 KiB, pending writes at
-1024 records/8 MiB and healthy durable batches flush every second. Manifest admission/checksums govern recovery;
+1024 proof records and a shared 8 MiB pending budget with checkpoint work; healthy durable batches flush every second. Manifest admission/checksums govern recovery;
 corruption, eviction or write failure leaves partial history, and restored evidence cannot restore live continuity.
 These records are not certified SQL actual events or physical accuracy metrics. See [runtime/UI semantics](../metro-live-popups.md).
 
 The [offline Metro departure calibration command](../metro-departure-calibration.md) reads a separately
 collected frozen dataset and writes a candidate/holdout report to stdout. It neither imports the input into
 the shared archive nor adds SQL actual events or retained physical metrics. Original evidence bundles and
-independent references are operator-managed; existing sampled history and popup proofs are insufficient.
+reference windows are operator-managed; existing sampled history and popup proofs are insufficient. Physical-reference comparison requires independent references; the separate model-consistency path uses explicitly labeled model-support intervals and never measures physical accuracy or enables live departures.
+
+## Metro latest journey checkpoints
+
+[Complete checkpoints](../../internal/patterns/metro_checkpoint.go) retain the latest journey state independently of event proofs. The additive `popup-checkpoint` kind shares the existing manifest owner, compressed-block checksums, atomic multi-record transactions, seven-day original-source-age retention and global allocated-byte FIFO. A baseline commits before the runtime exposes a selectable identity. Coalesced later progress carries pending revision metadata and may be lost in a crash; it cannot overwrite a later queued revision when an earlier commit finishes.
+
+Each stored record, including metadata, is at most 256 KiB; the runtime reserves 1 KiB of that limit for metadata. Checkpoint work has at most 1024 dirty identities and shares an 8 MiB pending budget with pending event proofs, including a 1 KiB reservation per checkpoint for encoded metadata. Hot runtime history has at most 1024 episodes; cold recovery reads the latest manifest key without scanning all event payloads. Reads do not renew source age; the same original-age TTL is checked for hot records even while ingestion is stopped. Recovery returns suspended historical state and explicitly missing/expired/corrupt or legacy partial outcomes. Missing records cannot be attributed definitively to eviction. Archive write or capacity failure leaves forecasts usable, without an unrecoverable new selectable identity.
+
+Verified cold checkpoint recovery can populate the bounded hot historical cache without restoring continuity or creating writes. Failed recovery consultation has at most 1024 negative entries: unavailable/expired results are memoized for 60 seconds, other failed results for five seconds. This avoids repeated legacy event scans on every stream tick; these timers do not alter source clocks or retained evidence lifetime.
+
+Lifecycle completion/handoff revisions freeze rather than coalescing while their complete multi-record generation commits. Model departure withdrawal removes the main time but retains bounded per-visit revision evidence (256 revisions maximum; excess makes the field unavailable). Qualified checkpoints retain frozen calibration, axis, segment durations, evidence hash/reviewer and latest source model samples. These are historical audit inputs, never restored live detector state. A later commit acknowledgement marks only matching departure/revision evidence as committed.

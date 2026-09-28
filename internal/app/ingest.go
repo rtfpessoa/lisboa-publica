@@ -29,6 +29,7 @@ type Fetcher struct {
 	etag        map[string]string
 	blobs       map[string][]byte
 	lastPersist map[string]time.Time
+	hubPositionState
 }
 
 // NewFetcher creates a provider fetcher with bounded HTTP requests.
@@ -42,6 +43,11 @@ func (f *Fetcher) fetch(ctx context.Context, u string, max int64) ([]byte, error
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "LisboaPublica/1.0 (independent transit dashboard)")
+	positions := ctx.Value(positionRequestKey{}) != nil
+	if !positions {
+		release := ProtectUpstreamWork(f.Client, req.URL.Hostname(), 3)
+		defer release()
+	}
 	f.mu.Lock()
 	tag := f.etag[u]
 	f.mu.Unlock()
@@ -53,28 +59,39 @@ func (f *Fetcher) fetch(ctx context.Context, u string, max int64) ([]byte, error
 		return nil, err
 	}
 	defer res.Body.Close()
+	return f.readFetchResponse(res, u, max)
+}
+func (f *Fetcher) readFetchResponse(res *http.Response, u string, max int64) ([]byte, error) {
 	if res.StatusCode == http.StatusNotModified {
-		f.mu.Lock()
-		right := f.blobs[u]
-		f.mu.Unlock()
-		if right == nil {
-			return nil, fmt.Errorf("304 without cached body")
-		}
-		return right, nil
+		return f.cachedFetchBody(u)
 	}
+
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("upstream HTTP%d", res.StatusCode)
 	}
-	right, err := io.ReadAll(io.LimitReader(res.Body, max+1))
-	if err != nil {
-		return nil, err
+	right, err := readFetchBody(res.Body, max)
+	if err == nil {
+		f.cacheResponse(u, res.Header.Get("ETag"), right)
 	}
-	if int64(len(right)) > max {
-		return nil, fmt.Errorf("upstream response exceeds size limit")
+	return right, err
+}
+func (f *Fetcher) cachedFetchBody(u string) ([]byte, error) {
+	f.mu.Lock()
+	right := f.blobs[u]
+	f.mu.Unlock()
+	if right == nil {
+		return nil, fmt.Errorf("304 without cached body")
 	}
-	f.cacheResponse(u, res.Header.Get("ETag"), right)
 	return right, nil
 }
+func readFetchBody(body io.Reader, max int64) ([]byte, error) {
+	right, err := io.ReadAll(io.LimitReader(body, max+1))
+	if err == nil && int64(len(right)) > max {
+		err = fmt.Errorf("upstream response exceeds size limit")
+	}
+	return right, err
+}
+
 func (f *Fetcher) fetchJSON(ctx context.Context, u string, dst any) error {
 	blob, e := f.fetch(ctx, u, providerJSONBytes)
 	if e != nil {
@@ -166,6 +183,15 @@ func (f *Fetcher) saveStatic(ctx context.Context, p provider, d *StaticData) {
 	f.Log.Info("static provider refreshed", zap.String("operator", p.ID), zap.Int("routes", len(d.Routes)), zap.Int("stops", len(d.Stops)))
 }
 func (f *Fetcher) refreshLive(ctx context.Context) {
+	f.positionsMu.RLock()
+	owned, batch := f.positionsOwned, f.positions
+	f.positionsMu.RUnlock()
+	if !owned {
+		batch = f.fetchHubPositions(ctx)
+	}
+	f.publishHubBatch(ctx, batch, owned)
+}
+func (f *Fetcher) fetchHubPositions(ctx context.Context) hubObservationBatch {
 	var result struct {
 		Data  []hubPosition `json:"data"`
 		Error any           `json:"error"`
@@ -178,19 +204,26 @@ func (f *Fetcher) refreshLive(ctx context.Context) {
 		err = fmt.Errorf("hub returned missing data")
 	}
 	now := time.Now().UTC()
+	return hubObservationBatch{result.Data, now, err}
+}
+func (f *Fetcher) publishHubBatch(ctx context.Context, batch hubObservationBatch, metroOwned bool) {
+	now := time.Now().UTC()
 	for _, p := range providers {
 		if ctx.Err() != nil {
 			return
 		}
 		if p.ID == "cm" {
-			f.refreshCMLive(ctx, p, hubObservationBatch{result.Data, now, err})
+			f.refreshCMLive(ctx, p, batch)
 			continue
 		}
-		if err != nil {
-			f.markError(ctx, p, false, err)
+		if metroOwned && p.ID == "metro" {
 			continue
 		}
-		v, conversionErr := f.hubVehicles(p, result.Data, now)
+		if batch.err != nil {
+			f.markError(ctx, p, false, batch.err)
+			continue
+		}
+		v, conversionErr := f.hubVehicles(p, batch.positions, now)
 		if conversionErr != nil {
 			f.markError(ctx, p, false, conversionErr)
 			continue

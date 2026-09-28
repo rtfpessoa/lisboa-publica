@@ -51,7 +51,7 @@ Read [Metro patterns](metro-patterns.md) for the current experimental model, bot
 The local completion follow-up adds route-specific conditions, versioned Lisbon holiday grouping, labeled older/general-context component fallback, unchanged-segment compatibility, conservative mixed-bin calibration and durable bounded MAE/P90/availability/band-support reports. Evidence-backed maintenance revises retained inputs atomically while keeping issued values. Staged normalized observation/prediction capture and experimental own-forecast adapters cover all eight existing operators under the same archive budget. Metro uses ETA transitions; later stages require verified published paths and coherent reported stop-state transitions. Forecast availability depends on actual compatible inputs, and physical validation remains unavailable. See [current behavior](metro-patterns.md) and [remaining live evidence](GAPS-metro-patterns.md).
 
 [Metro live map and popups](metro-live-popups.md) documents current scoped SSE delivery, five-second fallback,
-reference episodes, countdown/follow behavior, separate inferred evidence and resource/recovery limits.
+shared reference classification, direction-grouped forecasts, countdown/follow behavior, complete event-free checkpoint recovery and resource limits. [Follow-up validation](validation/metro-association-checkpoints-2026-09-28.md) records the performed local checks and remaining movement/lifecycle work.
 
 [Dated Metro transport assessment](validation/metro-live-release-2026-09-28.md) records the synthetic
 Go/Caddy/browser measurements, performed behavior checks and remaining validation boundaries.
@@ -60,7 +60,7 @@ Go/Caddy/browser measurements, performed behavior checks and remaining validatio
 positive-only transport checkpoint from mixed recovery replay and physical-calibration work.
 
 [Metro departure calibration preparation](metro-departure-calibration.md) documents the offline collection
-contract, independent references, reproducible candidate replay and current live-admission boundary.
+contract, separate physical-reference/model-consistency paths, reproducible candidate replay and current live-admission boundary.
 
 [Departure preparation validation](validation/metro-departure-calibration-preparation-2026-09-28.md) records
 the synthetic CLI checks and the absence of independent physical observations.
@@ -70,3 +70,5 @@ the synthetic CLI checks and the absence of independent physical observations.
 
 [Metro main release and production verification](validation/metro-live-main-rollout-2026-09-28.md) records
 Maat repairs, post-refactor checks, commit dependency closure and production rollout verification.
+
+The [Metro completion follow-up](validation/metro-live-completion-2026-09-28.md) records lifecycle/direction/model-admission checks. The [live popup reference](metro-live-popups.md) describes implemented guards; [model admission](metro-departure-calibration.md) distinguishes supported experimental estimates from unmeasured physical timing.

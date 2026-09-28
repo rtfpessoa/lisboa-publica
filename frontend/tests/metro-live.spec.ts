@@ -36,6 +36,49 @@ test('Metro reconnect preserves direction and pinned run without fabricated even
  await panel.getByRole('button',{name:'Aeroporto',exact:true}).click();await panel.getByRole('button',{name:'Abrir comboio',exact:true}).click();await page.evaluate(()=>{const w=window as unknown as {metroFrame:{revision:string;trains:{association:string;reason:string}[]};emitMetro:(s:string)=>void};w.metroFrame.revision='suspended';w.metroFrame.trains[0].association='suspended';w.metroFrame.trains[0].reason='Última viagem selecionada';w.emitMetro('frame')});await expect(panel).toContainText('Última viagem selecionada');await expect(panel.getByRole('button',{name:'A seguir comboio'})).toBeDisabled();await expect(panel).not.toContainText('Chegada inferida');
 });
 
+test('Metro missing pinned recovery retains history and accepts explicit unavailable reset',async({page})=>{
+ await fixture(page);await page.getByRole('button',{name:'Abrir comboio',exact:true}).click();
+ const panel=page.locator('.detail-panel');await expect(panel.locator('.journey-timeline li')).toHaveCount(1);
+ await page.evaluate(()=>{
+  const w=window as any,s=w.streams.at(-1),f=structuredClone(w.metroFrame);
+  f.revision='missing-pin';f.selected_journey_id=null;f.trains=[];
+  f.recovery={status:'unavailable',requested_journey_id:'metro:run:one',reason:'Histórico selecionado indisponível'};
+  s.dispatchEvent(new MessageEvent('reset',{data:JSON.stringify(f),lastEventId:'100'}));
+ });
+ await expect(panel).toContainText('Histórico selecionado indisponível');await expect(panel.locator('.journey-timeline li')).toHaveCount(1);
+ await expect(panel.getByRole('button',{name:'A seguir comboio'})).toBeDisabled();await expect(panel).not.toContainText('Viagem selecionada sem confirmação');
+ await expect(panel.locator('.journey-timeline time')).toHaveCount(0);await expect(panel.locator('.journey-timeline')).toContainText('Sem previsão atual');
+ await expect(panel.locator('[data-metro-revision]')).toHaveAttribute('data-metro-revision','missing-pin');
+});
+
+test('Metro ambiguous vehicle shows both forecast groups with decreasing countdowns',async({page})=>{
+ await fixture(page);await page.getByRole('button',{name:'Abrir comboio',exact:true}).click();
+ await page.evaluate(()=>{
+  const w=window as any,f=w.metroFrame,call=f.trains[0].calls[0];
+  f.trains[0].association='suspended';f.trains[0].reason='Várias viagens possíveis';f.revision='ambiguous-groups';
+  f.forecast_contexts=[
+   {reference:'7',route_id:'metro:r',direction_code:'60',destination:'Aeroporto',status:'admissible',reason:'',calls:[{...call,id:'forecast-forward',stop_name:'Forward station'}]},
+   {reference:'7',route_id:'metro:r',direction_code:'38',destination:'São Sebastião',status:'admissible',reason:'',calls:[{...call,id:'forecast-reverse',stop_name:'Reverse station'}]}
+  ];w.emitMetro('frame');
+ });
+ const panel=page.locator('.detail-panel');await expect(panel).toContainText('Viagem por confirmar');await expect(panel).toContainText('Forward station');await expect(panel).toContainText('Reverse station');
+ await expect(panel).not.toContainText('Referência contraditória');await expect(panel).not.toContainText('Sem associação segura');
+ const countdown=panel.locator('[data-call-id="forecast-forward"] time'),before=await countdown.textContent();
+ await expect.poll(()=>countdown.textContent()).not.toBe(before);
+});
+
+test('Metro opens the currently linked episode only after explicit action',async({page})=>{
+ await fixture(page);await page.getByRole('button',{name:'Abrir comboio',exact:true}).click();
+ await page.evaluate(()=>{
+  const w=window as any,old=w.metroFrame.trains[0];
+  const current={...old,journey_id:'metro:run:new',reason:'Current episode',destination:'Current destination',calls:old.calls.map((c:any)=>({...c,id:'new-visit',journey_id:'metro:run:new'}))};
+  old.association='suspended';old.vehicle_id=null;old.reason='Pinned historical episode';
+  w.metroFrame.trains.push(current);w.metroFrame.revision='new-current';w.emitMetro('frame');
+ });
+ const panel=page.locator('.detail-panel');await expect(panel).toContainText('Pinned historical episode');await expect(panel).not.toContainText('Current destination');
+ await panel.getByRole('button',{name:'Abrir viagem atual',exact:true}).click();await expect(panel).toContainText('Current destination');await expect(panel).not.toContainText('Pinned historical episode');
+});
+
  test('Metro unavailable SSE falls back every five seconds and reset cancels polling',async({page})=>{
   const f=await fixture(page);
   await page.evaluate(()=>{const w=window as unknown as {holdMetro:boolean;failMetro:()=>void};w.holdMetro=true;w.failMetro()});
@@ -105,3 +148,31 @@ test('Metro reconnect preserves direction and pinned run without fabricated even
   await expect.poll(()=>page.evaluate(()=>(window as any).streams.filter((s:any)=>!s.closed).length),{timeout:8000}).toBeGreaterThan(0);await page.evaluate(()=>{const w=window as any;w.metroFrame.revision='fresh-reset';w.metroFrame.trains[0].destination='Fresh reset destination';w.emitMetro('reset')});
   await expect(panel).toContainText('Fresh reset destination');release();await page.waitForTimeout(1000);await expect(panel).toContainText('Fresh reset destination');await expect(panel).not.toContainText('Late fallback destination');
  });
+
+test('Metro local model evaluates every 500 ms without renewing source evidence',async({page})=>{
+ await fixture(page);
+ const result=await page.evaluate(async()=>{
+  const {metroModelVehicles}=await import('/src/metroModelPosition.ts');
+  const frame=structuredClone((window as any).metroFrame),at=Date.now();
+  frame.trains[0].lifecycle={state:'active',reason:'Synthetic control'};
+  frame.trains[0].model_projection={model_version:'synthetic',geometry_version:'synthetic-axis',source_updated_at:new Date(at).toISOString(),valid_until:new Date(at+3000).toISOString(),from_at:new Date(at).toISOString(),to_at:new Date(at+2000).toISOString(),from_lat:38.731,from_lon:-9.145,to_lat:38.732,to_lon:-9.144};
+  const first=metroModelVehicles(frame,at),next=metroModelVehicles(frame,at+500),expired=metroModelVehicles(frame,at+3000);
+  frame.trains[0].association='suspended';const unsupported=metroModelVehicles(frame,at+1000);
+  return {first:first[0],next:next[0],expired:expired[0],unsupported:unsupported[0],original:frame.vehicles[0]};
+ });
+ expect(result.next.lat).toBeCloseTo(38.73125);expect(result.next.lon).toBeCloseTo(-9.14475);
+ expect(result.next.observed_at).toBe(result.first.observed_at);expect(result.next.collected_at).toBe(result.first.collected_at);
+ expect(result.expired).toEqual(result.original);expect(result.unsupported).toEqual(result.original);
+});
+test('Metro completed journey and withdrawn departure retain revision history',async({page})=>{
+ await fixture(page);await page.getByRole('button',{name:'Abrir comboio',exact:true}).click();
+ await page.evaluate(()=>{
+  const w=window as any,f=w.metroFrame,t=f.trains[0],c=t.calls[0];f.revision='completed-withdrawal';
+  t.association='suspended';t.lifecycle={state:'completed',reason:'Chegada inferida à estação final; regresso por confirmar'};
+  c.departure={...c.departure,reason:'Estimativa retirada'};
+  c.departure_revisions=[{revision:1,status:'estimated',source_at:t.source_updated_at,reason:'Synthetic original model departure'},{revision:2,status:'withdrawn',source_at:t.source_updated_at,reason:'Synthetic correction'}];
+  w.emitMetro('frame');
+ });
+ const panel=page.locator('.detail-panel');await expect(panel).toContainText('regresso por confirmar');await expect(panel.locator('.journey-timeline')).toContainText('Estimativa retirada');
+ await panel.getByText('Revisões da partida').click();await expect(panel).toContainText('Synthetic correction');await expect(panel.getByRole('button',{name:'A seguir comboio'})).toBeDisabled();
+});

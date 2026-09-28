@@ -20,28 +20,24 @@ Original platform `hora` clocks are parsed in Europe/Lisbon. Waits require a JSO
 null, missing, strings, fractions, negative values and invalid train references are unavailable. Their absence
 cannot produce a zero-time arrival. Freshness is 90 seconds with the existing future-clock skew allowance;
 an inferred past arrival additionally cannot use a clock later than its receipt. A receipt or browser render
-never renews the original clock. The shared five-second interval/configuration for other providers remains intact.
+never renews the original clock. Hub positions have a dedicated one-second minimum refresh-start target, with no overlapping or catch-up work. Faster publication is limited to Metro; the existing five-second consumer uses the shared latest Hub response for other operators. Shared ETA and other source schedules remain unchanged. Positions protect 20 Hub and 100 global attempt slots plus bounded in-flight protected request chains, slow to two/five seconds under pressure, and require a full healthy rolling minute per recovery step. Provider cooldowns/Retry-After take precedence. These are local policies, not provider freshness guarantees.
 
 ## Association and history
 
 A published reference is shown as `Comboio <reference>`, without claiming physical fleet identity.
 The popup association is an inferred episode keyed by supported route, destination context and reference,
 with an independently generated journey ID. A unique ordered GTFS topology and uniquely matched nearby
-station metadata are required. Popup call IDs use the unique published GTFS station-family root; matching child platforms collapse only through valid published parent relationships. Distinct roots and invalid parent chains remain unresolved. Conflicting platforms, simultaneous direction contexts, changed values under
-the same source clock, backwards clocks and expired support suspend progress and dependent forecasts.
+station metadata are required. Popup call IDs use the unique published GTFS station-family root; matching child platforms collapse only through valid published parent relationships. Distinct roots and invalid parent chains remain unresolved. Conflicting platforms, incompatible forecast order, changed values under the same source clock, backwards clocks and expired support suspend the affected context. Coexisting direction forecasts alone do not reject a reference. The shared classifier scopes evidence by line/reference/destination/path, retains coherent prior continuity, and leaves an initially ambiguous reference unlinked. A missing optional wait cannot compete with a usable context. It never chooses a context by minimum ETA, row order or approximate Hub trip.
 Source gaps clear transition memory. Plan changes and expired association support create separate episodes;
 midnight and approximate Hub trip changes alone do not reset identity. Return runs remain separate and the
 selected journey ID stays pinned until an explicit vehicle selection. Selecting the same map reference
 again can open its currently supported new episode; data refreshes never release the pin.
 
-The map link additionally requires exactly one supported reference, a fresh Hub observation and a unique
-matching direct destination. Unassociated official station forecasts remain visible separately with no invented
-map link. Station counts describe supported identified episodes, not all physical trains. Direction selection
+The map link uses exactly one supported classified context for the same line/reference and a fresh scoped Hub observation. A second raw destination matcher is not used. Valid local forecasts remain visible even when a unique whole path is missing; no journey or vehicle link is invented. An ambiguous vehicle popup preserves its pinned timeline and shows valid reference forecasts grouped by direction under “Viagem por confirmar”. Station counts describe supported identified episodes, not all physical trains. Direction selection
 uses the admitted topology's route/destination context. A unique longer path containing the same ordered
 short-turn path provides its canonical direction; ambiguous candidates retain their published context.
 Unassociated forecasts appear only for the selected direction or explicitly as direction unconfirmed.
-Unknown or short-turn contexts without compatible
-topology remain unavailable; they are not silently assigned a terminal direction.
+Unknown or short-turn contexts without compatible topology cannot admit a journey; usable local forecasts remain separate and are not silently assigned a terminal direction.
 
 Previous/current/remaining visits come from the ordered path. Live progress is estimated from usable direct
 arrival anchors; missing reachability stays explicit. Each original update is processed before browser coalescing.
@@ -54,15 +50,22 @@ rather than the earlier arrival. Failed or pending writes cannot guarantee that 
 an uncommitted withdrawal; history status and persistence labels expose that boundary. Previously issued
 immutable frames remain unchanged.
 
-The guarded [departure detector](../internal/patterns/metro_movement.go) emits on the first admissible
-resumed model movement after a supported stop, without radius exit or a second positive sample. It rejects
-uncalibrated parameters, transform/geometry mismatches, fallback/corrected points, repeated/backwards clocks,
-backwards progress and gaps. **The current live source adapter has no frozen geometry/replay calibration or
-admissible movement transform. Departure projection remains unavailable.** Hub coordinates alone cannot enable
-it, and synthetic detector tests do not constitute calibration or physical accuracy validation.
-[Offline calibration preparation](metro-departure-calibration.md) defines original-evidence collection,
-independent reference windows, frozen journey splits and a reproducible candidate/holdout assessment.
-The command never enables live departures.
+The guarded [departure detector](../internal/patterns/metro_movement.go) emits at the first
+qualified source displacement after a supported stop, beyond the larger frozen noise/resolution envelope.
+The versioned wait adapter binds a reviewed station-axis geometry, segment durations, original waits,
+profile/direction and visit. A supported positive-to-zero arrival anchors a stop; opaque Hub positions and
+render ticks cannot qualify one. Model interpolation cannot independently confirm its own direction.
+Three advancing source station anchors and two consistent above-envelope steps on the same fixed axis
+confirm movement direction. Candidate departures retain their first movement clock separately from later
+confirmation; absent confirmation or qualification keeps their passenger times unavailable.
+
+`METRO_MODEL_ALLOWLIST` optionally points to a bounded reviewed configuration file. Its entries must pass
+[original-input model-consistency replay](metro-departure-calibration.md), checksums, whole-journey holdout
+and prohibited-input controls. No qualifying actual-source configuration was supplied for this release;
+therefore production model departures and local modeled coordinates remain unavailable. A temporary gap
+preserves established historical estimates. Same-visit model regression/correction withdraws the main
+value as “Estimativa retirada”, retaining bounded revisions and original evidence. This is experimental
+model support, not physical timing calibration.
 
 The existing forecast engine can contribute own predictions only through an active episode with at least three
 supported station signals matching the popup's retained original transition windows, the same route/destination
@@ -101,19 +104,13 @@ rebuild vehicle map sources; validity/reporting boundary changes still update ma
 
 ## Durability and resource limits
 
-Inferred arrival summaries and original contributing samples use the archive owner's separate `popup-events`
-lane, checksummed compressed generations and manifest admission. They never populate certified actual-event SQL
-records. The target is seven days inside the existing shared 10,000,000,000 allocated-byte archive budget;
-TTL/FIFO can shorten coverage. The sampled raw-response archive remains at least 30 seconds, independently
-of original-update processing. Repeated polls do not create repeated event proofs.
+Complete latest journey checkpoints use the archive owner's additive `popup-checkpoint` lane, independently of the `popup-events` proofs. Checkpoints retain the ordered calls, original source clock, topology profile, original contributing points and event proof revisions. They use verified compressed blocks and the same atomic manifest/allocated-byte FIFO owner. A batch can admit several journey records through one generation. The seven-day target is subordinate to the existing shared 10,000,000,000 allocated-byte cap and original source age; reads and commit clocks do not extend it.
 
-Proof revisions are at most 64 KiB. Pending writes are capped at 1024 records and 8 MiB and flush each second
-while healthy. Without an archive owner, evidence is immediately marked unavailable and is not queued.
-The committed label records successful archive admission, not a guarantee against subsequent TTL/FIFO eviction.
-Queue/storage failures are explicit; official live data remains independent. Recovery reads only
-verified committed proofs, returns partial event history and never restores live continuity. In-memory association
-consultation is separately bounded to 1024 episodes and 256 ordered visits per episode; longer
-paths fail inventory admission explicitly. The cache is not a promise that seven days fit in the cache.
+A new identity remains internal until its complete baseline commits. Before that, or when the archive is unavailable, source forecasts/map positions remain usable without a selectable journey. Subsequent progress coalesces by identity; revision/generation/commit metadata distinguishes pending progress from the last committed revision. Healthy checkpoint batches flush every second, and frames read confirmed runtime state directly, without waiting for another source poll. A late commit acknowledgement cannot discard a newer queued revision.
+
+Checkpoints are capped at 256 KiB including metadata (runtime payload admission retains 1 KiB for metadata). Dirty identities and proof records have individual count caps of 1024 and share an 8 MiB pending budget that includes a 1 KiB reservation per checkpoint for encoded metadata. Proofs are at most 64 KiB. Hot association consultation is separately bounded to 1024 episodes and 256 ordered visits per episode. Paths or writes exceeding bounds fail explicitly; data is never silently truncated. Without an archive owner, no pending writes or selectable identities are promised.
+
+Pinned recovery looks up one verified latest checkpoint by its manifest key, including journeys with no stop events. It preserves identities, calls and original clocks, honors the original-age TTL for hot and cold reads, but restores history with suspended association, no current/next visit, no predictions and no live movement continuity. Legacy event-only records retain explicitly partial recovery. Missing records are explicitly unavailable; absence cannot distinguish eviction from a never-committed identity. Known expiry/corruption have distinct outcomes. A selected ID is returned only when its record is in the frame. The browser may preserve its last received timeline while displaying the explicit recovery limitation. Pending progress can be lost in a crash; restored history is the last committed state, not a guarantee of the latest pre-crash observation.
 
 Streams default to 256 KiB encoded frames, 64/process, 16/IP and 4/authenticated principal. These admission
 limits are configurable through `Options.MetroStreamLimits`; they are starting limits, not measured capacity.
@@ -138,7 +135,7 @@ slow collector fixture verifies serialized 500 ms starts without catch-up reques
 These establish code behavior; they do not establish physical event accuracy or provider completeness.
 
 The healthy-SSE P95 backend frame-publication to changed popup DOM revision objective is one second.
-The [completed mixed recovery assessment](validation/metro-live-recovery-2026-09-28.md) used the actual
+The earlier [completed mixed recovery assessment](validation/metro-live-recovery-2026-09-28.md) used the actual
 Go/Caddy/compiled frontend, 32 clients for 15 minutes and mixed station/vehicle views. Sixteen clients used
 390 px viewports; a controlled 50 ms request plus 50 ms response-write application relay also delayed ongoing
 SSE writes. The measured healthy-stream DOM P95 was 969 ms and all ten recovery assertions passed. This is
@@ -150,3 +147,31 @@ Source cadence experiments, synthetic replay and the offline candidate report ca
 The [earlier transport assessment](validation/metro-live-release-2026-09-28.md) preserves its original
 positive-only scope, while [departure preparation](metro-departure-calibration.md) describes the current
 collection/assessment workflow and live-admission boundary.
+
+The first shared-classification/checkpoint slice is covered by its [dated validation](validation/metro-association-checkpoints-2026-09-28.md). The [completion follow-up](validation/metro-live-completion-2026-09-28.md) implements the guarded adapter, lifecycle and local rendering, with separate baseline admission measurement. Production activation still requires retained actual-source qualification; no profile is enabled by synthetic checks.
+
+Verified cold checkpoint recovery can populate the bounded hot historical cache without restoring continuity or creating writes. Failed recovery consultation has at most 1024 negative entries: unavailable/expired results are memoized for 60 seconds, other failed results for five seconds. This avoids repeated legacy event scans on every stream tick; these timers do not alter source clocks or retained evidence lifetime.
+
+When an explicit missing-pin recovery retains the browser's previous timeline, active official/own predictions and current/next markers are removed; historical evidence remains available.
+
+Initial SSE reset projection waits at most one second for the existing two-slot expensive-read admission. The existing process/IP/principal stream limits bound waiters, and cancellation releases admission. Sustained pressure still returns HTTP 503; ordinary snapshots remain fail-fast and established SSE ticks coalesce temporary busy projections. This avoids converting brief scope/pin initialization contention into a five-second fallback cycle without increasing concurrency.
+
+## Completion and local model rendering
+
+A newly supported positive-to-zero arrival at the admitted final visit stages inferred completion.
+Countdown expiry, an isolated zero, proximity and intermediate arrivals cannot close the journey.
+Closure revisions freeze until their complete checkpoint commits; later source updates cannot coalesce
+away the mandatory lifecycle record. The timeline remains consultable, with no active terminal journey.
+Later forecasts under the same reference cannot reopen that completed episode.
+
+A compatible opposite-direction candidate remains private until three qualified fixed-axis positions
+confirm its direction. Handoff closes the previous active association and activates the successor in one
+archive generation. First movement and confirmation clocks are separate; old popup pins retain their
+identity and require explicit “Abrir viagem atual” selection. Restart restores relationships/history,
+never direction/movement continuity. Forecast coexistence alone cannot activate a return journey.
+
+For qualified configurations only, the backend supplies an absolute source-bound segment interval and
+frozen station-axis endpoints. The browser evaluates that explicitly labeled estimated position every
+500 ms, moving the map/follow target without additional requests or inference events. This is linear
+station-axis modeling, not an assertion of exact track geometry or GPS. Invalid/expired support stops
+interpolation; it cannot manufacture arrival at the interval endpoint or renew source clocks.

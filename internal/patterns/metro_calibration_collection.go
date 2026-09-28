@@ -42,9 +42,15 @@ func prepareMetroCalibration(in MetroCalibrationDataset) (*metroCalibrationColle
 	return c, nil
 }
 func validateMetroDataset(in MetroCalibrationDataset) error {
-	if in.Kind != "observed" && in.Kind != "synthetic" {
-		return fmt.Errorf("kind must be observed or synthetic")
+	if in.Kind != "observed" && in.Kind != "synthetic" && in.Kind != "model_consistency" {
+		return fmt.Errorf("kind must be observed, synthetic or model_consistency")
 	}
+	if in.Kind == "model_consistency" && strings.TrimSpace(in.ModelProvenance) == "" {
+		return fmt.Errorf("model consistency requires frozen qualification provenance")
+	}
+	return validateMetroDatasetEvidence(in)
+}
+func validateMetroDatasetEvidence(in MetroCalibrationDataset) error {
 	if !metroDatasetProvenance(in) {
 		return fmt.Errorf("versioned geometry, transform, source and resolution provenance are required")
 	}
@@ -53,6 +59,7 @@ func validateMetroDataset(in MetroCalibrationDataset) error {
 	}
 	return nil
 }
+
 func metroDatasetProvenance(in MetroCalibrationDataset) bool {
 	versioned := in.Version != "" && in.Geometry != "" && in.Transform != ""
 	provenance := in.SourceProvenance != "" && in.ResolutionProvenance != ""
@@ -70,7 +77,7 @@ func validMetroReference(r MetroCalibrationReference) bool {
 	return identity && stop && move
 }
 func metroReferenceKind(kind string, r MetroCalibrationReference) bool {
-	return kind == "observed" && r.Kind == "independent" || kind == "synthetic" && r.Kind == "synthetic"
+	return kind == "observed" && r.Kind == "independent" || kind == "synthetic" && r.Kind == "synthetic" || kind == "model_consistency" && r.Kind == "model_support"
 }
 func (c *metroCalibrationCollection) addReferences(in MetroCalibrationDataset) error {
 	for _, r := range in.References {
@@ -82,10 +89,10 @@ func (c *metroCalibrationCollection) addReferences(in MetroCalibrationDataset) e
 }
 func (c *metroCalibrationCollection) addReference(kind string, r MetroCalibrationReference) error {
 	if !validMetroReference(r) {
-		return fmt.Errorf("invalid independent stop/movement window")
+		return fmt.Errorf("invalid referenced stop/movement window")
 	}
 	if !metroReferenceKind(kind, r) {
-		return fmt.Errorf("reference kind must match dataset; observed requires independent evidence")
+		return fmt.Errorf("reference kind must match dataset: observed/independent, synthetic/synthetic or model_consistency/model_support")
 	}
 	k := metroCalibrationVisit{r.Journey, r.Visit}
 	_, exists := c.refs[k]

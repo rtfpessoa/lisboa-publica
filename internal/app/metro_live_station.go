@@ -4,22 +4,78 @@ import (
 	"lisboapublica/internal/api"
 	"lisboapublica/internal/patterns"
 	"strings"
-	"time"
 )
 
 func (b *metroFrameBuilder) stationForecasts() {
+	linked := linkedMetroForecasts(b.frame.Trains)
+	for _, context := range b.contexts {
+		if !b.includeForecastContext(context) {
+			continue
+		}
+		if b.interest.Stop != "" {
+			context.Calls = metroCallsAtStop(context.Calls, b.interest.Stop)
+		}
+		if context.Status == "admissible" && len(context.Calls) == 0 {
+			continue
+		}
+		b.addForecastContext(context, linked)
+	}
+	if b.interest.Vehicle != "" && b.frame.SelectedJourneyId == nil {
+		b.frame.AssociationReason = ptr(metroForecastAssociationReason(*b.frame.ForecastContexts))
+	}
+}
+func (b *metroFrameBuilder) includeForecastContext(c api.MetroForecastContext) bool {
+	if b.interest.Route != "" && !sameMetroRoute(b.static, b.interest.Route, c.RouteId) {
+		return false
+	}
+	if b.interest.Vehicle != "" && !b.contextMatchesVehicle(c) {
+		return false
+	}
+	return b.interest.Stop != "" || b.interest.Vehicle != ""
+}
+func (b *metroFrameBuilder) addForecastContext(context api.MetroForecastContext, linked map[string]bool) {
+	if b.interest.Vehicle != "" {
+		*b.frame.ForecastContexts = append(*b.frame.ForecastContexts, context)
+	}
 	if b.interest.Stop == "" {
 		return
 	}
-	linked := linkedMetroForecasts(b.frame.Trains)
-	for _, a := range predictedArrivals(b.state, b.now, b.now.Add(2*time.Hour), "", b.interest.Stop) {
-		ref := strings.TrimPrefix(a.TripId, "metro:")
-		if linked[ref+"|"+a.StopId+"|"+a.Headsign] {
-			continue
+	for _, c := range context.Calls {
+		if !linked[context.RouteId+"|"+context.Reference+"|"+c.StopId+"|"+context.Destination] {
+			b.frame.UnassociatedForecasts = append(b.frame.UnassociatedForecasts, c)
 		}
-		expiry := a.ObservedAt.Add(sourceFreshness)
-		b.frame.UnassociatedForecasts = append(b.frame.UnassociatedForecasts, api.StopCall{Id: a.Id, StopId: a.StopId, ServiceLabel: ptr(ref), LineKey: a.RouteId, DirectionKey: b.forecastDirection(a), Destination: a.Headsign, Phase: "unknown", Arrival: api.CallTime{Kind: "prediction", At: a.ExpectedAt, Prediction: &api.CallTimeEvidence{At: *a.ExpectedAt, SourceUrl: a.SourceUrl, SourceUpdatedAt: a.ObservedAt, ValidUntil: &expiry}}, Departure: missingCallTime("Sem dados de partida")})
 	}
+}
+func metroForecastAssociationReason(contexts []api.MetroForecastContext) string {
+	count, incompatible := 0, false
+	for _, c := range contexts {
+		if c.Status == "admissible" {
+			count++
+		} else if c.Status == "incompatible" {
+			incompatible = true
+		}
+	}
+	if count > 1 {
+		return "Várias viagens possíveis"
+	}
+	if count == 0 && incompatible {
+		return "Dados incompatíveis nesta direção"
+	}
+	return "Sem dados atuais para confirmar a viagem"
+}
+
+func (b *metroFrameBuilder) contextMatchesVehicle(context api.MetroForecastContext) bool {
+	for _, v := range b.frame.Vehicles {
+		if v.Id == b.interest.Vehicle && strings.TrimSpace(v.SourceId) == context.Reference && v.RouteId != nil && sameMetroRoute(b.static, *v.RouteId, context.RouteId) {
+			return true
+		}
+	}
+	for _, t := range b.frame.Trains {
+		if t.JourneyId == b.interest.Journey && t.Reference == context.Reference && sameMetroRoute(b.static, t.RouteId, context.RouteId) {
+			return true
+		}
+	}
+	return false
 }
 func linkedMetroForecasts(trains []api.MetroTrain) map[string]bool {
 	linked := map[string]bool{}
@@ -33,34 +89,9 @@ func linkedMetroForecasts(trains []api.MetroTrain) map[string]bool {
 func linkMetroCalls(linked map[string]bool, t api.MetroTrain) {
 	for _, c := range t.Calls {
 		if c.Arrival.Prediction != nil {
-			linked[t.Reference+"|"+c.StopId+"|"+t.Destination] = true
+			linked[t.RouteId+"|"+t.Reference+"|"+c.StopId+"|"+t.Destination] = true
 		}
 	}
-}
-func (b *metroFrameBuilder) forecastDirection(a api.Arrival) *string {
-	if b.state.Metro == nil || b.static == nil {
-		return nil
-	}
-	candidates := map[string]bool{}
-	for _, path := range b.state.Metro.Topology.Patterns {
-		if sameMetroRoute(b.static, path.Route, a.RouteId) && b.pathDestinationMatches(path, a.Headsign) {
-			candidates[canonicalMetroDirection(b.state.Metro.Topology, path)] = true
-		}
-	}
-	if len(candidates) == 1 {
-		for code := range candidates {
-			return ptr(code)
-		}
-	}
-	return nil
-}
-func (b *metroFrameBuilder) pathDestinationMatches(path patterns.Pattern, headsign string) bool {
-	for _, station := range b.state.Metro.Stations {
-		if station.ID == path.Destination && station.Name == headsign {
-			return true
-		}
-	}
-	return false
 }
 
 // The direction catalogue uses the same admitted topology as the inventory.

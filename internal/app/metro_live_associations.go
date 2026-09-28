@@ -9,7 +9,7 @@ func (b *metroFrameBuilder) associateVehicles() {
 	counts := map[string]int{}
 	for _, t := range b.frame.Trains {
 		if t.Association == "supported" && b.now.Before(t.ValidUntil) {
-			counts[t.Reference]++
+			counts[t.RouteId+"|"+t.Reference]++
 		}
 	}
 	for _, v := range navigationVehicles(b.state, "metro", b.now) {
@@ -30,7 +30,7 @@ func (b *metroFrameBuilder) includeVehicle(v api.Vehicle) bool {
 func (b *metroFrameBuilder) linkVehicle(v api.Vehicle, counts map[string]int) {
 	for n := range b.frame.Trains {
 		t := &b.frame.Trains[n]
-		if counts[t.Reference] != 1 || !b.vehicleMatches(v, *t) {
+		if counts[t.RouteId+"|"+t.Reference] != 1 || !b.vehicleMatches(v, *t) {
 			continue
 		}
 		t.VehicleId = ptr(v.Id)
@@ -41,13 +41,18 @@ func (b *metroFrameBuilder) linkVehicle(v api.Vehicle, counts map[string]int) {
 }
 func (b *metroFrameBuilder) vehicleMatches(v api.Vehicle, t api.MetroTrain) bool {
 	fresh := !v.LastKnown && !v.Stale && b.now.Sub(v.ObservedAt) <= sourceFreshness
-	return fresh && v.SourceId == t.Reference && metroVehicleDestination(b.state, &v, b.now) == t.Destination
+	supported := t.Association == "supported" && b.now.Before(t.ValidUntil)
+	if !fresh || !supported || v.RouteId == nil {
+		return false
+	}
+	return v.SourceId == t.Reference && sameMetroRoute(b.static, *v.RouteId, t.RouteId)
+
 }
 func (b *metroFrameBuilder) scopeCalls() {
 	selected := textValue(b.frame.SelectedJourneyId)
 	for n := range b.frame.Trains {
 		t := &b.frame.Trains[n]
-		if !b.now.Before(t.ValidUntil) || b.frame.Status.Status != "ok" {
+		if t.Association == "supported" && (!b.now.Before(t.ValidUntil) || b.frame.Status.Status != "ok") {
 			t.Association = "suspended"
 			t.NextIndex = nil
 			t.CurrentIndex = nil

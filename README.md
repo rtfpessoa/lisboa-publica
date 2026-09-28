@@ -57,7 +57,7 @@ For production, set `ENVIRONMENT=production`, an HTTPS `PUBLIC_ORIGIN`, the inte
 
 The [source research](docs/research/SOURCES.md), [implementation plan](docs/PLAN.md), [validation](docs/VALIDATION.md), [Maat findings](docs/MAAT.md) and [reference inventory](docs/reference/INVENTORY.md) preserve dated research and delivery evidence. Use the canonical application references above for current behavior.
 
-Station popups expose line/direction selection and independent arrival/departure evidence. The [Metro live map and popups](docs/metro-live-popups.md) share coherent SSE frames, five-second fallback during stream failure, locally decreasing countdowns, identified line/direction trains and pinned inferred journeys with ordered visits. Metro collection defaults to 500 ms under the shared attempt budget. Inferred arrival publication evidence remains separate from actual events; departure times require unavailable frozen movement calibration and remain unknown. Other operators retain [their popup behavior](docs/VEHICLE-POPUPS.md).
+Station popups expose line/direction selection and independent arrival/departure evidence. The [Metro live map and popups](docs/metro-live-popups.md) share coherent SSE frames, five-second fallback during stream failure, locally decreasing countdowns, identified line/direction trains and pinned inferred journeys with ordered visits. Direct Metro collection defaults to 500 ms; Hub positions have a separate one-second target under the shared attempt budget, with pressure/cooldown backoff. New selectable journeys have durable complete checkpoints, including event-free recovery; ambiguous references retain direction-grouped forecasts. Inferred arrival publication evidence remains separate from actual events; departure times require unavailable frozen movement calibration and remain unknown. Other operators retain [their popup behavior](docs/VEHICLE-POPUPS.md).
 
 ## Experimental Metro patterns
 
@@ -68,4 +68,6 @@ The local completion follow-up adds route-specific conditions, versioned Lisbon 
 Select an operator in **Padrões**. The operator-scoped `/api/v1/transport/patterns` read exposes both waiting and onward forecasts; the original Metro endpoint remains supported. No additional position/feed polling is introduced.
 
 Metro departure model evidence can be prepared with the [offline calibration workflow](docs/metro-departure-calibration.md).
-It makes no upstream calls and does not enable live departures.
+It separates model-consistency evidence from independent physical references, makes no upstream calls and does not enable live departures.
+
+Metro live popups support durable inferred terminal completion, explicit successor selection and guarded experimental departure revisions. The optional reviewed model allowlist and 500 ms local station-axis rendering are implemented; no qualifying production profile is bundled. See [live behavior](docs/metro-live-popups.md), [model admission](docs/metro-departure-calibration.md) and [completion validation](docs/validation/metro-live-completion-2026-09-28.md).

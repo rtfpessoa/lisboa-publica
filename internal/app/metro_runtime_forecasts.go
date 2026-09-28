@@ -10,7 +10,7 @@ func (r *metroRuntime) projectOwn(data *MetroData, history *patterns.Service, no
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, id := range r.active {
-		if t := r.tracks[id]; t != nil {
+		if t := r.tracks[id]; t != nil && t.BarrierRevision == 0 {
 			projectMetroOwnTrack(t, history, now)
 		}
 	}

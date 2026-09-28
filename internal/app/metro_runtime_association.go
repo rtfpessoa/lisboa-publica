@@ -30,29 +30,31 @@ func (r *metroRuntime) admitTrack(v metroTrackAdmission) *metroTrack {
 	track := r.tracks[r.active[key]]
 	if b.rejected[key] {
 		if track != nil {
-			suspendMetroTrack(track, "Referência ou plataforma contraditória")
+			suspendMetroTrack(track, "Dados incompatíveis nesta direção")
 		}
 		return nil
 	}
-	r.retireReturnRuns(key, ref)
-	if track != nil && (track.Profile != r.topology.Profile || now.After(track.Train.ValidUntil)) {
-		suspendMetroTrack(track, "Continuidade interrompida")
-		delete(r.active, key)
-		track = nil
+	track = r.continuingTrack(track, v)
+
+	if track == nil && r.latestClosed(path.Route+"|"+ref) != nil {
+		return nil
 	}
 	if track == nil {
 		track = r.startTrack(metroTrackStart{key: key, reference: ref, path: path, data: data, static: static, now: now})
 	}
 	return track
 }
-func (r *metroRuntime) retireReturnRuns(key, ref string) {
-	for oldKey, oldID := range r.active {
-		old := r.tracks[oldID]
-		if old != nil && old.Train.Reference == ref && oldKey != key {
-			suspendMetroTrack(old, "Outro sentido publicado; selecione a nova viagem explicitamente")
-			delete(r.active, oldKey)
-		}
+
+func (r *metroRuntime) continuingTrack(track *metroTrack, v metroTrackAdmission) *metroTrack {
+	if track == nil {
+		return nil
 	}
+	if track.Profile == r.topology.Profile && !v.now.After(track.Train.ValidUntil) {
+		return track
+	}
+	suspendMetroTrack(track, "Continuidade interrompida")
+	delete(r.active, v.key)
+	return nil
 }
 
 type metroTrackStart struct {
@@ -70,7 +72,9 @@ func (r *metroRuntime) startTrack(v metroTrackStart) *metroTrack {
 	r.sequence++
 	id := fmt.Sprintf("metro:run:%x", sha256.Sum256([]byte(r.session+strconv.FormatUint(r.sequence, 10))))[:34]
 	calls := metroPathCalls(v.path, v.data, v.static, id)
-	track := &metroTrack{Train: api.MetroTrain{JourneyId: id, Reference: v.reference, RouteId: v.path.Route, DirectionCode: v.path.Direction, Destination: metroDestinationName(v.data, v.path), Calls: calls, Association: "supported"}, ProviderDirection: v.path.Direction, Profile: r.topology.Profile, Codes: append([]string{}, v.path.Stops...), Points: map[string]metroPoint{}}
+	track := &metroTrack{Train: api.MetroTrain{JourneyId: id, Reference: v.reference, RouteId: v.path.Route, DirectionCode: v.path.Direction, Destination: metroDestinationName(v.data, v.path), Calls: calls, Association: "supported"}, ProviderDirection: v.path.Direction, Profile: r.topology.Profile, Codes: append([]string{}, v.path.Stops...), Points: map[string]metroPoint{}, Proofs: map[string]metroEventProof{}}
+	track.Train.Lifecycle = &api.MetroJourneyLifecycle{State: "active", Reason: "Viagem inferida em curso"}
+	track.Train.DirectionEvidence = &api.MetroDirectionEvidence{State: "context", Reason: "Direção do percurso admitido; movimento independente por confirmar"}
 	track.Train.DirectionCode = canonicalMetroDirection(r.topology, v.path)
 	for n := range track.Train.Calls {
 		track.Train.Calls[n].DirectionKey = ptr(track.Train.DirectionCode)
@@ -102,14 +106,14 @@ func (r *metroRuntime) trackCapacity(now time.Time) bool {
 func (r *metroRuntime) suspendAbsent(b *metroPointBatch) {
 	for key, id := range r.active {
 		track := r.tracks[id]
-		if track == nil {
+		if track == nil || track.BarrierRevision != 0 || metroTrackClosed(track) {
 			continue
 		}
 		if _, ok := b.groups[key]; !ok {
-			suspendMetroTrack(track, "Referência sem suporte atual")
+			suspendMetroTrack(track, "Sem dados atuais para confirmar a viagem")
 		}
 		if b.rejected[key] {
-			suspendMetroTrack(track, "Referência contraditória")
+			suspendMetroTrack(track, "Dados incompatíveis nesta direção")
 		}
 	}
 }

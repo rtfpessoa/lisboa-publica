@@ -2,31 +2,60 @@ package app
 
 import (
 	"lisboapublica/internal/api"
-	"sort"
 	"time"
 )
 
 func (r *metroRuntime) prune(now time.Time) {
-	for key, id := range r.active {
-		if t := r.tracks[id]; t == nil || now.After(t.Train.ValidUntil) {
-			delete(r.active, key)
-		}
-	}
+	pruneMetroContexts(r.active, r.tracks, now)
+	pruneMetroContexts(r.candidates, r.tracks, now)
 	for id, t := range r.tracks {
 		if now.Sub(t.Train.SourceUpdatedAt) > 7*24*time.Hour {
-			delete(r.tracks, id)
-			for key, v := range r.active {
-				if v == id {
-					delete(r.active, key)
-				}
-			}
+			r.forgetTrack(id)
 		}
 	}
 }
+func pruneMetroContexts(contexts map[string]string, tracks map[string]*metroTrack, now time.Time) {
+	for key, id := range contexts {
+		if t := tracks[id]; t == nil || now.After(t.Train.ValidUntil) {
+			delete(contexts, key)
+		}
+	}
+}
+func (r *metroRuntime) forgetTrack(id string) {
+	if pending, exists := r.dirty[id]; exists {
+		r.dirtyBytes -= pendingMetroCheckpointBytes(pending)
+		delete(r.dirty, id)
+	}
+	delete(r.tracks, id)
+	for key, v := range r.active {
+		if v == id {
+			delete(r.active, key)
+		}
+	}
+}
+
 func cloneMetroTrain(t api.MetroTrain) api.MetroTrain {
+	if t.Lifecycle != nil {
+		copy := *t.Lifecycle
+		t.Lifecycle = &copy
+	}
+	if t.DirectionEvidence != nil {
+		copy := *t.DirectionEvidence
+		t.DirectionEvidence = &copy
+	}
 	t.Calls = append([]api.StopCall{}, t.Calls...)
 	for n := range t.Calls {
 		c := &t.Calls[n]
+		if c.DepartureRevisions != nil {
+			copy := append([]api.MetroDepartureRevision{}, (*c.DepartureRevisions)...)
+			for k := range copy {
+				if copy[k].Evidence != nil {
+					e := *copy[k].Evidence
+					copy[k].Evidence = &e
+				}
+			}
+			c.DepartureRevisions = &copy
+		}
 		if c.Arrival.Inferred != nil {
 			e := *c.Arrival.Inferred
 			c.Arrival.Inferred = &e
@@ -38,42 +67,20 @@ func cloneMetroTrain(t api.MetroTrain) api.MetroTrain {
 	}
 	return t
 }
-func (r *metroRuntime) current(now time.Time) []api.MetroTrain {
-	out := []api.MetroTrain{}
-	for _, id := range r.active {
-		t := r.tracks[id]
-		if t == nil {
-			continue
-		}
-		if !now.Before(t.Train.ValidUntil) {
-			suspendMetroTrack(t, "Dados expirados")
-		}
-		out = append(out, cloneMetroTrain(t.Train))
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].JourneyId < out[j].JourneyId })
-	return out
-}
-func (r *metroRuntime) retained(id string) (api.MetroTrain, bool) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	t, ok := r.tracks[id]
-	if !ok {
-		return api.MetroTrain{}, false
-	}
-	copy := cloneMetroTrain(t.Train)
-	copy.Association = "suspended"
-	copy.NextIndex = nil
-	copy.CurrentIndex = nil
-	copy.Reason = "Última viagem selecionada; continuidade atual não comprovada"
-	return copy, true
-}
+
 func (r *metroRuntime) evictRetired() {
 	active := map[string]bool{}
+	for _, id := range r.candidates {
+		active[id] = true
+	}
 	for _, id := range r.active {
 		active[id] = true
 	}
 	for _, record := range r.pending {
 		active[record.Journey] = true
+	}
+	for id := range r.dirty {
+		active[id] = true
 	}
 	var oldest *metroTrack
 	for _, t := range r.tracks {

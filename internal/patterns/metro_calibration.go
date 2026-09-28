@@ -6,15 +6,18 @@ import (
 
 // MetroCalibrationDataset is an offline collection contract, not an occurrence adapter.
 type MetroCalibrationDataset struct {
-	Kind                 string                      `json:"kind"`
-	Version              string                      `json:"version"`
-	Geometry             string                      `json:"geometry"`
-	Transform            string                      `json:"transform"`
-	SourceProvenance     string                      `json:"source_provenance"`
-	ResolutionMetres     float64                     `json:"resolution_metres"`
-	ResolutionProvenance string                      `json:"resolution_provenance"`
-	Samples              []MetroCalibrationSample    `json:"samples"`
-	References           []MetroCalibrationReference `json:"references"`
+	Kind                 string  `json:"kind"`
+	Version              string  `json:"version"`
+	Geometry             string  `json:"geometry"`
+	Transform            string  `json:"transform"`
+	SourceProvenance     string  `json:"source_provenance"`
+	ResolutionMetres     float64 `json:"resolution_metres"`
+	ResolutionProvenance string  `json:"resolution_provenance"`
+	// ModelProvenance binds same-model support intervals to a reviewed, frozen
+	// qualification bundle. It is never an independent physical reference.
+	ModelProvenance string                      `json:"model_provenance,omitempty"`
+	Samples         []MetroCalibrationSample    `json:"samples"`
+	References      []MetroCalibrationReference `json:"references"`
 }
 type MetroCalibrationSample struct {
 	Journey        string    `json:"journey"`
@@ -49,6 +52,8 @@ type MetroCalibrationOutcome struct {
 }
 type MetroCalibrationAssessment struct {
 	Kind                 string                    `json:"kind"`
+	Purpose              string                    `json:"purpose"`
+	PhysicalAccuracy     string                    `json:"physical_accuracy"`
 	Candidate            MetroMovementCalibration  `json:"candidate"`
 	LiveEnabled          bool                      `json:"live_enabled"`
 	ReviewRequired       bool                      `json:"review_required"`

@@ -20,11 +20,25 @@ type metroPoint struct {
 	Seconds        *int
 }
 type metroTrack struct {
-	ProviderDirection string
-	Train             api.MetroTrain
-	Profile           string
-	Codes             []string
-	Points            map[string]metroPoint
+	ProviderDirection     string
+	Train                 api.MetroTrain
+	Profile               string
+	Codes                 []string
+	Points                map[string]metroPoint
+	Proofs                map[string]metroEventProof
+	ProofBytes            int
+	ProofOverflow         bool
+	HistoricalOnly        bool
+	BarrierBefore         *api.MetroTrain
+	BarrierRevision       uint64
+	PendingSuccessor      string
+	Movement              *metroTrackMovement
+	Revision              uint64
+	CommittedRevision     uint64
+	Generation            string
+	CommittedAt           time.Time
+	CheckpointHash        string
+	CheckpointUnavailable bool
 }
 type metroEventProof struct {
 	Train         api.MetroTrain `json:"train"`
@@ -39,7 +53,18 @@ type metroRuntime struct {
 	metroRuntimeTopology
 	metroRuntimeTracks
 	metroRuntimeJournal
+	metroRuntimePublication
+	recoveryMisses map[string]metroRecoveryMiss
+	models         map[string]patterns.MetroQualifiedModel
+	candidates     map[string]string
 }
+
+// Publication and its classified point batch describe one coherent source update.
+type metroRuntimePublication struct {
+	publication *MetroData
+	batch       *metroPointBatch
+}
+
 type metroRuntimeTopology struct {
 	plan              *StaticData
 	topology          patterns.Topology
@@ -53,16 +78,21 @@ type metroRuntimeTracks struct {
 	inventoryOverflow bool
 }
 type metroRuntimeJournal struct {
+	writer           sync.Mutex
 	pending          map[string]patterns.MetroEventRecord
 	pendingBytes     int
 	historyStatus    string
 	archiveAvailable bool
+	dirty            map[string]patterns.MetroJourneyCheckpoint
+	dirtyBytes       int
 }
 
 func newMetroRuntime() *metroRuntime {
 	return &metroRuntime{
+		recoveryMisses: map[string]metroRecoveryMiss{},
+		models:         map[string]patterns.MetroQualifiedModel{}, candidates: map[string]string{},
 		metroRuntimeTracks:  metroRuntimeTracks{tracks: map[string]*metroTrack{}, active: map[string]string{}, session: time.Now().UTC().Format(time.RFC3339Nano)},
-		metroRuntimeJournal: metroRuntimeJournal{pending: map[string]patterns.MetroEventRecord{}, historyStatus: "unavailable"},
+		metroRuntimeJournal: metroRuntimeJournal{pending: map[string]patterns.MetroEventRecord{}, dirty: map[string]patterns.MetroJourneyCheckpoint{}, historyStatus: "unavailable"},
 	}
 }
 func metroReference(v string) bool {
@@ -78,28 +108,39 @@ func (r *metroRuntime) observe(data *MetroData, static *StaticData, history *pat
 	defer r.mu.Unlock()
 	defer func() { data.InventoryOverflow = r.inventoryOverflow }()
 	r.archiveAvailable = history != nil
+	copy := *data
+	r.publication = &copy
 	r.inventoryOverflow = false
 	if history != nil && r.historyStatus == "unavailable" {
 		r.historyStatus = "pending"
 	}
 	if data.Status.Status != "ok" || static == nil || static.Schedule == nil {
 		r.suspendAll("Fonte ou topologia indisponível")
+		r.queueCurrentCheckpoints()
 		data.Trains = r.current(now)
 		data.Topology = r.topology
 		return
 	}
+	r.observeSupported(data, static, now)
+}
+func (r *metroRuntime) observeSupported(data *MetroData, static *StaticData, now time.Time) {
 	r.updateTopology(data, static)
 	batch := collectMetroPoints(data, r.topology, now)
-	for key, points := range batch.groups {
+	r.batch = batch
+	for _, key := range r.selectedContexts(batch, now) {
+		points := batch.groups[key]
 		track := r.admitTrack(metroTrackAdmission{key: key, batch: batch, data: data, static: static, now: now})
 		if track != nil {
 			r.applyPoints(track, points, now)
 		}
 	}
+	r.observeSuccessorCandidates(batch, data, static, now)
 	r.suspendAbsent(batch)
 	r.prune(now)
+	r.queueCurrentCheckpoints()
 	data.Trains = r.current(now)
 }
+
 func (r *metroRuntime) updateTopology(data *MetroData, static *StaticData) {
 	raw, _ := json.Marshal(data.Stations)
 	signature := string(raw)
@@ -148,6 +189,9 @@ func metroPathCalls(path patterns.Pattern, data *MetroData, static *StaticData, 
 	return calls
 }
 func suspendMetroTrack(t *metroTrack, reason string) {
+	if t.BarrierRevision != 0 {
+		return
+	}
 	t.Train.Association = "suspended"
 	t.Train.Reason = reason
 	t.Train.NextIndex = nil
@@ -162,6 +206,9 @@ func suspendMetroTrack(t *metroTrack, reason string) {
 	}
 	// No source transition may bridge a support gap.
 	t.Points = map[string]metroPoint{}
+	t.Train.ModelProjection = nil
+	t.Movement = nil
+	t.Train.DirectionEvidence = &api.MetroDirectionEvidence{State: "unknown", Reason: "Continuidade de movimento interrompida: " + reason}
 }
 func (r *metroRuntime) suspendAll(reason string) {
 	for _, id := range r.active {
@@ -171,6 +218,10 @@ func (r *metroRuntime) suspendAll(reason string) {
 	}
 }
 func (r *metroRuntime) applyPoints(t *metroTrack, points []metroPoint, now time.Time) {
+	if t.BarrierRevision != 0 || metroTrackClosed(t) {
+		return
+	}
+	before := cloneMetroTrain(t.Train)
 	current, conflict := latestMetroPoints(points)
 	conflict = conflict || conflictingMetroPoints(t, current, now)
 	if !conflict {
@@ -181,10 +232,13 @@ func (r *metroRuntime) applyPoints(t *metroTrack, points []metroPoint, now time.
 		return
 	}
 	if conflict {
+		retractMetroMovementCorrections(t, current)
 		suspendMetroTrack(t, "Plataformas contraditórias")
 		return
 	}
 	r.projectPoints(t, current, now)
+	r.applyMetroMovement(t, current, now)
+	r.closeAtTerminal(t, before)
 }
 func equalMetroSeconds(a, b *int) bool {
 	return a == nil && b == nil || a != nil && b != nil && *a == *b

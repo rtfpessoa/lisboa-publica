@@ -1,0 +1,26 @@
+{
+  "started": "2026-09-28T21:42:06.400Z",
+  "finished": "2026-09-28T21:42:22.304Z",
+  "scope": "Synthetic direct Go + compiled frontend + native browser EventSource; two viewports; no proxy/network-delay profile or provider requests",
+  "pinned_checkpoint_recovery": true,
+  "clients": 2,
+  "changed_dom_samples": 56,
+  "p95_ms": 415,
+  "resets": [
+    2,
+    4
+  ],
+  "snapshot_reads": [
+    0,
+    0
+  ],
+  "browser_errors": [],
+  "runtime": {
+    "goroutines": 11,
+    "heap_bytes": 257655904,
+    "streams": 2,
+    "sys_bytes": 357103960
+  },
+  "baseline_admission_latency": "not measured; browser setup occurred after first baseline flush",
+  "physical_accuracy": "not measured"
+}

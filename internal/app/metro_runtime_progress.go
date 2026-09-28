@@ -70,6 +70,7 @@ func (r *metroRuntime) retractArrivals(t *metroTrack, current map[string]metroPo
 		c := &t.Train.Calls[n]
 		p, found := current[t.Codes[n]]
 		if found && metroArrivalContradicted(*c, p) {
+			withdrawMetroDeparture(t, n, p.Clock, "Chegada de suporte retirada por correção da mesma visita")
 			c.Arrival = missingCallTime("Chegada inferida retirada: previsão posterior incompatível")
 			if old, ok := t.Points[p.Stop]; ok {
 				r.queueArrival(t, *c, old, p)

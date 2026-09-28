@@ -211,3 +211,13 @@ withdrawals can be absent after loss of runtime state; history/persistence warni
 Departure parameters can be assessed through the [offline workflow](../metro-departure-calibration.md),
 which separates whole training/holdout journeys and requires independent physical references for observed
 inputs. This does not qualify the live Hub movement adapter or enable departure times.
+
+## Shared Metro live context classification
+
+The [Metro context classifier](../../internal/app/metro_runtime_contexts.go) partitions by line, trimmed reference and destination/compatible ordered path. It checks platform, clock and absolute forecast order within each context. Different direction forecasts alone are possible contexts, not a physical contradiction. One supported prior context may continue while its coherent evidence remains fresh; an initially ambiguous reference is not selected using minimum ETA, row order or approximate Hub trip. An absent optional wait does not compete with a usable context. There is at most one current admitted context per line/reference.
+
+Vehicle linking consumes that selected classification and requires fresh scoped line/reference evidence. Unmapped or rejected raw destination names do not independently erase the selection. Station forecasts and ambiguous vehicle forecast groups use the same classified result; valid local forecasts with no unique whole path remain unlinked. A new journey identity is selectable only after checkpoint admission. Pinned history resolves separately and never restores current continuity. See [current popup semantics](../metro-live-popups.md) and [captured replay inputs](../../internal/app/testdata/metro-20260928/README.md).
+
+Station forecast deduplication includes line, reference, stop and destination; a linked context on another line cannot erase a valid unassociated forecast at an interchange. An entirely incompatible vehicle context has its scoped incompatibility reason rather than being reported as missing input.
+
+Supported positive-to-zero arrival at the admitted final visit stages completion; isolated zero, countdown expiry, proximity and intermediate stops do not. Closure ends current association after its mandatory checkpoint commits. Forecast reuse cannot reopen the episode. A compatible opposite candidate requires three advancing qualified source station-axis positions with two same-sign displacements above the frozen envelope. ETA interpolation assumes its path and cannot confirm that sign. Handoff stores old closure/new activation together before publishing one current association. Historical pins retain their ID; successor selection is explicit. Missing reviewed model admission leaves these movement-driven candidates unavailable.

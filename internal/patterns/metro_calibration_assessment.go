@@ -6,7 +6,11 @@ import (
 )
 
 func (c *metroCalibrationCollection) fit(in MetroCalibrationDataset) (MetroCalibrationAssessment, error) {
-	out := MetroCalibrationAssessment{Kind: in.Kind, ReviewRequired: true, TrainingJourneys: len(c.train), HoldoutJourneys: len(c.holdout), Outcomes: []MetroCalibrationOutcome{}}
+	purpose := "reference_comparison"
+	if in.Kind == "model_consistency" {
+		purpose = "model_consistency"
+	}
+	out := MetroCalibrationAssessment{Kind: in.Kind, Purpose: purpose, PhysicalAccuracy: "not_measured", ReviewRequired: true, TrainingJourneys: len(c.train), HoldoutJourneys: len(c.holdout), Outcomes: []MetroCalibrationOutcome{}}
 	out.Candidate = MetroMovementCalibration{Version: in.Version, Geometry: in.Geometry, Transform: in.Transform, ResolutionMetres: in.ResolutionMetres}
 	for _, k := range c.keys {
 		g := c.groups[k]
@@ -18,7 +22,7 @@ func (c *metroCalibrationCollection) fit(in MetroCalibrationDataset) (MetroCalib
 		return MetroCalibrationAssessment{}, err
 	}
 	if out.TrainingStoppedPairs == 0 {
-		return MetroCalibrationAssessment{}, fmt.Errorf("training requires original admissible stopped pairs within independently referenced stop windows")
+		return MetroCalibrationAssessment{}, fmt.Errorf("training requires original admissible stopped pairs within referenced stop windows")
 	}
 	return out, nil
 }
@@ -50,6 +54,9 @@ func assessMetroVisit(in MetroCalibrationDataset, candidate MetroMovementCalibra
 		if event != nil {
 			result.DetectedAt = &event.At
 			result.Classification = classifyMetroMovement(*event, r)
+			if in.Kind == "model_consistency" && result.Classification == "within_reference_window" {
+				result.Classification = "within_model_support_interval"
+			}
 			break
 		}
 	}

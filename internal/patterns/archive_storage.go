@@ -77,7 +77,7 @@ func (s *Service) closeRetainedBlocks(now time.Time) {
 	for i := range s.index.Blocks {
 		b := &s.index.Blocks[i]
 		switch b.Kind {
-		case "detail", "correction", "observations", "popup-events":
+		case "detail", "correction", "observations", "popup-events", "popup-checkpoint":
 			b.Closed = b.Age.Before(now.UTC().Truncate(time.Hour))
 		case "aggregate":
 			b.Closed = b.Date < now.In(lisbon).Format("2006-01-02")
@@ -87,7 +87,7 @@ func (s *Service) closeRetainedBlocks(now time.Time) {
 
 func (s *Service) blockExpired(b block, now time.Time) bool {
 	switch b.Kind {
-	case "popup-events":
+	case "popup-events", "popup-checkpoint":
 		return b.Age.Before(now.AddDate(0, 0, -7))
 	case "detail", "correction", "observations":
 		return b.Age.Before(now.AddDate(0, 0, -s.config.DetailDays))

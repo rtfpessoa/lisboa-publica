@@ -55,6 +55,8 @@ func (f *Fetcher) fetchCP(ctx context.Context) ([]byte, bool, error) {
 		return nil, false, err
 	}
 	req.Header.Set("User-Agent", "LisboaPublica/1.0 (independent transit dashboard)")
+	release := ProtectUpstreamWork(f.Client, req.URL.Hostname(), 3)
+	defer release()
 	response, err := f.Client.Do(req)
 	if err != nil {
 		return nil, false, err

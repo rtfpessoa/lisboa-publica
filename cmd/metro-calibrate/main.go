@@ -74,8 +74,9 @@ func writeAssessment(raw []byte, dataset patterns.MetroCalibrationDataset, resul
 		InputSHA256          string                              `json:"input_sha256"`
 		SourceProvenance     string                              `json:"source_provenance"`
 		ResolutionProvenance string                              `json:"resolution_provenance"`
+		ModelProvenance      string                              `json:"model_provenance,omitempty"`
 		Assessment           patterns.MetroCalibrationAssessment `json:"assessment"`
-	}{"metro-calibrate-v1", hex.EncodeToString(sum[:]), dataset.SourceProvenance, dataset.ResolutionProvenance, result}
+	}{"metro-calibrate-v2", hex.EncodeToString(sum[:]), dataset.SourceProvenance, dataset.ResolutionProvenance, dataset.ModelProvenance, result}
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(report)

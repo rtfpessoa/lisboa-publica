@@ -12,17 +12,15 @@ import (
 )
 
 func (r *metroRuntime) queueArrival(t *metroTrack, c api.StopCall, before, after metroPoint) {
+	raw, err := r.retainArrivalProof(t, c, before, after)
+
 	if !r.archiveAvailable {
 		if c.Arrival.Inferred != nil {
 			c.Arrival.Inferred.Persistence = "unavailable"
 		}
 		return
 	}
-	proofTrain := t.Train
-	proofTrain.Calls = []api.StopCall{c}
-	proofTrain.NextIndex = nil
-	raw, err := json.Marshal(metroEventProof{Train: proofTrain, CallID: c.Id, Before: before, After: after})
-	if err != nil || len(raw) > 64<<10 || len(r.pending) >= 1024 || r.pendingBytes+len(raw) > 8<<20 {
+	if err != nil || len(raw) > 64<<10 || len(r.pending) >= 1024 || r.pendingBytes+r.dirtyBytes+len(raw) > 8<<20 {
 		if c.Arrival.Inferred != nil {
 			c.Arrival.Inferred.Persistence = "unavailable"
 		}
@@ -36,6 +34,34 @@ func (r *metroRuntime) queueArrival(t *metroTrack, c api.StopCall, before, after
 	r.pendingBytes += len(raw)
 	r.pending[record.ID] = record
 }
+func (r *metroRuntime) retainArrivalProof(t *metroTrack, c api.StopCall, before, after metroPoint) ([]byte, error) {
+	if t.Proofs == nil {
+		t.Proofs = map[string]metroEventProof{}
+	}
+	proofTrain := cloneMetroTrain(t.Train)
+	proofTrain.Calls = []api.StopCall{c}
+	proofTrain.NextIndex = nil
+	proof := metroEventProof{Train: proofTrain, CallID: c.Id, Before: before, After: after}
+	raw, err := json.Marshal(proof)
+	if err == nil {
+		r.storeArrivalProof(t, c.Id, proof, raw)
+	}
+	return raw, err
+}
+func (r *metroRuntime) storeArrivalProof(t *metroTrack, call string, proof metroEventProof, raw []byte) {
+	id := fmt.Sprintf("%s:arrival:%x", call, sha256.Sum256(raw))
+	if _, exists := t.Proofs[id]; exists {
+		return
+	}
+	if t.ProofBytes+len(raw) > 256<<10 || len(t.Proofs) >= 1024 {
+		t.ProofOverflow, t.CheckpointUnavailable = true, true
+		r.historyStatus = "paused"
+		return
+	}
+	t.Proofs[id] = proof
+	t.ProofBytes += len(raw)
+}
+
 func (r *metroRuntime) flushEvents(history *patterns.Service, now time.Time) {
 	if history == nil {
 		return
@@ -105,6 +131,10 @@ func (r *metroRuntime) runJournal(ctx context.Context, history *patterns.Service
 			return
 		case now := <-ticker.C:
 			r.flushEvents(history, now)
+			r.mu.Lock()
+			r.queueCurrentCheckpoints()
+			r.mu.Unlock()
+			r.flushCheckpoints(ctx, history, now)
 		}
 	}
 }

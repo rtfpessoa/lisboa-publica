@@ -39,6 +39,8 @@ func (m *MetroClient) acquireToken(ctx context.Context) (metroOAuthToken, error)
 	}
 	route.SetBasicAuth(m.ClientID, m.Secret)
 	route.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	release := ProtectUpstreamWork(m.Client, route.URL.Hostname(), 3)
+	defer release()
 	res, err := m.Client.Do(route)
 	if err != nil {
 		return metroOAuthToken{}, fmt.Errorf("Metro OAuth connection failed")
@@ -72,6 +74,8 @@ func (m *MetroClient) get(ctx context.Context, path string, dst any) error {
 	return m.readAPI(route, dst)
 }
 func (m *MetroClient) readAPI(route *http.Request, dst any) error {
+	release := ProtectUpstreamWork(m.Client, route.URL.Hostname(), 3)
+	defer release()
 	res, err := m.Client.Do(route)
 	if err != nil {
 		return fmt.Errorf("Metro API connection failed")

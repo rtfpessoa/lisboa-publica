@@ -113,6 +113,23 @@ func (s *Server) metroFrame(ctx context.Context, i metroInterest) (api.MetroLive
 	defer release()
 	return s.projectMetroFrame(ctx, i)
 }
+
+// Initial reset admission can wait briefly within the existing bounded stream
+// inventory. Ordinary reads remain fail-fast; established ticks coalesce busy.
+func (s *Server) initialMetroFrame(ctx context.Context, i metroInterest) (api.MetroLiveFrame, []byte, error) {
+	wait, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	select {
+	case s.expensiveReads <- struct{}{}:
+		defer func() { <-s.expensiveReads }()
+		return s.projectMetroFrame(ctx, i)
+	case <-wait.Done():
+		if ctx.Err() != nil {
+			return api.MetroLiveFrame{}, nil, ctx.Err()
+		}
+		return api.MetroLiveFrame{}, nil, fail(http.StatusServiceUnavailable, "busy", "Pedidos em curso; tente novamente dentro de um segundo.")
+	}
+}
 func (s *Server) projectMetroFrame(ctx context.Context, i metroInterest) (api.MetroLiveFrame, []byte, error) {
 	b, err := s.newMetroFrameBuilder(ctx, i)
 	if err != nil {
@@ -174,7 +191,7 @@ func (s *Server) StreamMetroLive(ctx context.Context, _ api.StreamMetroLiveReque
 	if err != nil {
 		return nil, err
 	}
-	f, raw, err := s.metroFrame(ctx, i)
+	f, raw, err := s.initialMetroFrame(ctx, i)
 	if err != nil {
 		release()
 		return nil, err

@@ -80,6 +80,9 @@ func (services backgroundServices) start(ctx context.Context) {
 	outgoing := &http.Client{Timeout: upstreamRequestTimeout, Transport: app.NewBudgetTransport(upstreamRequestBudget), CheckRedirect: app.CheckUpstreamRedirect}
 	services.server.Metro = app.NewMetroClient(outgoing, services.store, services.cache, os.Getenv("METRO_CLIENT_ID"), os.Getenv("METRO_CLIENT_SECRET"))
 	services.server.Metro.History = services.server.Patterns
+	if err := services.cache.ConfigureMetroModels(os.Getenv("METRO_MODEL_ALLOWLIST")); err != nil {
+		services.log.Fatal("Invalid Metro model allowlist", zap.Error(err))
+	}
 	metroMillis, err := strconv.Atoi(env("METRO_REFRESH_MILLISECONDS", "500"))
 	if err != nil || metroMillis < 500 || metroMillis > 60000 {
 		services.log.Fatal("METRO_REFRESH_MILLISECONDS must be between 500 and 60000")

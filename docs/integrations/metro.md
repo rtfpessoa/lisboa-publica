@@ -131,7 +131,7 @@ static stops/geometry stay in their catalogues. See the [API contract](../../api
 [stream/snapshot implementation](../../internal/app/metro_live.go),
 [transition/transport tests](../../internal/app/metro_live_test.go) and
 [separate inferred-event journal](../../internal/patterns/metro_event_journal.go).
-Physical departure calibration is unavailable; the guarded detector cannot be enabled from unqualified Hub points.
+The live departure movement profile is unqualified; the guarded detector cannot be enabled from opaque Hub points. The separate offline model-consistency path does not require independent physical references or claim physical accuracy.
 
 Selection happens before ETA-window filtering: a newer missing, invalid or already elapsed wait
 suppresses an older future forecast for the same station/reference/destination. Equal-clock valid and
@@ -142,6 +142,14 @@ remains separate for the 500 ms scheduler; original platform clocks are never re
 
 The [offline departure calibration workflow](../metro-departure-calibration.md) prepares evidence and a
 reproducible candidate/holdout report without Metro API calls or live admission. Original movement samples
-and independent stop/first-movement reference windows must be supplied; the popup journal is insufficient.
+and appropriately labeled stop/first-movement support windows must be supplied; the popup journal is insufficient. Independent references apply to physical-reference comparison; the separate model-consistency input uses frozen qualification provenance and model-support intervals without asserting physical accuracy.
 Later contradictory positive waits withdraw inferred arrival evidence before progress suspension, retaining
 the newer correction for durable restoration when that proof commits.
+
+## Shared live association and checkpoint recovery
+
+The direct wait publications now feed one [scoped classifier](../../internal/app/metro_runtime_contexts.go) for journey admission, vehicle linking and forecast views. Coexisting destinations under a reference do not cause blanket rejection. Missing optional ETA does not create a competing journey. Coherent prior context can continue; genuine ambiguity remains explicit. Valid local forecasts can survive absent unique whole-path topology without acquiring a vehicle link.
+
+New selectable journeys require a committed complete checkpoint in the existing archive. Recovery preserves original clocks and history, including event-free episodes, without resuming inference continuity. No qualifying production configuration is supplied for the reviewed adapter: departure times and 500 ms local modeled coordinates remain unavailable. The [captured regression fixtures](../../internal/app/testdata/metro-20260928/README.md) preserve actual 24C/5B publications; they do not prove physical allocation or timing accuracy.
+
+The optional `metro-wait-segment-v1` adapter consumes original waits and reviewed frozen station-axis geometry/segment durations; it uses no extra endpoint. Supported source station anchors can qualify a three-position direction chain; modeled interpolation and opaque Hub estimates cannot confirm their assumed sign. The reviewed startup allowlist requires original-input model-consistency train/whole-journey holdout and prohibited-input replay. No qualifying production profile is supplied. Supported final-visit positive-to-zero arrival closes by inference after durable checkpoint publication; reversal remains provisional until qualified confirmation. See [admission](../metro-departure-calibration.md) and [lifecycle](../metro-live-popups.md).

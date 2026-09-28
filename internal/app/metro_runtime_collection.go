@@ -13,6 +13,14 @@ type metroPointBatch struct {
 	references map[string]map[string]bool
 	rowCounts  map[string]int
 	rejected   map[string]bool
+	localOnly  []metroLocalForecast
+}
+
+type metroLocalForecast struct {
+	Row       MetroWait
+	Reference string
+	Clock     time.Time
+	Seconds   int
 }
 
 func collectMetroPoints(data *MetroData, topology patterns.Topology, now time.Time) *metroPointBatch {
@@ -22,13 +30,6 @@ func collectMetroPoints(data *MetroData, topology patterns.Topology, now time.Ti
 	}
 	for _, row := range data.Waits {
 		b.collectRow(row, topology, now)
-	}
-	for _, keys := range b.references {
-		if len(keys) > 1 {
-			for key := range keys {
-				b.rejected[key] = true
-			}
-		}
 	}
 	return b
 }
@@ -40,10 +41,7 @@ func (b *metroPointBatch) collectRow(row MetroWait, topology patterns.Topology, 
 	if err != nil || now.Sub(clock) > sourceFreshness || clock.After(now.Add(providerClockSkew)) {
 		return
 	}
-	path, ok := uniqueMetroPath(topology, row.Stop, row.Destination)
-	if !ok {
-		return
-	}
+	path, pathOK := uniqueMetroPath(topology, row.Stop, row.Destination)
 	values := []json.RawMessage{row.Wait1, row.Wait2, row.Wait3}
 	refs := []string{row.Train, row.Train2, row.Train3}
 	counts := map[string]int{}
@@ -51,6 +49,14 @@ func (b *metroPointBatch) collectRow(row MetroWait, topology patterns.Topology, 
 		counts[strings.TrimSpace(v)]++
 	}
 	for n, ref := range refs {
+		if !pathOK {
+			ref = strings.TrimSpace(ref)
+			seconds, valid := metroWaitSeconds(values[n])
+			if metroReference(ref) && valid && counts[ref] == 1 && b.rowCounts[metroWaitRowKey(row)] == 1 {
+				b.localOnly = append(b.localOnly, metroLocalForecast{row, ref, clock, seconds})
+			}
+			continue
+		}
 		b.collectReference(metroRowReference{row: row, path: path, clock: clock, train: strings.TrimSpace(ref), wait: values[n], counts: counts})
 	}
 }
@@ -69,10 +75,11 @@ func (b *metroPointBatch) collectReference(v metroRowReference) {
 		return
 	}
 	key := metroTrackKey(metroTrackIdentity{v.path.Route, v.row.Destination, v.train})
-	if b.references[v.train] == nil {
-		b.references[v.train] = map[string]bool{}
+	scope := v.path.Route + "|" + v.train
+	if b.references[scope] == nil {
+		b.references[scope] = map[string]bool{}
 	}
-	b.references[v.train][key] = true
+	b.references[scope][key] = true
 	b.paths[key] = v.path
 	if b.rowCounts[metroWaitRowKey(v.row)] != 1 || v.counts[v.train] != 1 {
 		b.rejected[key] = true

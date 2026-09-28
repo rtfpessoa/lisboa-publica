@@ -136,3 +136,7 @@ forecasts and original publication clocks separately from Hub estimated position
 populates `actual`; its detection window is not a physical arrival bound. Own forecasts require shared supported
 transition evidence; uncalibrated departures stay unavailable. Original validity/countdowns expire locally.
 The scope's content revision, connection cursor and journey ID have different meanings.
+
+Metro scoped frames expose classified possible forecast contexts and explicit pinned recovery/persistence metadata as defined by [OpenAPI](../../api/openapi.yaml). Forecast coexistence is distinct from current journey association. Complete committed checkpoints allow event-free history recovery; original source, frame publication and commit clocks retain different meanings. Ambiguous vehicle popups keep reference forecasts grouped by direction. [Current behavior](../metro-live-popups.md) explains limitations; modeled departures remain unavailable.
+
+Metro lifecycle and direction evidence distinguish inferred completion, successor relationships, forecast context and three-source-position movement confirmation. Experimental departures retain first-movement and confirmation clocks separately, and corrections retain revisions after withdrawing the main value. The optional source-bound model projection is estimated linear station-axis geometry, evaluated locally every 500 ms only for reviewed qualified profiles. No qualifying production profile is shipped; physical timing accuracy remains unmeasured. See [model admission](../metro-departure-calibration.md).
