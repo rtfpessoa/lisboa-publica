@@ -1946,6 +1946,191 @@
           }
         ]
       }
+    },
+    "/api/v1/metro/live": {
+      "get": {
+        "operationId": "getMetroLive",
+        "summary": "Coherent Metro map and selected popup updates",
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-public-read": true,
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "parameters": [
+          {
+            "name": "route_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          },
+          {
+            "name": "vehicle_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          },
+          {
+            "name": "journey_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          },
+          {
+            "name": "stop_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "maxLength": 1024
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Complete dynamic scoped frame; ETag is scoped to the interest.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetroLiveFrame"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "description": "Opaque interest-specific content validator.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Matching If-None-Match; no body or renewed source clocks.",
+            "headers": {
+              "ETag": {
+                "description": "Opaque interest-specific content validator.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/metro/live/stream": {
+      "get": {
+        "operationId": "streamMetroLive",
+        "summary": "Coherent Metro map and selected popup updates",
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-public-read": true,
+        "x-required-scopes": [
+          "read:transit"
+        ],
+        "parameters": [
+          {
+            "name": "route_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          },
+          {
+            "name": "vehicle_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          },
+          {
+            "name": "journey_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          },
+          {
+            "name": "stop_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Full current reset on initial/reconnection; subsequent frame events on changed data. No lossless replay guarantee.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4152,6 +4337,14 @@
           "delay_seconds": {
             "type": "integer",
             "nullable": true
+          },
+          "model_version": {
+            "type": "string",
+            "description": "Present for experimental own forecasts; not a source observation clock."
+          },
+          "association_episode": {
+            "type": "string",
+            "description": "Supporting experimental episode, distinct from popup journey and transport cursor."
           }
         },
         "required": [
@@ -4171,7 +4364,8 @@
               "actual",
               "prediction",
               "schedule",
-              "unavailable"
+              "unavailable",
+              "inferred"
             ]
           },
           "at": {
@@ -4202,6 +4396,14 @@
             "allOf": [
               {
                 "$ref": "#/components/schemas/CallTimeEvidence"
+              }
+            ],
+            "nullable": true
+          },
+          "inferred": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetroEventEvidence"
               }
             ],
             "nullable": true
@@ -4277,6 +4479,14 @@
           },
           "vehicle_ref": {
             "$ref": "#/components/schemas/VehicleReference"
+          },
+          "own_prediction": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CallTimeEvidence"
+              }
+            ],
+            "nullable": true
           }
         },
         "required": [
@@ -5134,6 +5344,193 @@
             "format": "int64"
           }
         }
+      },
+      "MetroEventEvidence": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "window_start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "window_end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "inferred_arrival",
+              "model_departure"
+            ]
+          },
+          "source_url": {
+            "type": "string"
+          },
+          "model_version": {
+            "type": "string"
+          },
+          "persistence": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "committed",
+              "unavailable"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "window_start",
+          "window_end",
+          "mode",
+          "source_url",
+          "model_version",
+          "persistence",
+          "reason"
+        ],
+        "description": "Inference evidence, never a certified actual event. The original publication/detection sample window is not a physical confidence interval."
+      },
+      "MetroTrain": {
+        "type": "object",
+        "properties": {
+          "journey_id": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "route_id": {
+            "type": "string"
+          },
+          "direction_code": {
+            "type": "string"
+          },
+          "destination": {
+            "type": "string"
+          },
+          "association": {
+            "type": "string",
+            "enum": [
+              "supported",
+              "suspended"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "source_updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "next_index": {
+            "type": "integer",
+            "nullable": true
+          },
+          "calls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StopCall"
+            }
+          },
+          "vehicle_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "current_index": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Supported current inferred station visit; null if no admissible stopped evidence."
+          }
+        },
+        "required": [
+          "journey_id",
+          "reference",
+          "route_id",
+          "direction_code",
+          "destination",
+          "association",
+          "reason",
+          "source_updated_at",
+          "valid_until",
+          "next_index",
+          "calls",
+          "vehicle_id"
+        ],
+        "description": "Supported source association episode, not physical fleet identity. Suspended episodes remain consultable but have no supported live progress."
+      },
+      "MetroLiveFrame": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "string"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MetroStatus"
+          },
+          "vehicles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Vehicle"
+            }
+          },
+          "trains": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetroTrain"
+            }
+          },
+          "directions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoardDirection"
+            }
+          },
+          "selected_journey_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "history_status": {
+            "type": "string"
+          },
+          "unassociated_forecasts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StopCall"
+            },
+            "description": "Usable official predictions without a supported journey association; never a fabricated map link."
+          }
+        },
+        "required": [
+          "revision",
+          "published_at",
+          "plan_id",
+          "status",
+          "vehicles",
+          "trains",
+          "directions",
+          "selected_journey_id",
+          "history_status",
+          "unassociated_forecasts"
+        ],
+        "description": "Complete immutable dynamic frame for a Metro interest. Static stops/geometry are read separately. Revision is an opaque content validator, not a sortable stream cursor."
       }
     }
   }

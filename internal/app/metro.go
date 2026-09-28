@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -48,9 +46,12 @@ type MetroWait struct {
 
 // MetroData combines direct service status, station metadata and waiting-time predictions.
 type MetroData struct {
-	Status   api.MetroStatus `json:"status"`
-	Waits    []MetroWait     `json:"waits"`
-	Stations []MetroStation  `json:"stations"`
+	InventoryOverflow bool              `json:"-"`
+	Trains            []api.MetroTrain  `json:"-"`
+	Topology          patterns.Topology `json:"-"`
+	Status            api.MetroStatus   `json:"status"`
+	Waits             []MetroWait       `json:"waits"`
+	Stations          []MetroStation    `json:"stations"`
 	// Original wait JSON preserves fields whose meaning is not yet known.
 	RawWaits json.RawMessage `json:"raw_waits,omitempty"`
 }
@@ -67,81 +68,21 @@ type MetroClient struct {
 
 // NewMetroClient creates a client for server-side consumer credentials.
 func NewMetroClient(client *http.Client, store *Store, cache *Cache, id, secret string) *MetroClient {
-	return &MetroClient{Client: client, Store: store, Cache: cache, ClientID: id, Secret: secret, Base: metroBase, TokenURL: metroTokenURL}
+	return &MetroClient{Client: client, Store: store, Cache: cache, ClientID: id, Secret: secret, Base: metroBase, TokenURL: metroTokenURL, metroRefreshState: metroRefreshState{Interval: 500 * time.Millisecond}}
 }
-func (m *MetroClient) token(ctx context.Context) (string, error) {
-	if m.tokenValue != "" && time.Now().Before(m.expires) {
-		return m.tokenValue, nil
+
+func (m *MetroClient) interval() time.Duration {
+	if m.Interval < 500*time.Millisecond {
+		return 500 * time.Millisecond
 	}
-	body := url.Values{"grant_type": []string{"client_credentials"}}.Encode()
-	route, err := http.NewRequestWithContext(ctx, "POST", m.TokenURL, strings.NewReader(body))
-	if err != nil {
-		return "", err
-	}
-	route.SetBasicAuth(m.ClientID, m.Secret)
-	route.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	res, err := m.Client.Do(route)
-	if err != nil {
-		return "", fmt.Errorf("Metro OAuth connection failed")
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Metro OAuth HTTP%d", res.StatusCode)
-	}
-	var token struct {
-		Token   string `json:"access_token"`
-		Expires int64  `json:"expires_in"`
-		Type    string `json:"token_type"`
-	}
-	if err = json.NewDecoder(io.LimitReader(res.Body, metroOAuthResponseBytes)).Decode(&token); err != nil || token.Token == "" || token.Expires <= 0 || !strings.EqualFold(token.Type, "Bearer") {
-		return "", fmt.Errorf("invalid Metro OAuth response")
-	}
-	ttl := time.Duration(token.Expires) * time.Second
-	margin := min(maximumTokenMargin, ttl/tokenMarginFraction)
-	m.expires = time.Now().Add(ttl - margin)
-	m.tokenValue = token.Token
-	return m.tokenValue, nil
-}
-func (m *MetroClient) get(ctx context.Context, path string, dst any) error {
-	token, err := m.token(ctx)
-	if err != nil {
-		return err
-	}
-	route, err := http.NewRequestWithContext(ctx, "GET", m.Base+path, nil)
-	if err != nil {
-		return err
-	}
-	route.Header.Set("Authorization", "Bearer "+token)
-	res, err := m.Client.Do(route)
-	if err != nil {
-		return fmt.Errorf("Metro API connection failed")
-	}
-	defer res.Body.Close()
-	if res.StatusCode == http.StatusUnauthorized {
-		m.tokenValue = ""
-		m.expires = time.Time{}
-	}
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("Metro API HTTP%d", res.StatusCode)
-	}
-	var envelope struct {
-		Code json.RawMessage `json:"codigo"`
-		Data json.RawMessage `json:"resposta"`
-	}
-	if err = json.NewDecoder(io.LimitReader(res.Body, 2<<20)).Decode(&envelope); err != nil || (string(envelope.Code) != "200" && string(envelope.Code) != `"200"`) || len(envelope.Data) == 0 {
-		return fmt.Errorf("invalid Metro API envelope")
-	}
-	if err = json.Unmarshal(envelope.Data, dst); err != nil {
-		return fmt.Errorf("invalid Metro API data")
-	}
-	return nil
+	return m.Interval
 }
 
 // Refresh returns the shared Metro result, refreshing at most once per polling interval.
 func (m *MetroClient) Refresh(ctx context.Context) *MetroData {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.data != nil && time.Since(m.lastAttempt) < providerRefreshInterval {
+	if !m.lastAttempt.IsZero() && time.Since(m.lastAttempt) < m.interval() {
 		return m.data
 	}
 	now := time.Now().UTC()
@@ -153,23 +94,33 @@ func (m *MetroClient) Refresh(ctx context.Context) *MetroData {
 	}
 	ctx, cancel := context.WithTimeout(ctx, metroRefreshTimeout)
 	defer cancel()
+	return m.refreshConfigured(ctx, now)
+}
+func (m *MetroClient) refreshConfigured(ctx context.Context, now time.Time) *MetroData {
 	previous := m.data
 	if previous == nil {
 		state, _ := m.Cache.state("")
 		previous = state.Metro
 	}
 	data := m.fetchData(ctx, previous, now)
-	m.publish(ctx, data, now)
+	// Acquisition may publish a source clock after the cycle start but before receipt.
+	// Keep cadence on lastAttempt; inference and collection status use completed receipt.
+	received := time.Now().UTC()
+	data.Status.CheckedAt = &received
+	m.publish(ctx, data, received)
 	m.data = data
 	return data
 }
 
 // publish updates live health immediately and limits durable writes independently.
 func (m *MetroClient) publish(ctx context.Context, data *MetroData, now time.Time) {
+	state, _ := m.Cache.state("")
+	m.Cache.metroRuntime.observe(data, state.Static["metro"], m.History, now)
 	if m.History != nil {
 		state, _ := m.Cache.state("")
 		if state != nil {
 			m.recordPatterns(data, state.Static["metro"], now)
+			m.Cache.metroRuntime.projectOwn(data, m.History, now)
 		}
 	}
 	m.Store.PublishMu.Lock()
@@ -190,14 +141,20 @@ func (m *MetroClient) publish(ctx context.Context, data *MetroData, now time.Tim
 
 // Run refreshes provider data until its context is cancelled.
 func (m *MetroClient) Run(ctx context.Context) {
+	go m.Cache.metroRuntime.runJournal(ctx, m.History)
 	m.Refresh(ctx)
-	ticker := time.NewTicker(providerRefreshInterval)
-	defer ticker.Stop()
 	for {
+		// Measure from the previous start, discarding missed ticks and catch-up work.
+		m.mu.Lock()
+		lastAttempt := m.lastAttempt
+		m.mu.Unlock()
+		delay := max(time.Until(lastAttempt.Add(m.interval())), time.Millisecond)
+		timer := time.NewTimer(delay)
 		select {
 		case <-ctx.Done():
+			timer.Stop()
 			return
-		case <-ticker.C:
+		case <-timer.C:
 			m.Refresh(ctx)
 		}
 	}
@@ -287,18 +244,8 @@ func predictedArrivals(state *State, from, to time.Time, route, stop string) []a
 	}
 	stationID := metroStationID(state.Static["metro"], data.Stations, stations, stop)
 	routeIDs := metroRouteIDs(state.Static["metro"])
-	seen := map[string]api.Arrival{}
-	for _, wait := range data.Waits {
-		if wait.Stop != stationID {
-			continue
-		}
-		for _, arrival := range platformArrivals(wait, stations, routeIDs, asOf, from, to, route, stop) {
-			previous, exists := seen[arrival.Id]
-			if !exists || arrival.ObservedAt.After(*previous.ObservedAt) {
-				seen[arrival.Id] = arrival
-			}
-		}
-	}
+	latest := latestMetroPublications(data.Waits, stationID, asOf)
+	seen := currentMetroArrivals(metroArrivalSelection{data: data, stations: stations, routeIDs: routeIDs, asOf: asOf, from: from, to: to, route: route, stop: stop, stationID: stationID, latest: latest})
 	for _, arrival := range seen {
 		out = append(out, arrival)
 	}
@@ -396,19 +343,35 @@ func metroUpcoming(wait MetroWait, base api.Arrival, from, to time.Time) []api.A
 	trains := []string{wait.Train, wait.Train2, wait.Train3}
 	for index, value := range []json.RawMessage{wait.Wait1, wait.Wait2, wait.Wait3} {
 		var seconds int
-		if err := json.Unmarshal(value, &seconds); err != nil || seconds < 0 || seconds > maxPredictionWaitSeconds || trains[index] == "" {
+		var valid bool
+		seconds, valid = metroWaitSeconds(value)
+		train := strings.TrimSpace(trains[index])
+		if !valid || !metroReference(train) {
 			continue
 		}
 		expected := observed.Add(time.Duration(seconds) * time.Second)
 		if expected.Before(from) || !expected.Before(to) {
 			continue
 		}
-		id := qualify("metro", "prediction:"+wait.Stop+":"+trains[index]+":"+wait.Destination)
+		id := metroForecastID(wait, train)
 		row := base
-		row.Id, row.TripId, row.ExpectedAt = id, qualify("metro", trains[index]), &expected
+		row.Id, row.TripId, row.ExpectedAt = id, qualify("metro", train), &expected
 		out = append(out, row)
 	}
 	return out
+}
+
+func metroForecastID(wait MetroWait, reference string) string {
+	return qualify("metro", "prediction:"+wait.Stop+":"+reference+":"+wait.Destination)
+}
+
+// Explicit null, strings and fractional values are absent, never zero waits.
+func metroWaitSeconds(value json.RawMessage) (int, bool) {
+	var seconds *int
+	if json.Unmarshal(value, &seconds) != nil || seconds == nil || *seconds < 0 || *seconds > maxPredictionWaitSeconds {
+		return 0, false
+	}
+	return *seconds, true
 }
 
 func abs(v float64) float64 {
@@ -482,6 +445,8 @@ func completeMetroFetch(data, previous *MetroData, states map[string]string, err
 
 // metroRefreshState serializes token reuse and direct snapshot publication.
 type metroRefreshState struct {
+	// Interval is independent of the shared cadence for other providers.
+	Interval    time.Duration
 	mu          sync.Mutex
 	tokenValue  string
 	expires     time.Time

@@ -1,5 +1,7 @@
+import {metroVehicleFixture} from './metro-vehicle-fixture';
 import {test,expect,type Page} from '@playwright/test';
 async function fixture(page:Page){
+ await metroVehicleFixture(page);
  const now=new Date().toISOString();
  const operators=[{id:'metro',name:'Metro de Lisboa',mode:'metro',color:'#ec493a',reported_positions:0,estimated_positions:2},{id:'carris',name:'Carris',mode:'bus',color:'#f5b800',reported_positions:1,estimated_positions:0},{id:'cp',name:'CP',mode:'train',color:'#278044',reported_positions:0,estimated_positions:0}].map(o=>({...o,status:'ok',static_status:'ok',live_updated_at:now}));
  const rows=[{operator_id:'metro',vehicles:2,reported_vehicles:0,estimated_vehicles:2,speed_samples:0,model_vehicles:0,plate_vehicles:0,typology_vehicles:0},{operator_id:'carris',vehicles:1,reported_vehicles:1,estimated_vehicles:0,speed_samples:3,model_vehicles:1,plate_vehicles:1,typology_vehicles:1},{operator_id:'cp',vehicles:1,reported_vehicles:1,estimated_vehicles:0,speed_samples:0,model_vehicles:0,plate_vehicles:0,typology_vehicles:0}];

@@ -1,9 +1,11 @@
+import {metroVehicleFixture} from './metro-vehicle-fixture';
 import {test,expect,type Page} from '@playwright/test';
 import type {Operator,Vehicle,RouteShape,Health,Config,Metrics,GeometryCoverage,MetroStatus} from '../src/api';
 import {positionDeadline,positionIsOld} from '../src/vehicleFreshness';
 import {readFileSync} from 'node:fs';
 
 async function continuityFixture(page:Page){
+ await metroVehicleFixture(page);
  const epoch=Date.now();let phase:'current'|'missing'|'error'|'recovery'='current';let collected=epoch;let reporting=false;
  const iso=(n:number)=>new Date(n).toISOString();
  const operator=(id:string):Operator=>({id,name:id==='cp'?'CP':'Metro de Lisboa',mode:id==='cp'?'train':'metro',color:'#278044',static_source:'https://go.tmlmobilidade.pt/hub/api/v1/plans',live_source:'https://go.tmlmobilidade.pt/hub/api/v1/vehicles/positions',status:id==='cp'&&phase==='error'?'error':'ok',static_status:'ok',static_updated_at:iso(epoch),live_updated_at:iso(collected),observed_at:iso(epoch),plan_id:'plan',valid_from:null,valid_until:null,reported_positions:id==='cp'&&phase==='error'?null:id==='cp'&&(phase==='current'||phase==='recovery')?1:0,estimated_positions:0,note:'',error:id==='cp'&&phase==='error'?'Fonte indisponível':null,static_error:null,direct_status:null,direct_error:null,direct_updated_at:null,last_known_positions:id==='cp'&&(phase==='missing'||phase==='error')?1:0,last_known_truncated:false});

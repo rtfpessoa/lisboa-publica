@@ -57,7 +57,7 @@ For production, set `ENVIRONMENT=production`, an HTTPS `PUBLIC_ORIGIN`, the inte
 
 The [source research](docs/research/SOURCES.md), [implementation plan](docs/PLAN.md), [validation](docs/VALIDATION.md), [Maat findings](docs/MAAT.md) and [reference inventory](docs/reference/INVENTORY.md) preserve dated research and delivery evidence. Use the canonical application references above for current behavior.
 
-Station popups expose line/direction selection and independent arrival/departure evidence. Safely identified vehicle journeys include the full ordered visits, with historical actuals only where explicitly reported. Current sources do not provide certified stop occurrences, and Metro's approximate trip assignment does not identify a timed vehicle journey; it can show the published line/direction stop sequence with an explicitly estimated association and no train arrival/departure times. See [popup behavior](docs/VEHICLE-POPUPS.md).
+Station popups expose line/direction selection and independent arrival/departure evidence. The [Metro live map and popups](docs/metro-live-popups.md) share coherent SSE frames, five-second fallback during stream failure, locally decreasing countdowns, identified line/direction trains and pinned inferred journeys with ordered visits. Metro collection defaults to 500 ms under the shared attempt budget. Inferred arrival publication evidence remains separate from actual events; departure times require unavailable frozen movement calibration and remain unknown. Other operators retain [their popup behavior](docs/VEHICLE-POPUPS.md).
 
 ## Experimental Metro patterns
 
@@ -66,3 +66,6 @@ The **Padrões** view compares official and own forecasts for waiting and follow
 The local completion follow-up adds route-specific conditions, versioned Lisbon holiday grouping, labeled older/general-context component fallback, unchanged-segment compatibility, conservative mixed-bin calibration and durable bounded MAE/P90/availability/band-support reports. Evidence-backed maintenance revises retained inputs atomically while keeping issued values. Staged normalized observation/prediction capture and experimental own-forecast adapters cover all eight existing operators under the same archive budget. Metro uses ETA transitions; later stages require verified published paths and coherent reported stop-state transitions. Forecast availability depends on actual compatible inputs, and physical validation remains unavailable. See [current behavior](docs/metro-patterns.md) and [remaining live evidence](docs/GAPS-metro-patterns.md).
 
 Select an operator in **Padrões**. The operator-scoped `/api/v1/transport/patterns` read exposes both waiting and onward forecasts; the original Metro endpoint remains supported. No additional position/feed polling is introduced.
+
+Metro departure model evidence can be prepared with the [offline calibration workflow](docs/metro-departure-calibration.md).
+It makes no upstream calls and does not enable live departures.

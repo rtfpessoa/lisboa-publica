@@ -103,9 +103,9 @@ Implementation: [visits](../../internal/app/arrivals_tml_visits.go), [date proof
 
 ## Metro station and line matching
 
-[`metroStationID`](../../internal/app/metro.go) first accepts an exact source station code. Otherwise it finds the requested GTFS stop and returns the first published station whose normalized name is a prefix of the GTFS normalized name and whose absolute latitude and longitude differences are each less than 0.005 degrees. Normalization ignores accents/case. This is a coordinate tolerance, not a metric-distance threshold or a uniqueness check. Candidate ordering can affect the fallback.
+[`metroStationID`](../../internal/app/metro.go) first accepts an exact source station code. Otherwise it finds the requested GTFS stop and accepts a published station only when exactly one normalized name-prefix or compact-name candidate matches and whose absolute latitude and longitude differences are each less than 0.005 degrees. Normalization ignores accents/case. This is a coordinate tolerance, not a metric-distance threshold. Multiple candidates are rejected independently of iteration order.
 
-Line identity comes from a recognized destination terminal code or a station listing exactly one line. GTFS route abbreviations `Az`, `Am`, `Vd`, `Vm` map to line identities; unknown line stays unknown. Predicted arrival time is published `hora` plus decoded wait seconds bounded to 0–7,200. The current integer decoder accepts explicit JSON null as zero, while omitted/malformed waits and numeric strings are rejected. A fresh original source time and nonempty train reference are required; an empty or unknown destination can still produce a prediction with a published-code fallback label. Predictions do not establish GPS or confirm a physical arrival.
+Line identity comes from a recognized destination terminal code or a station listing exactly one line. GTFS route abbreviations `Az`, `Am`, `Vd`, `Vm` map to line identities; unknown line stays unknown. Predicted arrival time is published `hora` plus decoded wait seconds bounded to 0–7,200. The strict integer decoder rejects explicit JSON null, omitted/malformed waits, fractions and numeric strings. A fresh original source time and nonempty train reference are required; an empty or unknown destination can still produce a prediction with a published-code fallback label. Predictions do not establish GPS or confirm a physical arrival.
 
 Evidence: [Metro implementation](../../internal/app/metro.go), Metro cases in [app tests](../../internal/app/app_test.go).
 
@@ -184,3 +184,28 @@ compatibility. Revision hashes guard exact retained normalized rows; maintenance
 cannot change the source/journey/normalized stop context. See [adapter rules](../metro-patterns.md#published-stop-adapters-for-later-stages).
 
 Current official-cache values without a supported vehicle association remain separate response-only waiting rows. They do not replace the official member of an earlier emitted comparison pair or become calibration/evaluation cases. A direction-selected view displays unassociated published predictions separately. Original source clocks and validity still govern eligibility.
+
+## Metro live popup episodes
+
+[Metro live popup associations](../metro-live-popups.md#association-and-history) are distinct from physical units,
+Hub trip hints, sampled pattern-engine episodes and actual-event journeys. Unique admitted ordered topology,
+route/destination/reference context and original clocks determine support. Conflicts, gaps and plan/reuse
+boundaries suspend or start separate episodes; a selected run is never rebound automatically.
+A compatible short-turn path can share the unique containing ordered direction while retaining its own destination.
+Own forecasts require at least three matching supported transition windows and a compatible active existing
+forecast profile, not reference equality alone. Both popup projections share the same frame and origin-specific times.
+
+Official Metro stop/reference/destination forecasts select the latest original source clock.
+Conflicting expected instants under that same latest clock are withheld, including in unassociated live
+popup forecasts. A strictly newer unambiguous source publication can recover them; receipt order alone cannot.
+
+Selection happens before ETA-window filtering: a newer missing, invalid or already elapsed wait
+suppresses an older future forecast for the same station/reference/destination. Equal-clock valid and
+missing waits also conflict; filtering an unusable candidate cannot revive the older value.
+
+For Metro popup episodes, a later incompatible positive original wait withdraws an inferred arrival before
+backwards-progress suspension. Durable restoration uses the newer committed correction and cannot renew continuity. Uncommitted
+withdrawals can be absent after loss of runtime state; history/persistence warnings remain explicit.
+Departure parameters can be assessed through the [offline workflow](../metro-departure-calibration.md),
+which separates whole training/holdout journeys and requires independent physical references for observed
+inputs. This does not qualify the live Hub movement adapter or enable departure times.

@@ -1,0 +1,264 @@
+{
+  "started": "2026-09-28T15:16:13.895Z",
+  "finished": "2026-09-28T15:31:14.721Z",
+  "duration_ms": 900000,
+  "clients": 32,
+  "setupErrors": [],
+  "network_profile": {
+    "cdp_latency_ms": 100,
+    "download_bytes_per_second": 10000000,
+    "upload_bytes_per_second": 10000000
+  },
+  "proxy": "Caddy encode zstd gzip; HTTP loopback; trusted synthetic client IPs",
+  "dataset": "synthetic 50-station source, 96 references, 1600 platform rows, 500 ms publication; unrelated API setup reads mocked; no upstream Metro calls",
+  "frames": 58715,
+  "event_payload_utf8_bytes": 10916232332,
+  "p50_ms": 151,
+  "p95_ms": 906,
+  "p99_ms": 1475,
+  "max_ms": 3414,
+  "reorders": 0,
+  "browser_errors": [],
+  "runtime_samples": [
+    {
+      "at": "2026-09-28T15:16:43.896Z",
+      "goroutines": 71,
+      "heap_bytes": 231703240,
+      "streams": 32,
+      "sys_bytes": 325282120
+    },
+    {
+      "at": "2026-09-28T15:17:13.898Z",
+      "goroutines": 71,
+      "heap_bytes": 245823592,
+      "streams": 32,
+      "sys_bytes": 325282120
+    },
+    {
+      "at": "2026-09-28T15:17:43.899Z",
+      "goroutines": 71,
+      "heap_bytes": 228215112,
+      "streams": 32,
+      "sys_bytes": 325282120
+    },
+    {
+      "at": "2026-09-28T15:18:13.901Z",
+      "goroutines": 71,
+      "heap_bytes": 240969704,
+      "streams": 32,
+      "sys_bytes": 325282120
+    },
+    {
+      "at": "2026-09-28T15:18:43.902Z",
+      "goroutines": 71,
+      "heap_bytes": 244013952,
+      "streams": 32,
+      "sys_bytes": 325282120
+    },
+    {
+      "at": "2026-09-28T15:19:13.903Z",
+      "goroutines": 71,
+      "heap_bytes": 155086448,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:19:43.904Z",
+      "goroutines": 71,
+      "heap_bytes": 134168128,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:20:13.904Z",
+      "goroutines": 71,
+      "heap_bytes": 259610464,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:20:43.905Z",
+      "goroutines": 71,
+      "heap_bytes": 243019816,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:21:13.906Z",
+      "goroutines": 71,
+      "heap_bytes": 165245136,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:21:43.908Z",
+      "goroutines": 71,
+      "heap_bytes": 214810416,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:22:13.909Z",
+      "goroutines": 71,
+      "heap_bytes": 169519848,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:22:43.914Z",
+      "goroutines": 71,
+      "heap_bytes": 179828856,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:23:13.914Z",
+      "goroutines": 71,
+      "heap_bytes": 236797104,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:23:43.915Z",
+      "goroutines": 71,
+      "heap_bytes": 227125024,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:24:13.915Z",
+      "goroutines": 71,
+      "heap_bytes": 210927328,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:24:43.916Z",
+      "goroutines": 71,
+      "heap_bytes": 245544304,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:25:13.917Z",
+      "goroutines": 71,
+      "heap_bytes": 211692520,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:25:43.895Z",
+      "goroutines": 71,
+      "heap_bytes": 224949800,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:26:13.878Z",
+      "goroutines": 71,
+      "heap_bytes": 250129520,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:26:43.920Z",
+      "goroutines": 71,
+      "heap_bytes": 255630040,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:27:13.920Z",
+      "goroutines": 71,
+      "heap_bytes": 228105600,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:27:43.920Z",
+      "goroutines": 71,
+      "heap_bytes": 146458416,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:28:13.920Z",
+      "goroutines": 71,
+      "heap_bytes": 201131328,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:28:43.920Z",
+      "goroutines": 71,
+      "heap_bytes": 160544616,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:29:13.920Z",
+      "goroutines": 71,
+      "heap_bytes": 155920896,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:29:43.921Z",
+      "goroutines": 71,
+      "heap_bytes": 264974552,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:30:13.921Z",
+      "goroutines": 71,
+      "heap_bytes": 234855936,
+      "streams": 32,
+      "sys_bytes": 346847576
+    },
+    {
+      "at": "2026-09-28T15:30:43.921Z",
+      "goroutines": 71,
+      "heap_bytes": 160237144,
+      "streams": 32,
+      "sys_bytes": 346847576
+    }
+  ],
+  "snapshot_reads": 1,
+  "stream_errors": 1,
+  "resets": 96,
+  "client_frames": [
+    2128,
+    2017,
+    1969,
+    2030,
+    2123,
+    2053,
+    2034,
+    2003,
+    2053,
+    2008,
+    2030,
+    1949,
+    1966,
+    1890,
+    1925,
+    1895,
+    1951,
+    1887,
+    1735,
+    1801,
+    1750,
+    1740,
+    1799,
+    1730,
+    1710,
+    1495,
+    1698,
+    1607,
+    1628,
+    1498,
+    1397,
+    1216
+  ]
+}

@@ -54,7 +54,7 @@ Before replacing an existing container, inspect its active Compose inputs (`com.
 
 The local override restores the healthy-database dependency even when appended after an existing external override. It selects `lisboa-publica_postgres_data` (configurable with `POSTGRES_VOLUME_NAME`) instead of the older `lisboa-publica_database_data` volume. Docker initializes this volume only when empty; changing the environment password does not change credentials in an existing initialized volume. Preserve previous volumes and the Cloud database. Add `Caddyfile.fragment` to the existing Caddyfile, validate and reload the running Caddy container. It overwrites the trusted client-IP header. Other services and domains retain their existing configuration.
 
-History retains 30 days plus one hour of pruning grace, with immutable five-minute aggregates closed after 90 seconds. Live frontend queries use the configured `live_refresh_seconds` interval (five seconds by default); historical queries refresh every 30 seconds. History begins with collection in this database; unfinished buckets can be lost during restart, and storage pauses leave explicit gaps.
+History retains 30 days plus one hour of pruning grace, with immutable five-minute aggregates closed after 90 seconds. Non-Metro live frontend queries use the configured `live_refresh_seconds` interval (five seconds by default); Metro uses scoped SSE with a five-second fallback while unavailable. Historical queries refresh every 30 seconds. History begins with collection in this database; unfinished buckets can be lost during restart, and storage pauses leave explicit gaps.
 
 Vehicle position display uses a fixed ten-minute lifetime from the original source clock for all operators, with an immediate marker warning for backend `not_reporting` state and an independent age warning at five minutes. This is independent of historical retention and the live request interval. The frontend ages cached positions every second even when requests fail; restoring positions or polling the same report cannot renew the deadline.
 
@@ -133,3 +133,18 @@ above rather than applying the earlier experimental overlays.
 For evidence-backed revisions, build/run `cmd/patterns-maintenance` locally against a private archive fixture. The Dockerfile also includes `/app/patterns-maintenance` for a future authorized maintenance window; no image was packaged or deployed in this follow-up. It requires exclusive ownership; attempting access while the service holds the lock fails. `-operator` defaults to `metro`; other stages accept a normalized observation in `row`. The private correction JSON contains `received_at`, `expected_hash`, `row` and `evidence`; the hash refers to the currently corrected normalized row using its canonical Go JSON encoding. Match all actual service settings with `-sample`, `-bin`, `-limit`, `-detail-days`, `-aggregate-months`, `-training-days`, `-calibration-days`, `-checkpoint` and `-evaluation`. Mismatched retention settings can retire data on open. The command reads no provider endpoint and exposes only scalar revision results. Expired/stale/ambiguous inputs and oversized revisions fail explicitly. See [maintenance semantics](../docs/metro-patterns.md#evidence-backed-maintenance).
 
 The earlier local-only follow-up remains dated evidence in the validation log. The subsequent 2026-09-28 instruction authorizes commit, push to main and deployment after the normal gates. Operational collection must preserve existing provider request limits and explicitly separate inferred signals from physical validation.
+
+## Metro live popup configuration
+
+`METRO_REFRESH_MILLISECONDS` defaults to 500 and accepts 500–60000. It affects only serialized direct Metro
+collection; existing live JSON intervals and other providers are unchanged. Keep one subscribed collector and
+shared attempt budget; multiple independently budgeted instances or external consumers can exceed an account quota.
+The inferred-event lane uses the existing archive volume and global allocated-byte budget, with a seven-day target
+subject to TTL/FIFO. Do not lower `TRANSPORT_SAMPLE_SECONDS` to enable per-update event processing.
+
+[Metro streaming](../docs/metro-live-popups.md) requires unbuffered event-stream flushes through Go/Caddy. Stream
+writes use separate bounded deadlines; ordinary API timeout/rate/auth policy remains in effect. Initial stream limits
+are 256 KiB/frame, 64/process, 16/IP and 4/principal, configured through `Options.MetroStreamLimits`. Native
+EventSource uses same-origin cookies/public reads; API-key clients need header-authenticated streaming fetch.
+Calibrated departure input is unavailable and its passenger times remain unknown. Changing sampling/storage or
+stream limits does not supply calibration or prove the P95 delivery objective. No deployment follows from local tests.

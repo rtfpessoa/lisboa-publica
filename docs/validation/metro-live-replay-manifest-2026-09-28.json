@@ -1,0 +1,21 @@
+{
+  "at": "2026-09-28T16:15:19.364463+00:00",
+  "qualification": "Selected runtime/fixture/harness files and served frontend assets in an uncommitted working tree; not a full binary/repository reproducible-build claim",
+  "go_version": "go version go1.27.1 darwin/arm64",
+  "playwright_version": "1.63.0",
+  "sha256": {
+    "internal/app/metro_live.go": "b942cb097197c23250cdc6d20b399b6236f60a74c649d636d2328bce1fc06d90",
+    "internal/app/metro_runtime.go": "ec3ba35ab02510dfa1ad6cf8a4af2dd609af6a4a2d03c7b32612efc3b40dd9f1",
+    "internal/app/metro_release_controls_test.go": "525e368d3aec48994e1ff6fc0d45d8f67746e6a9688ada6c1ec83b4bfe780ba9",
+    "internal/app/metro_release_fixture_test.go": "ffe4f55dc219ad69065c12a5d6bb7b39c938de7b9cf06192cfd560aad91a0216",
+    "frontend/src/useMetroLive.tsx": "7af990049bee4d05f392bcf3ad40dc4d5b8ebd601e766be700f4164c2bf9aeca",
+    "frontend/scripts/metro-live-mixed-release.mjs": "7239765d64f7c1428d5d44fdfe5d211eb11f5556bdea04a083d6e08b872f3e5e",
+    "frontend/dist/index.html": "4c69d85fd24272f1048d8568ae1a96cfa51ea0693ef2ba8709973699571154c7",
+    "frontend/dist/assets/Map-B8-mEBLf.css": "946f40662e206d3f7ecf6ef4df1881ff23819a9f93b1419a07e2609f70e7bbf4",
+    "frontend/dist/assets/Map-Cfg1Urvw.js": "7b990a9d388fa3f4c9599926fd0e737a0f1426e0aca7fb022a6864a1cc969f1f",
+    "frontend/dist/assets/MetroPatterns-DPN3KHdx.js": "650007ae5225320743ea1944be7d05df1437a09cf2b5ec2abbc4922b1e650ab3",
+    "frontend/dist/assets/index-CSx_4qW0.js": "60c132d3b369449b134a829e3848fa27afcc61444c21328a644458181a8bcb10",
+    "frontend/dist/assets/index-Uzb5IhfK.css": "58b2ee4913fc6ac4d739c1bbc5fc20f8634f391fbc48591ea65efc3db80794cd",
+    "frontend/dist/assets/maplibre-gl-worker-CRiIRpYb.js": "096f3b4deeeaa7ed1372a96978bea3495b78250041df835fada34f12320e11d2"
+  }
+}

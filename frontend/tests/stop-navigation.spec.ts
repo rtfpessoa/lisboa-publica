@@ -14,6 +14,10 @@ test('station grouping requires a complete same-operator hierarchy',()=>{
 });
 async function fixture(page:Page,platforms=false){
  const epoch=Date.now(),now=new Date(epoch).toISOString(),requests:string[]=[];let failure=false,expectedDelta=300000;
+ await page.addInitScript(()=>{
+  class Stream extends EventTarget {closed=false;onerror:(()=>void)|null=null;constructor(url:string){super();setTimeout(()=>{if(!this.closed)this.dispatchEvent(new MessageEvent('reset',{lastEventId:'1',data:JSON.stringify({revision:'synthetic',published_at:new Date().toISOString(),plan_id:null,status:{status:'unconfigured',lines:[]},history_status:'unavailable',vehicles:[],trains:[],directions:new URL(url,location.origin).searchParams.has('stop_id')?[{line_key:'metro:1',line_name:'Linha sintética',direction_key:'destination',label:'Destino publicado',count:0}]:[],selected_journey_id:null,unassociated_forecasts:[]})}))},0)}close(){this.closed=true}}
+  Object.defineProperty(window,'EventSource',{value:Stream});
+ });
  const operators=['cm','metro'].map(id=>({id,name:id==='cm'?'Carris Metropolitana':'Metro de Lisboa',mode:id==='metro'?'metro':'bus',color:'#f5b800',status:'ok',static_status:'ok',live_updated_at:now,static_updated_at:now,reported_positions:0,estimated_positions:0,error:null,note:''}));
  const stops=[{id:'cm:A',name:'Paragem Alfa',lat:38.731,lon:-9.145},{id:'cm:B',name:'Paragem Beta',lat:38.73136,lon:-9.145},{id:'cm:C',name:'Paragem Gama',lat:38.73172,lon:-9.145},{id:'metro:M',name:'Metro oculto',lat:38.731,lon:-9.145}].map(s=>({...s,source_id:s.id,operator_id:s.id.split(':')[0],route_ids:[]}));
  const catalogue=platforms?[...stops,...Array.from({length:4},(_,n)=>({...stops[3],id:`metro:P${n}`,source_id:`P${n}`,parent_id:'metro:M'}))]:stops;

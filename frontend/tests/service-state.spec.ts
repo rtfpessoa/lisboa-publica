@@ -10,6 +10,11 @@ async function fixture(page:Page,operator='carris',known=false,status:string|nul
  const now=Date.now(),at=new Date(now-(known?360000:0)).toISOString();
  const service={origin_source_stop_id:'O',origin_name:'Porto',destination_source_stop_id:'D',destination_name:'Faro',service_date:'2026-09-26',source_url:'https://official.example/gtfs'};
  const v={id:operator+':v',source_id:'v',operator_id:operator,position_kind:operator==='metro'?'estimated':'reported',lat:38.731,lon:-9.145,observed_at:at,collected_at:at,current_status:status,stop_name:'Oriente',license_plate:'CE29PV',source_url:'https://go.tmlmobilidade.pt',last_known:known,stale:known,inactive_at:new Date(Date.parse(at)+300000).toISOString(),last_known_expires_at:new Date(Date.parse(at)+600000).toISOString(),...(operator==='cp'?{scheduled_service:service}:{}),...specs};
+ await page.addInitScript(({operator,vehicle})=>{
+  (window as unknown as {fixtureOperator:string}).fixtureOperator=operator;
+  class Stream extends EventTarget {closed=false;onerror:(()=>void)|null=null;constructor(){super();setTimeout(()=>{if(!this.closed)this.dispatchEvent(new MessageEvent('reset',{lastEventId:'1',data:JSON.stringify({revision:'synthetic',published_at:new Date().toISOString(),plan_id:null,status:{status:'unconfigured',lines:[]},history_status:'unavailable',vehicles:operator==='metro'?[vehicle]:[],trains:[],directions:[],selected_journey_id:null,unassociated_forecasts:[]})}))},0)}close(){this.closed=true}}
+  Object.defineProperty(window,'EventSource',{value:Stream});
+ },{operator,vehicle:v});
  const operators=[{id:'metro',name:'Metro de Lisboa',mode:'metro',color:'#e22'},{id:operator,name:operator==='cp'?'CP':'Carris',mode:operator==='cp'?'train':'bus',color:'#2a2'}].filter((v,i,a)=>a.findIndex(x=>x.id===v.id)===i).map(o=>({...o,status:'ok',static_status:'ok',live_updated_at:new Date(now).toISOString(),reported_positions:1,estimated_positions:1}));
  const paged=(data:unknown[])=>({data,page:{limit:500,offset:0,total:data.length,has_more:false}});
  await page.route('https://tiles.openfreemap.org/styles/positron',r=>r.fulfill({json:{version:8,sources:{},layers:[{id:'background',type:'background',paint:{'background-color':'#fff'}}]}}));
@@ -28,6 +33,15 @@ async function fixture(page:Page,operator='carris',known=false,status:string|nul
 }
 
 async function openVehicle(page:Page){
+ const operator=await page.evaluate(()=>(window as unknown as {fixtureOperator:string}).fixtureOperator);
+ if(operator!=='metro'){
+  if((page.viewportSize()?.width??1280)<760)await page.getByRole('button',{name:'Abrir operadores'}).click();
+  if(operator==='carris')await page.locator('.main-operator').filter({hasText:'Dashboard'}).click();
+  else await page.getByRole('button',{name:'CP',exact:true}).click();
+  await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click();
+  if((page.viewportSize()?.width??1280)<760)await page.getByRole('button',{name:'Fechar operadores'}).click();
+ }
+
  await expect(page.locator('.map')).toHaveAttribute('aria-busy','false');
  await page.waitForTimeout(300);
  const box=await page.locator('.map canvas').boundingBox();

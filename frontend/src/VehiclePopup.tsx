@@ -4,6 +4,7 @@ import {useEffect,useRef,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {AlertTriangle,BusFront,Ship,TramFront,TrainFront,X} from 'lucide-react';
 import * as api from './api';
+import {MetroJourneyPopup} from './MetroPopups';
 import {VehiclePopup as JourneyPopup} from './TransitPopups';
 import {VehicleSpecifications} from './VehicleSpecifications';
 import {errorText,number,observationAge,observationTime,passengerName,plate,routeName,sameVehicleService,stopStatus,time} from './data';
@@ -20,7 +21,7 @@ export default function VehiclePopup({vehicle:v,mode,operatorName,now,onClose,on
  const [reference,setReference]=useState(v.vehicle_ref?.reference),[offset,setOffset]=useState(0),[revision,setRevision]=useState<string>();
  const [path,setPath]=useState<{reference:string,shape:api.RouteShape}>();
  const includeGeometry=v.operator_id==='cm'&&!!v.pattern_id&&showPath&&offset===0;
- const calls=useQuery({queryKey:['vehicle-calls',v.id,reference,offset,revision,includeGeometry],enabled:!!reference,staleTime:30000,gcTime:60000,retry:false,queryFn:async({signal})=>{
+ const calls=useQuery({queryKey:['vehicle-calls',v.id,reference,offset,revision,includeGeometry],enabled:!!reference&&v.operator_id!=='metro',staleTime:30000,gcTime:60000,retry:false,queryFn:async({signal})=>{
   const result=await api.getVehicleCalls(v.id,{reference,limit:20,offset,revision,includeGeometry},{signal});
   if(!result.vehicle||!sameVehicleService(result.vehicle,origin.current))throw new Error('Esta ligação já não identifica o mesmo serviço.');
   return result;
@@ -76,7 +77,7 @@ export default function VehiclePopup({vehicle:v,mode,operatorName,now,onClose,on
  const predicted=rows.some(row=>row.kind==='predicted');
  const frozen=!!calls.data&&(calls.data.vehicle.observed_at!==v.observed_at||calls.data.vehicle.stop_id!==v.stop_id||calls.data.vehicle.last_known!==v.last_known);
  return <>
-  <div className="section-head vehicle-heading"><h3><Icon size={20}/>{v.service_label?`${mode==='train'?'Comboio':'Serviço'} ${v.service_label}`:`${operatorName} · ${v.source_id}`}</h3><div>{unique.length>0&&<button className="quiet warning-jump" onClick={jump} aria-label={`Ver ${unique.length} avisos`}><AlertTriangle size={18}/><span>{unique.length}</span></button>}<button className="quiet" aria-label="Fechar detalhes" onClick={onClose}><X size={18}/></button></div></div>
+  <div className="section-head vehicle-heading"><h3><Icon size={20}/>{v.operator_id==='metro'?`Comboio ${v.source_id}`:v.service_label?`${mode==='train'?'Comboio':'Serviço'} ${v.service_label}`:`${operatorName} · ${v.source_id}`}</h3><div>{unique.length>0&&<button className="quiet warning-jump" onClick={jump} aria-label={`Ver ${unique.length} avisos`}><AlertTriangle size={18}/><span>{unique.length}</span></button>}<button className="quiet" aria-label="Fechar detalhes" onClick={onClose}><X size={18}/></button></div></div>
   {v.position_kind==='estimated'&&v.operator_id!=='metro'&&<span className="pill estimated">Posição estimada</span>}
   {v.reporting&&<p className="vehicle-reporting">{reportingLabel(v)}</p>}
   {state&&<p className="vehicle-status">{state.replace('Último estado:','Último registo:')}</p>}
@@ -86,7 +87,7 @@ export default function VehiclePopup({vehicle:v,mode,operatorName,now,onClose,on
    {v.scheduled_service&&<p className="journey">{passengerName(v.operator_id,v.scheduled_service.origin_name)} → {passengerName(v.operator_id,v.scheduled_service.destination_name)} <small>Serviço planeado</small></p>}
    {fields.length>0&&<div className="detail-grid">{fields.map(([label,value])=><span key={label}>{label}<strong>{value}</strong></span>)}</div>}
    <VehicleSpecifications vehicle={v}/>
-   <JourneyPopup vehicle={v} onResolved={setJourneyResolved} onStop={onStop}/>{reference&&!(v.operator_id==='metro'&&journeyResolved)&&<section className="vehicle-calls" aria-busy={calls.isFetching||geometry.isFetching}><h4>{calls.data?.coverage==='complete_published_route'?'Percurso completo publicado':calls.data?.availability==='next_stop_only'?'Próxima paragem publicada':v.operator_id==='cm'?'Paragens publicadas':previous||frozen?'Percurso do último serviço observado':predicted?'Próximas paragens previstas':calls.data?.progress==='known'?'Próximas paragens planeadas':'Percurso planeado na área de Lisboa'}</h4>
+   {v.operator_id==='metro'?<MetroJourneyPopup vehicle={v}/>:<JourneyPopup vehicle={v} onResolved={setJourneyResolved} onStop={onStop}/>}{reference&&v.operator_id!=='metro'&&!(v.operator_id==='metro'&&journeyResolved)&&<section className="vehicle-calls" aria-busy={calls.isFetching||geometry.isFetching}><h4>{calls.data?.coverage==='complete_published_route'?'Percurso completo publicado':calls.data?.availability==='next_stop_only'?'Próxima paragem publicada':v.operator_id==='cm'?'Paragens publicadas':previous||frozen?'Percurso do último serviço observado':predicted?'Próximas paragens previstas':calls.data?.progress==='known'?'Próximas paragens planeadas':'Percurso planeado na área de Lisboa'}</h4>
     {v.operator_id==='cm'&&v.pattern_id&&<label className="path-toggle"><input type="checkbox" checked={showPath} onChange={e=>onShowPath(e.target.checked)}/>Mostrar percursos de autocarro no mapa</label>}
     {frozen&&calls.data&&<p className="subtle">Paragens associadas ao registo de {observationTime(calls.data.vehicle.observed_at,now)}. <button className="quiet" onClick={reload}>Atualizar percurso</button></p>}
     {navigationBusy&&<p role="status">A abrir paragem…</p>}

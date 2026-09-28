@@ -1,0 +1,31 @@
+{
+  "tool": "metro-calibrate-v1",
+  "input_sha256": "06643585472779f8eb10e07ffaaa4882b6d4027c3b36efeb5e2fa0d36aeb122d",
+  "source_provenance": "Synthetic generator; no Metro API data",
+  "resolution_provenance": "Synthetic assumed resolution; not measured",
+  "assessment": {
+    "kind": "synthetic",
+    "candidate": {
+      "version": "synthetic-demo-v1",
+      "geometry": "synthetic-geometry-v1",
+      "transform": "synthetic-transform-v1",
+      "noise_metres": 0.25,
+      "resolution_metres": 1
+    },
+    "live_enabled": false,
+    "review_required": true,
+    "training_stopped_pairs": 1,
+    "training_journeys": 1,
+    "holdout_journeys": 1,
+    "holdout_outcomes": [
+      {
+        "journey": "synthetic-holdout",
+        "visit": "synthetic-stop",
+        "classification": "within_reference_window",
+        "detected_at": "2026-01-01T00:00:03Z",
+        "reference_from": "2026-01-01T00:00:03Z",
+        "reference_through": "2026-01-01T00:00:04Z"
+      }
+    ]
+  }
+}

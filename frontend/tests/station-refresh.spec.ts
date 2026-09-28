@@ -2,7 +2,7 @@ import {test,expect,type Page} from '@playwright/test';
 
 async function stationFixture(page:Page,validFor=60000,total=25){
  const epoch=Date.now(),iso=(n:number)=>new Date(epoch+n).toISOString();
- const stop={id:'metro:S',operator_id:'metro',source_id:'S',name:'Alameda',lat:38.731,lon:-9.145,route_ids:['red']};
+ const stop={id:'carris:S',operator_id:'carris',source_id:'S',name:'Alameda',lat:38.731,lon:-9.145,route_ids:['red']};
  const directions=[{line_key:'red',line_name:'Linha Vermelha',color:'#e22',direction_key:'airport',label:'Aeroporto',count:null},{line_key:'red',line_name:'Linha Vermelha',color:'#e22',direction_key:'ss',label:'São Sebastião',count:null}];
  let revision=0,hold=false,failed=false,missing=false,expireOnce=false,ids=Array.from({length:total},(_,i)=>'row-'+i);
  let pending:(()=>Promise<void>)[]=[];const requests:URL[]=[];
@@ -13,7 +13,7 @@ async function stationFixture(page:Page,validFor=60000,total=25){
  await page.route('**/api/v1/**',async r=>{
   const u=new URL(r.request().url()),p=u.pathname;requests.push(u);let json:unknown=envelope([]);
   if(p.endsWith('/config'))json={dev_auth:false,live_refresh_seconds:5,history_retention_days:30,history_resolution_seconds:300};
-  if(p.endsWith('/operators'))json=envelope([{id:'metro',name:'Metro de Lisboa',mode:'metro',color:'#e22',status:'ok',static_status:'ok',live_updated_at:iso(0),estimated_positions:1,reported_positions:1}]);
+  if(p.endsWith('/operators'))json=envelope([{id:'carris',name:'Carris',mode:'bus',color:'#e22',status:'ok',static_status:'ok',live_updated_at:iso(0),estimated_positions:1,reported_positions:1}]);
   if(p.endsWith('/route-shapes'))json={...envelope([]),coverage:[]};
   if(p.endsWith('/metro/status'))json={status:'unconfigured',message:'Fonte direta indisponível',lines:[]};
   if(p.endsWith('/stops'))json=envelope([stop]);
@@ -29,6 +29,7 @@ async function stationFixture(page:Page,validFor=60000,total=25){
   await r.fulfill({json});
  });
  await page.goto('/');if((page.viewportSize()?.width??1280)<760)await page.getByRole('button',{name:'Abrir operadores'}).click();
+ await page.locator('.main-operator').filter({hasText:'Dashboard'}).click();await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click();
  await page.getByLabel('Pesquisar carreira ou paragem').fill('alameda');await page.locator('.search-results button').last().click();
  await expect(page.locator('.direction-detail .transit-call:not(.call-head)')).toHaveCount(25);
  return {requests,hold:()=>{hold=true},release:async()=>{hold=false;const all=pending;pending=[];await Promise.all(all.map(fn=>fn()))},pending:()=>pending.length,setIds:(v:string[])=>{ids=v},fail:()=>{failed=true},recover:()=>{failed=false},removeDirection:()=>{missing=true},expire:()=>{expireOnce=true}};

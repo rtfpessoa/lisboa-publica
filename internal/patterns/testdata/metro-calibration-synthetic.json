@@ -1,0 +1,137 @@
+{
+  "kind": "synthetic",
+  "version": "synthetic-demo-v1",
+  "geometry": "synthetic-geometry-v1",
+  "transform": "synthetic-transform-v1",
+  "source_provenance": "Synthetic generator; no Metro API data",
+  "resolution_metres": 1,
+  "resolution_provenance": "Synthetic assumed resolution; not measured",
+  "samples": [
+    {
+      "journey": "synthetic-train",
+      "visit": "synthetic-stop",
+      "split": "train",
+      "evidence_ref": "synthetic-generator:synthetic-train:0",
+      "source_at": "2026-01-01T00:00:00Z",
+      "received_at": "2026-01-01T00:00:00.100Z",
+      "progress_metres": 0,
+      "valid": true,
+      "stopped": true,
+      "corrected": false,
+      "fallback": false
+    },
+    {
+      "journey": "synthetic-train",
+      "visit": "synthetic-stop",
+      "split": "train",
+      "evidence_ref": "synthetic-generator:synthetic-train:1",
+      "source_at": "2026-01-01T00:00:01Z",
+      "received_at": "2026-01-01T00:00:01.100Z",
+      "progress_metres": 0.25,
+      "valid": true,
+      "stopped": true,
+      "corrected": false,
+      "fallback": false
+    },
+    {
+      "journey": "synthetic-train",
+      "visit": "synthetic-stop",
+      "split": "train",
+      "evidence_ref": "synthetic-generator:synthetic-train:3",
+      "source_at": "2026-01-01T00:00:03Z",
+      "received_at": "2026-01-01T00:00:03.100Z",
+      "progress_metres": 1.5,
+      "valid": true,
+      "stopped": false,
+      "corrected": false,
+      "fallback": false
+    },
+    {
+      "journey": "synthetic-holdout",
+      "visit": "synthetic-stop",
+      "split": "holdout",
+      "evidence_ref": "synthetic-generator:synthetic-holdout:0",
+      "source_at": "2026-01-01T00:00:00Z",
+      "received_at": "2026-01-01T00:00:00.100Z",
+      "progress_metres": 0,
+      "valid": true,
+      "stopped": true,
+      "corrected": false,
+      "fallback": false
+    },
+    {
+      "journey": "synthetic-holdout",
+      "visit": "synthetic-stop",
+      "split": "holdout",
+      "evidence_ref": "synthetic-generator:synthetic-holdout:1",
+      "source_at": "2026-01-01T00:00:01Z",
+      "received_at": "2026-01-01T00:00:01.100Z",
+      "progress_metres": 0.1,
+      "valid": true,
+      "stopped": true,
+      "corrected": false,
+      "fallback": false
+    },
+    {
+      "journey": "synthetic-holdout",
+      "visit": "synthetic-stop",
+      "split": "holdout",
+      "evidence_ref": "synthetic-generator:synthetic-holdout:2",
+      "source_at": "2026-01-01T00:00:02Z",
+      "received_at": "2026-01-01T00:00:02.100Z",
+      "progress_metres": 0.6,
+      "valid": true,
+      "stopped": false,
+      "corrected": false,
+      "fallback": false
+    },
+    {
+      "journey": "synthetic-holdout",
+      "visit": "synthetic-stop",
+      "split": "holdout",
+      "evidence_ref": "synthetic-generator:synthetic-holdout:3",
+      "source_at": "2026-01-01T00:00:03Z",
+      "received_at": "2026-01-01T00:00:03.100Z",
+      "progress_metres": 1.5,
+      "valid": true,
+      "stopped": false,
+      "corrected": false,
+      "fallback": false
+    },
+    {
+      "journey": "synthetic-holdout",
+      "visit": "synthetic-stop",
+      "split": "holdout",
+      "evidence_ref": "synthetic-generator:synthetic-holdout:4",
+      "source_at": "2026-01-01T00:00:04Z",
+      "received_at": "2026-01-01T00:00:04.100Z",
+      "progress_metres": 3,
+      "valid": true,
+      "stopped": false,
+      "corrected": false,
+      "fallback": false
+    }
+  ],
+  "references": [
+    {
+      "journey": "synthetic-train",
+      "visit": "synthetic-stop",
+      "kind": "synthetic",
+      "provenance": "Synthetic windows; no physical observation",
+      "stopped_from": "2026-01-01T00:00:00Z",
+      "stopped_through": "2026-01-01T00:00:01Z",
+      "first_movement_from": "2026-01-01T00:00:03Z",
+      "first_movement_through": "2026-01-01T00:00:04Z"
+    },
+    {
+      "journey": "synthetic-holdout",
+      "visit": "synthetic-stop",
+      "kind": "synthetic",
+      "provenance": "Synthetic windows; no physical observation",
+      "stopped_from": "2026-01-01T00:00:00Z",
+      "stopped_through": "2026-01-01T00:00:01Z",
+      "first_movement_from": "2026-01-01T00:00:03Z",
+      "first_movement_through": "2026-01-01T00:00:04Z"
+    }
+  ]
+}

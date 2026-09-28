@@ -50,7 +50,7 @@ SIGINT/SIGTERM cancels the shared context and initiates HTTP shutdown with a ten
 | Positions | Initial collection, then nominal five-second loop | Hub positions for seven operators, direct CM positions, observation admission and continuity |
 | Shared ETA | Nominal five-second loop when CP static data or additional-stop demand exists; serialized five-second attempt | CP predictions plus demanded TML stop arrivals from one decode |
 | CM arrivals | Separate nominal five-second loop; bounded requested-stop demand | Ephemeral direct arrivals independent of CP latency |
-| Direct Metro | Initial collection, then nominal five-second loop with credentials; refresh serialized and at most once per five seconds | OAuth token reuse, line status, waits and station metadata |
+| Direct Metro | Initial collection, then dedicated 500 ms minimum start interval with credentials; serialized with no overlap/catch-up | OAuth token reuse, line status, waits and station metadata |
 | Cleanup/archival | Five-minute ticker in the position loop | Bounded retention cleanup and optional PostgreSQL payload archival |
 
 These are local schedules, not guarantees of exact completion intervals or new source observations. Filters in the UI affect enabled queries and returned entities, not which operators the position/static collectors ingest. Stop arrival reads additionally register bounded30-second demand; they never perform an upstream fetch in the HTTP reader.
@@ -173,13 +173,13 @@ CM paths share one validated stop sequence per published pattern and reference e
 
 [Direction boards and journeys](VEHICLE-POPUPS.md) add cached reads alongside the existing calls/navigation operations. GTFS schedules retain full visits separately from local map visits and build an immutable lazy trip/stop/direction index once per static generation. TML ETA decoding is shared between CP, bounded per-operator publications and requested-stop arrival collection; the native CM collector keeps its existing demand and request budgets. A board `b|` revision combines the frozen network with an existing bounded arrival-result lease. Journey `j:` revisions pin network/observation, read time and committed stop-event generation. Actual events are served only after persistence; no current upstream adapter produces certified occurrences.
 
-The [station board controller](../frontend/src/useStationBoard.ts) publishes one complete board/selected-page frame after both requests succeed. Sliding query-window revisions may change on every poll; this does not clear the displayed frame. Refresh is serialized with the next attempt five seconds after completion. HTTP 410 retries the board/page sequence once, retaining selection. A vanished results page is replaced by the nearest valid page in the same direction and revision before frame publication. Selection epochs and abort signals reject obsolete responses, and errors retain the previous frame with original expiry. [Reading restoration](../frontend/src/useStationReading.ts) runs before paint using surviving row identity/viewport position and focused controls. Local expiry applies independently of request success. This does not create a transaction across unrelated dashboard queries or persist browser frames.
+For operators other than Metro, the [station board controller](../frontend/src/useStationBoard.ts) publishes one complete board/selected-page frame after both requests succeed. Sliding query-window revisions may change on every poll; this does not clear the displayed frame. Refresh is serialized with the next attempt five seconds after completion. HTTP 410 retries the board/page sequence once, retaining selection. A vanished results page is replaced by the nearest valid page in the same direction and revision before frame publication. Selection epochs and abort signals reject obsolete responses, and errors retain the previous frame with original expiry. [Reading restoration](../frontend/src/useStationReading.ts) runs before paint using surviving row identity/viewport position and focused controls. Local expiry applies independently of request success. This does not create a transaction across unrelated dashboard queries or persist browser frames.
 
 [Station coverage](../internal/app/popup_station_coverage.go) is derived after source rows are assembled: the board considers all directions and a calls page considers its returned rows. Valid forecasts from one source survive another source's unavailable status; planned fallback remains partial, and stale static networks remain marked stale. No new source requests, persistence or forecast validity are introduced. [Station identity](../frontend/src/stationIdentity.ts) groups only complete same-operator parent relationships for presentation; nearby candidates reconcile selected operators and current catalogues rather than a captured operator list.
 
 The complete timed journey appears only with a safe plan/route/trip/date association. The existing CM published-pattern path and next-stop fallback remain separately available when a timed journey cannot be identified. UI polling does not change the provenance, observation clock or highlighted path.
 
-The same journey endpoint can expose a Metro published route with an explicitly separate association, null journey identity and unavailable individual stop times. Matching uses the existing immutable static index plus the captured route/trip or a fresh direct destination; it neither fetches upstream data nor reads stop events. It reuses the frozen journey revision and read-result limits. The route-only projection is response data, not a new durable vehicle state, observation or retained historical journey.
+The compatibility journey endpoint can expose a Metro published route with an explicitly separate association, null journey identity and unavailable individual stop times. Matching uses the existing immutable static index plus the captured route/trip or a fresh direct destination; it neither fetches upstream data nor reads stop events. It reuses the frozen journey revision and read-result limits. The route-only projection is response data, not a new durable vehicle state, observation or retained historical journey.
 
 The popup schedule retains a single visit sequence when the local and complete journeys coincide.
 Cache restoration streams individual trips and interns stop identities,
@@ -226,3 +226,20 @@ revise later-stage normalized observations with the same exclusive transaction
 and bounded replay/publication policy; original forecasts remain immutable.
 
 Patterns reads expose fresh official values from the existing accepted cache even when the experimental archive is disabled or unreadable. This response-only fallback preserves source clocks/expiry and does not enter historical calibration or evaluation; read failures suppress own points. See [official-cache behavior](metro-patterns.md#published-stop-adapters-for-later-stages).
+
+## Metro scoped live delivery
+
+[Metro live popups](metro-live-popups.md) use one complete scoped projection for map, selected journey or
+station inventory, served through SSE and conditional JSON. The collector processes original updates before
+frame coalescing; the browser accepts complete ordered frames, pins journey identity and preserves direction,
+reading/focus and manual camera pause. Browser reads never start additional Metro collectors.
+Finite frame construction uses read admission; stream lifetime does not occupy a read slot. Per-write deadlines,
+bounded queues/frame bytes/admission, auth expiry/revalidation and full-reset recovery are separate from normal
+JSON deadlines. [Implementation](../internal/app/metro_live.go) and [tests](../internal/app/metro_live_test.go)
+define these boundaries. The inferred-event journal shares the archive owner/budget and restores committed
+partial history without live continuity. The existing 64-version cache remains a separate pagination boundary;
+complete live frames do not paginate through or promise five-minute retention in that cache.
+
+`METRO_REFRESH_MILLISECONDS` defaults to 500, accepts 500–60000, and does not change `live_refresh_seconds`
+for other feeds. One shared collector/transport must own the subscribed quota; independent external consumers
+are not automatically coordinated. The one-second healthy-SSE P95 objective requires dated validation evidence.

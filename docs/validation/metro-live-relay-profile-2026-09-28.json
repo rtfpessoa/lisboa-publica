@@ -1,0 +1,14 @@
+{
+  "at": "2026-09-28T16:02:45.950542+00:00",
+  "mechanism": "50 ms incoming HTTP request delay and 50 ms response write delay in test-only Go relay; Caddy loopback",
+  "qualification": "Application request/response elapsed time; no measured packet RTT or mobile radio claim",
+  "configured_request_delay_ms": 50,
+  "configured_write_delay_ms": 50,
+  "ping_elapsed_ms": [
+    122.712,
+    105.073,
+    104.701,
+    113.935,
+    125.806
+  ]
+}

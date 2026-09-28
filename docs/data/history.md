@@ -129,3 +129,17 @@ Provider recovery tracks the durable `AsOf` coverage of every verified daily gen
 Hot-day eviction is allowed only after pending daily changes have been durably published. A complete day excluded from hot memory is marked cold and cannot be reopened from a partial update; its full retained generation remains the read authority, with limited training support disclosed. Cold-day markers expire with the configured aggregate window. Maintenance reads complete affected days into a private working copy, rejects a capacity-limited replay, and replaces live state only after the atomic manifest commit.
 
 An admitted hot day also remains in memory while a current association references a signal window in that day, including windows spanning local midnight. This preserves the complete input needed for conservative withdrawal after a later contradiction. Under capacity pressure, newer training contributions may be unavailable until publication and association cleanup make eviction safe. A fresh official cold-start point keeps its association-unavailable explanation; read-time expiry only replaces that explanation when an own point actually expires.
+
+## Metro popup inference journal
+
+The [inferred popup journal](../../internal/patterns/metro_event_journal.go) retains event revisions and minimal
+contributing original samples in the existing allocated-byte archive budget. The target is seven days, independently
+of the sampled raw-response archive; global FIFO can shorten it. Proofs are capped at 64 KiB, pending writes at
+1024 records/8 MiB and healthy durable batches flush every second. Manifest admission/checksums govern recovery;
+corruption, eviction or write failure leaves partial history, and restored evidence cannot restore live continuity.
+These records are not certified SQL actual events or physical accuracy metrics. See [runtime/UI semantics](../metro-live-popups.md).
+
+The [offline Metro departure calibration command](../metro-departure-calibration.md) reads a separately
+collected frozen dataset and writes a candidate/holdout report to stdout. It neither imports the input into
+the shared archive nor adds SQL actual events or retained physical metrics. Original evidence bundles and
+independent references are operator-managed; existing sampled history and popup proofs are insufficient.

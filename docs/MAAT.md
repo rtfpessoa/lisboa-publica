@@ -74,3 +74,15 @@ was accepted by pinned bundle `cb1c6a244e1972174357b029bd304d4a3c6fb2aa`
 at97/delta+7, without hook overrides, threshold changes or suppressions.
 The code was pushed to main and deployed from the same clean commit.
 See [release verification](VALIDATION-metro-patterns.md#committed-main-release-and-production-verification-2026-09-28).
+
+## Metro live popup candidate, 2026-09-28
+
+The normal pinned Go gate accepted candidate five at **97/delta0**, with no
+critical regressions and **zero suppressions**, after blocked candidates at91
+and95 were repaired by separating acquisition, runtime ownership, transitions,
+projection, stream delivery, event publication and offline calibration.
+The subsequent configured 1Password signing operation failed; no commit or
+release was created by that attempt. TypeScript remains outside Maat coverage
+and its build and nine Metro browser fixtures passed separately. The absolute95
+score target is met, without claiming zero advisories or complete metric coverage.
+See the [dated release preparation](validation/metro-live-main-rollout-2026-09-28.md).

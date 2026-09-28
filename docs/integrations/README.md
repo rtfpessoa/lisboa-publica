@@ -45,3 +45,8 @@ Position integrations also supply normalized membership/original clocks for back
 The existing [Metro integration](metro.md) also supplies the experimental pattern collector. It introduces no new provider endpoint or upstream polling rate. See [Metro patterns](../metro-patterns.md) for the server archive, source-dependent forecast model and unavailable physical metrics. Other operators are not yet enabled in this collector.
 
 The local completion follow-up adds route-specific conditions, versioned Lisbon holiday grouping, labeled older/general-context component fallback, unchanged-segment compatibility, conservative mixed-bin calibration and durable bounded MAE/P90/availability/band-support reports. Evidence-backed maintenance revises retained inputs atomically while keeping issued values. Staged normalized observation/prediction capture and experimental own-forecast adapters cover all eight existing operators under the same archive budget. Metro uses ETA transitions; later stages require verified published paths and coherent reported stop-state transitions. Forecast availability depends on actual compatible inputs, and physical validation remains unavailable. See [current behavior](../metro-patterns.md) and [remaining live evidence](../GAPS-metro-patterns.md).
+
+Metro direct collection has its own 500 ms target (`METRO_REFRESH_MILLISECONDS`) under the shared attempt
+budget; other sources retain their cadence. [Metro frames and inferred evidence](../metro-live-popups.md) describe
+the source-to-popup projection, SSE/snapshot exposure and separate seven-day event journal. Neither fast capture
+nor the guarded uncalibrated departure detector establishes physical timing accuracy.

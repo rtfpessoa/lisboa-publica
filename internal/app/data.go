@@ -133,16 +133,17 @@ type State struct {
 
 // Cache publishes immutable states and retains recent versions for pagination.
 type Cache struct {
-	arrivals *arrivalStore
-	mu       sync.RWMutex
-	current  *State
-	versions map[string]*State
-	sequence uint64
+	metroRuntime *metroRuntime
+	arrivals     *arrivalStore
+	mu           sync.RWMutex
+	current      *State
+	versions     map[string]*State
+	sequence     uint64
 }
 
 // NewCache creates an empty collection with all eight providers visible.
 func NewCache() *Cache {
-	c := &Cache{versions: map[string]*State{}, arrivals: newArrivalStore()}
+	c := &Cache{versions: map[string]*State{}, arrivals: newArrivalStore(), metroRuntime: newMetroRuntime()}
 	s := &State{Static: map[string]*StaticData{}, Live: map[string]*LiveData{}, Operators: map[string]api.Operator{}}
 	for _, p := range providers {
 		source := hubBase + "/plans"

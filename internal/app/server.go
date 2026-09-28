@@ -25,6 +25,7 @@ import (
 
 // Options configures the public origin, authentication and request limits.
 type Options struct {
+	MetroStreamLimits                                MetroStreamLimits
 	Origin, GoogleClientID, Environment, FrontendDir string
 	DevAuth, PublicReads                             bool
 	RateLimit                                        int
@@ -33,6 +34,7 @@ type Options struct {
 
 // Server implements the generated API using cached feeds and retained observations.
 type Server struct {
+	metroStreams   metroStreams
 	Metro          *MetroClient
 	Patterns       *patterns.Service
 	Store          *Store

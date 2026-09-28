@@ -1,9 +1,11 @@
+import {metroVehicleFixture} from './metro-vehicle-fixture';
 import {test,expect,type Page} from '@playwright/test';
 import {separateMapTargets,type MapTarget} from '../src/mapTargets';
 import {observationAge,routeName,sameVehicleService} from '../src/data';
 import type {Vehicle} from '../src/api';
 
 async function fixture(page:Page,operator='cp',mode='train',count=1){
+ await metroVehicleFixture(page);
  const epoch=Date.now(),iso=(n:number)=>new Date(n).toISOString(),day='2026-09-27';
  const reference={vehicle_id:`${operator}:v`,reference:'frozen-service'};
  const stop={id:`${operator}:station`,source_id:'station',operator_id:operator,name:'Lisboa Oriente',lat:38.731,lon:-9.145,route_ids:[]};
@@ -39,30 +41,25 @@ async function fixture(page:Page,operator='cp',mode='train',count=1){
 async function chooseStation(page:Page){await page.getByLabel('Pesquisar carreira ou paragem').fill('Oriente');await page.locator('.search-results button').last().click()}
 async function selectProvider(page:Page,operator:string){if(operator==='metro')return;if(operator==='cm')await page.getByRole('button',{name:'Carris Metropolitana',exact:true}).click();else if(operator==='carris')await page.locator('.main-operator').first().click();else await page.getByRole('button',{name:operator==='cp'?'CP':'TTSL',exact:true}).click();await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click()}
 
-for(const operator of ['metro','cp'])test(`${operator} shows an association warning only when journey matching is supported`,async({page})=>{
+for(const operator of ['cp'])test(`${operator} shows an association warning only when journey matching is supported`,async({page})=>{
  await fixture(page,operator,operator==='metro'?'metro':'train');await page.goto('/');await selectProvider(page,operator);await chooseStation(page);await page.locator('.station-vehicles button').first().click();
  await expect(page.locator('.vehicle-journey')).toContainText('Percurso completo por confirmar.');
  const warning=page.locator('.vehicle-journey').getByText('Sem associação segura à viagem; percurso e tempos indisponíveis.',{exact:true});
  await expect(warning).toHaveCount(operator==='metro'?0:1);
 });
 for(const delay of [0,1000,120000])test(`vehicle timestamp presentation preserves meaningful receipt differences (${delay}ms)`,async({page})=>{
- const f=await fixture(page,'metro','metro');
+ const f=await fixture(page,'cp','train');
  const observed=Date.now()-60000;const stamp=Math.floor(observed/60000)*60000+10000;
  f.v.observed_at=new Date(stamp).toISOString();f.v.collected_at=new Date(stamp+delay).toISOString();
- await page.clock.install({time:new Date(stamp+delay+10000)});await page.goto('/');await chooseStation(page);await page.locator('.station-vehicles button').first().click();
+ await page.clock.install({time:new Date(stamp+delay+10000)});await page.goto('/');await selectProvider(page,'cp');await chooseStation(page);await page.locator('.station-vehicles button').first().click();
  const panel=page.locator('.detail-panel');await expect(panel.locator('.vehicle-update-age')).toContainText('Última atualização do veículo');
  await expect(panel.getByText(/^Recebido pela aplicação:/)).toHaveCount(delay>=120000?1:0);
  await expect(panel.locator('.vehicle-update-age time')).toHaveAttribute('datetime',f.v.observed_at);
  if(delay>=120000)await expect(panel.getByText(/^Recebido pela aplicação:/).locator('time')).toHaveAttribute('datetime',f.v.collected_at);
 });
-test('Metro published route shows ordered stops without train times and preserves navigation',async({page})=>{
- const f=await fixture(page,'metro','metro');f.current();f.publishedRoute();await page.goto('/');await chooseStation(page);await page.locator('.station-vehicles button').first().click();
- const route=page.locator('.vehicle-journey');await expect(route.locator('h4')).toContainText('Percurso da linha');await expect(route).toContainText('ligação estimada ao comboio');await expect(route).toContainText('Progresso estimado');
- await expect(route.locator('.journey-timeline .stop-link')).toHaveText(['Lisboa Oriente','Alcântara']);await expect(route.locator('time,.call-head,.call-missing')).toHaveCount(0);await expect(page.locator('.vehicle-calls')).toHaveCount(0);await expect(page.locator('.detail-panel')).not.toContainText('Sem associação segura');
- await route.getByRole('button',{name:'Alcântara',exact:true}).click();await expect(page.locator('.detail-panel h3')).toContainText('Alcântara');
-});
 
-for(const [operator,mode] of [['cp','train'],['metro','metro'],['ttsl','ferry'],['carris','bus']])test(`${mode} station to vehicle to next stop uses frozen references`,async({page})=>{
+
+for(const [operator,mode] of [['cp','train'],['ttsl','ferry'],['carris','bus']])test(`${mode} station to vehicle to next stop uses frozen references`,async({page})=>{
  const f=await fixture(page,operator,mode);await page.goto('/');await selectProvider(page,operator);await chooseStation(page);
  await page.locator('.station-vehicles button').first().click();await expect(page.locator('.vehicle-heading h3')).toContainText('18456');await expect(page.locator('.vehicle-calls')).toContainText('Alcântara');
  const panel=page.locator('.detail-panel');await expect(panel).not.toContainText('Indisponível');await expect(panel.locator('.specifications')).toContainText('0');await expect(panel.locator('.specifications')).toContainText('Não indicado pela fonte');await expect(panel).toContainText('há 6 min');

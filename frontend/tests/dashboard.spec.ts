@@ -1,8 +1,10 @@
 import {test,expect} from '@playwright/test';
 import path from 'node:path';
+// These cases intentionally use real collected data and an optional development account.
+const liveOnly=()=>test.skip(!process.env.UI_LIVE_DATA,'Set UI_LIVE_DATA=1 with a running populated backend for live acceptance.');
 const shot=(name:string)=>path.resolve('..','docs','acceptance',name+'.png');
 test('desktop public dashboard, independent sources, search, tabs, charts and fleet',async({page})=>{
- test.setTimeout(120000); // Full public-source journey includes several bounded remote queries.
+ liveOnly();test.setTimeout(120000); // Full public-source journey includes several bounded remote queries.
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.setViewportSize({width:1440,height:900});await page.goto('/');
  await expect(page.getByText('Veículos reportados',{exact:true})).toBeVisible();
@@ -26,7 +28,7 @@ test('desktop public dashboard, independent sources, search, tabs, charts and fl
  expect(errors).toEqual([]);
 });
 test('optional local account can create and revoke scoped keys',async({page})=>{
- const keyName='Browser validation '+Date.now();await page.goto('/');const configResponse=page.waitForResponse(r=>r.url().endsWith('/api/v1/config')&&r.status()===200);await page.getByRole('button',{name:'Conta e chaves API',exact:true}).click();const config=await (await configResponse).json();
+ liveOnly();const keyName='Browser validation '+Date.now();await page.goto('/');const config=await (await page.request.get('/api/v1/config')).json();await page.getByRole('button',{name:'Conta e chaves API',exact:true}).click();
  const local=page.getByRole('button',{name:'Sessão de desenvolvimento local'});test.skip(!config.dev_auth,'Local development login deliberately disabled');await expect(local).toBeVisible();
  await local.click();await expect(page.getByRole('button',{name:'Sair',exact:true})).toBeVisible();await page.getByLabel('Nome da chave').fill(keyName);await page.getByRole('button',{name:'Criar chave (30 dias)'}).click();await expect(page.locator('.secret code')).toContainText('lp_');await page.getByRole('button',{name:'Ocultar',exact:true}).click();await page.locator('.key-list article').filter({hasText:keyName}).last().getByRole('button',{name:'Revogar',exact:true}).click();await expect(page.locator('.key-list article').filter({hasText:keyName}).last().getByRole('button',{name:'Revogada'})).toBeDisabled();await page.getByRole('button',{name:'Sair',exact:true}).click();await expect(page.getByRole('button',{name:'Sessão de desenvolvimento local'})).toBeVisible();
 });
@@ -35,7 +37,12 @@ test('mobile navigation, panels and map fit the viewport',async({page})=>{
  for(const view of ['Histórico','Trânsito','Frota','Tempo real']){await page.locator('.compact-nav').getByRole('button',{name:view,exact:true}).click();await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true)}
  await page.getByRole('button',{name:'Abrir pesquisa'}).click();await expect(page.getByLabel('Pesquisar carreira ou paragem')).toBeVisible();await page.getByRole('button',{name:'Conta e chaves API',exact:true}).click();await expect(page.getByRole('dialog',{name:'Conta e chaves API'})).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
 });
-test('Metro station board advances on the shared refresh tick',async({page})=>{
- await page.clock.install();const requests:number[]=[];page.on('request',r=>{if(new URL(r.url()).pathname.endsWith('/board'))requests.push(Date.now())});
- await page.goto('/');await page.getByLabel('Pesquisar carreira ou paragem').fill('Roma');await expect(page.locator('.search-results button').first()).toBeVisible();await page.locator('.search-results button').first().click();await expect.poll(()=>requests.length).toBeGreaterThan(0);const first=requests[0];await expect(page.locator('.transit-popup')).toHaveAttribute('aria-busy','false');await page.clock.fastForward(31000);await expect.poll(()=>requests.length).toBeGreaterThan(1);expect(requests.at(-1)).toBeGreaterThan(first);
+test('Metro station uses one shared SSE interest without board polling',async({page})=>{
+ liveOnly();const requests:string[]=[];page.on('request',r=>requests.push(new URL(r.url()).pathname));
+ await page.goto('/');await page.getByLabel('Pesquisar carreira ou paragem').fill('Roma');await expect(page.locator('.search-results button').first()).toBeVisible();await page.locator('.search-results button').first().click();
+ await expect(page.locator('.station-popup')).toHaveAttribute('data-metro-revision',/./);
+ const streams=requests.filter(p=>p.endsWith('/metro/live/stream')).length;
+ await page.waitForTimeout(6000);
+ expect(requests.filter(p=>p.endsWith('/metro/live/stream'))).toHaveLength(streams);
+ expect(requests.some(p=>p.endsWith('/board')||p.endsWith('/board/calls'))).toBe(false);
 });

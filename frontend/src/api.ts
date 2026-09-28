@@ -503,14 +503,29 @@ export type CallTimeEvidence = {
     collected_at: string | null;
     valid_until: string | null;
     delay_seconds?: number | null;
+    /** Present for experimental own forecasts; not a source observation clock. */
+    model_version?: string;
+    /** Supporting experimental episode, distinct from popup journey and transport cursor. */
+    association_episode?: string;
+};
+export type MetroEventEvidence = {
+    at: string;
+    window_start: string;
+    window_end: string;
+    mode: "inferred_arrival" | "model_departure";
+    source_url: string;
+    model_version: string;
+    persistence: "pending" | "committed" | "unavailable";
+    reason: string;
 };
 export type CallTime = {
-    kind: "actual" | "prediction" | "schedule" | "unavailable";
+    kind: "actual" | "prediction" | "schedule" | "unavailable" | "inferred";
     at: string | null;
     reason: string;
     actual: (CallTimeEvidence) | null;
     prediction: (CallTimeEvidence) | null;
     schedule: (CallTimeEvidence) | null;
+    inferred?: (MetroEventEvidence) | null;
 };
 export type StopCall = {
     id: string;
@@ -530,6 +545,7 @@ export type StopCall = {
     /** Static plan that supplied the stop, used with stop_static_updated_at to revalidate navigation. Absent when the static source has no plan identity. */
     stop_plan_id?: string;
     vehicle_ref?: VehicleReference;
+    own_prediction?: (CallTimeEvidence) | null;
 };
 export type StopCallPage = {
     data: StopCall[];
@@ -681,6 +697,35 @@ export type MetroPatterns = {
     calendar: string;
     operators: TransportOperatorHistory[];
     operator: string;
+};
+export type MetroTrain = {
+    journey_id: string;
+    reference: string;
+    route_id: string;
+    direction_code: string;
+    destination: string;
+    association: "supported" | "suspended";
+    reason: string;
+    source_updated_at: string;
+    valid_until: string;
+    next_index: number | null;
+    calls: StopCall[];
+    vehicle_id: string | null;
+    /** Supported current inferred station visit; null if no admissible stopped evidence. */
+    current_index?: number | null;
+};
+export type MetroLiveFrame = {
+    revision: string;
+    published_at: string;
+    plan_id: string;
+    status: MetroStatus;
+    vehicles: Vehicle[];
+    trains: MetroTrain[];
+    directions: BoardDirection[];
+    selected_journey_id: string | null;
+    history_status: string;
+    /** Usable official predictions without a supported journey association; never a fabricated map link. */
+    unassociated_forecasts: StopCall[];
 };
 /**
  * getHealth
@@ -1405,6 +1450,60 @@ export function getTransportPatterns(operatorId: "metro" | "cm" | "carris" | "cp
         operator_id: operatorId,
         stop_id: stopId,
         episode
+    }))}`, {
+        ...opts
+    }));
+}
+/**
+ * Coherent Metro map and selected popup updates
+ */
+export function getMetroLive({ routeId, vehicleId, journeyId, stopId, ifNoneMatch }: {
+    routeId?: string;
+    vehicleId?: string;
+    journeyId?: string;
+    stopId?: string;
+    ifNoneMatch?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: MetroLiveFrame;
+    } | {
+        status: 304;
+    } | {
+        status: number;
+        data: Error;
+    }>(`/api/v1/metro/live${QS.query(QS.explode({
+        route_id: routeId,
+        vehicle_id: vehicleId,
+        journey_id: journeyId,
+        stop_id: stopId
+    }))}`, {
+        ...opts,
+        headers: oazapfts.mergeHeaders(opts?.headers, {
+            "If-None-Match": ifNoneMatch
+        })
+    }));
+}
+/**
+ * Coherent Metro map and selected popup updates
+ */
+export function streamMetroLive({ routeId, vehicleId, journeyId, stopId }: {
+    routeId?: string;
+    vehicleId?: string;
+    journeyId?: string;
+    stopId?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: string;
+    } | {
+        status: number;
+        data: Error;
+    }>(`/api/v1/metro/live/stream${QS.query(QS.explode({
+        route_id: routeId,
+        vehicle_id: vehicleId,
+        journey_id: journeyId,
+        stop_id: stopId
     }))}`, {
         ...opts
     }));

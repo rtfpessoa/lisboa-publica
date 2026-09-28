@@ -1,0 +1,82 @@
+{
+  "started": "2026-09-28T14:38:23.219Z",
+  "finished": "2026-09-28T14:40:23.916Z",
+  "duration_ms": 120000,
+  "clients": 32,
+  "setupErrors": [],
+  "network_profile": {
+    "cdp_latency_ms": 100,
+    "download_bytes_per_second": 10000000,
+    "upload_bytes_per_second": 10000000
+  },
+  "proxy": "Caddy encode zstd gzip; HTTP loopback; trusted synthetic client IPs",
+  "dataset": "synthetic 50-station source, 96 references, 1600 platform rows, one-second publication; unrelated API setup reads mocked; no upstream Metro calls",
+  "frames": 6385,
+  "event_payload_utf8_bytes": 997436746,
+  "p50_ms": 42,
+  "p95_ms": 520,
+  "p99_ms": 830,
+  "max_ms": 2004,
+  "reorders": 0,
+  "browser_errors": [],
+  "runtime_samples": [
+    {
+      "at": "2026-09-28T14:38:53.221Z",
+      "goroutines": 71,
+      "heap_bytes": 199355688,
+      "streams": 32,
+      "sys_bytes": 286738760
+    },
+    {
+      "at": "2026-09-28T14:39:23.222Z",
+      "goroutines": 71,
+      "heap_bytes": 203402328,
+      "streams": 32,
+      "sys_bytes": 287000904
+    },
+    {
+      "at": "2026-09-28T14:39:53.223Z",
+      "goroutines": 69,
+      "heap_bytes": 159286488,
+      "streams": 31,
+      "sys_bytes": 287000904
+    }
+  ],
+  "snapshot_reads": 86,
+  "stream_errors": 0,
+  "resets": 181,
+  "client_frames": [
+    251,
+    250,
+    249,
+    245,
+    243,
+    238,
+    235,
+    234,
+    230,
+    229,
+    225,
+    222,
+    219,
+    216,
+    212,
+    211,
+    205,
+    203,
+    198,
+    193,
+    187,
+    182,
+    177,
+    173,
+    163,
+    161,
+    155,
+    148,
+    144,
+    135,
+    128,
+    124
+  ]
+}
