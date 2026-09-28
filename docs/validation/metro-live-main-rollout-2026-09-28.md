@@ -90,3 +90,11 @@ The rollout must preserve those inputs and append its own image override last.
 The existing archive volume is `lisboa-publica_transport_history`.
 Only dashboard may be recreated; the database and unrelated containers stay in
 place. Protected environment values are not included in this report.
+
+## Initial rollout and station regression
+
+After 1Password was unlocked, normal signed commit `7a6f4228f9090c96ce44efaa33ff937e8aabf755` passed the pinned Go gate at97/delta0, pushed to main and deployed at2026-09-28T16:58:28Z. Public health and database health passed. Image/running artifact/public frontend hashes matched. Only dashboard was recreated; database, other containers, persistent mounts and resource limits were preserved. Metro cadence was configured at500 milliseconds.
+
+Native public HTTP checks passed snapshots, ETag304, complete SSE reset/frame delivery and a Yellow-line station board. Actual browser inspection then exposed empty Alameda direction/train content at1280px and390px. That initial browser smoke checked stream delivery and page health but did not fail on empty station content; its successful exit is not evidence of working Alameda popups.
+
+Read-only cached catalog inspection confirmed Alameda's parent plus four same-name child platforms. The inverse popup projection counted them as five independent candidates and fell back to `metro:AM`, while the selected catalog station was `metro:ML11060001`. A synthetic integration test failed with an empty direction catalogue before correction. The correction collapses only valid published Metro parent families, retains ambiguity across distinct roots, and rejects missing/cyclic/other-operator/mismatched parents. No provider calls, source clocks, physical-arrival claims or departure models change.

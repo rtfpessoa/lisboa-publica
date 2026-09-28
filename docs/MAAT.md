@@ -1,12 +1,6 @@
 # Maat cleanup
 
-Current code release `044af1487488d50d16bf481c14f79be9461877c3` passes the normal
-pinned Go gate at **97/100**, delta **+7** against `61c5f32`, with no structural
-regressions and **zero suppressions**. This exceeds the configured absolute95
-score target. TypeScript is not covered by Maat; its production build and all
-57 relevant browser tests passed separately. Passing the gate does not assert
-zero heuristic advisory findings. The paragraphs below preserve earlier dated
-scores and repair evidence.
+Current deployed feature revision `7a6f4228f9090c96ce44efaa33ff937e8aabf755` passed the normal pinned Go gate at **97/100**, delta **0**, no critical regressions and **zero suppressions**. TypeScript is outside Maat coverage; its production build and nine Metro browser fixtures passed separately. The gate reports incomplete maintainability and implementation-simplicity metric coverage; acceptance does not mean zero advisory findings. The [retained gate result](validation/metro-live-main-maat-2026-09-28.json) and [rollout record](validation/metro-live-main-rollout-2026-09-28.md) describe the release and the subsequent station-family correction. Earlier dated scores below retain their original scope.
 
 The pinned Maat bundle and normal global Git hooks remain enabled. No thresholds were lowered and no rules were ignored. Maat analyzes the Go source in this repository; TypeScript is validated separately by its compiler and browser suite.
 

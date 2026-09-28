@@ -51,7 +51,7 @@ A line is displayed as normal only when its state equals `ok` case-insensitively
 | `stop_lat`, `stop_lon` | Numeric strings parsed for fallback | Coordinate-tolerance association to GTFS |
 | `linha` | Published string listing line membership | Single-line inference when destination does not establish line |
 
-The direct station records are held in the Metro cache, not substituted wholesale for the public GTFS stop catalogue. [Station/line matching](../data/associations.md#metro-station-and-line-matching) first uses exact codes, then the unique normalized-name-prefix or exact compact-name/coordinate fallback. Multiple candidates are rejected; the tolerance is not a metric-distance threshold.
+The direct station records are held in the Metro cache, not substituted wholesale for the public GTFS stop catalogue. [Station/line matching](../data/associations.md#metro-station-and-line-matching) first uses exact codes, then the unique normalized-name-prefix or exact compact-name/coordinate fallback. Multiple official station candidates are rejected; the tolerance is not a metric-distance threshold. Live popup calls map back to the unique GTFS station family, collapsing published platforms through a complete, acyclic Metro parent chain with a matching root. Distinct roots or invalid parent relationships retain the official-code fallback.
 
 ## Waiting-time fields
 

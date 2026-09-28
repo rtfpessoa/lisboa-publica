@@ -140,17 +140,9 @@ func metroPathCalls(path patterns.Pattern, data *MetroData, static *StaticData, 
 	for _, s := range data.Stations {
 		stations[s.ID] = s
 	}
+	catalog := metroStopCatalog(static)
 	for n, code := range path.Stops {
-		stopID := "metro:" + code
-		candidates := []api.Stop{}
-		for _, s := range static.Stops {
-			if metroTargetMatches(ptr(stations[code]), &s) {
-				candidates = append(candidates, s)
-			}
-		}
-		if len(candidates) == 1 {
-			stopID = candidates[0].Id
-		}
+		stopID := metroPopupStationID(stations[code], catalog)
 		calls = append(calls, api.StopCall{Id: id + ":" + strconv.Itoa(n), JourneyId: ptr(id), StopId: stopID, StopName: stations[code].Name, StopSequence: n, StopPlanId: optional(static.PlanID), StopStaticUpdatedAt: ptr(static.Updated), LineKey: path.Route, DirectionKey: ptr(path.Direction), Destination: stations[path.Destination].Name, Phase: "unknown", Arrival: missingCallTime("Sem dados de chegada"), Departure: missingCallTime("Sem dados de partida: modelo de movimento não calibrado")})
 	}
 	return calls

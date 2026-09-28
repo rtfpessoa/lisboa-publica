@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -270,10 +269,7 @@ func metroStationID(static *StaticData, published []MetroStation, stations map[s
 		}
 		matches := []string{}
 		for _, station := range published {
-			lat, latErr := strconv.ParseFloat(station.Lat, numericBitSize)
-			lon, lonErr := strconv.ParseFloat(station.Lon, numericBitSize)
-			nameMatches := strings.HasPrefix(normalizeName(gtfs.Name), normalizeName(station.Name)) || compactMetroName(gtfs.Name) == compactMetroName(station.Name)
-			if latErr == nil && lonErr == nil && nameMatches && abs(gtfs.Lat-lat) < metroStationTolerance && abs(gtfs.Lon-lon) < metroStationTolerance {
+			if metroStationCandidateMatches(station, gtfs) {
 				matches = append(matches, station.ID)
 			}
 		}

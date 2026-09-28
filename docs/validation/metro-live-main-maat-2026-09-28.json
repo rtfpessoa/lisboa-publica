@@ -1,0 +1,28 @@
+{
+  "analysis_patterns": [
+    "./cmd/...",
+    "./internal/api/...",
+    "./internal/app/...",
+    "./internal/patterns/..."
+  ],
+  "base": "e5b4658a0d5e9fd0423cfb640c3f261999f2322e",
+  "candidate_tree": "e607b89950d5fe732df87d2656a674c4ec76f90a",
+  "checked_languages": [
+    "go"
+  ],
+  "coverage_map": {
+    "implementation-simplicity": "incomplete",
+    "maintainability": "incomplete"
+  },
+  "critical_regressions": [],
+  "go_only": true,
+  "maat_bundle": "cb1c6a244e1972174357b029bd304d4a3c6fb2aa",
+  "reason": "Maat found no structural regression.",
+  "score": 97.0,
+  "score_delta": 0.0,
+  "status": "passed",
+  "suppressed_count": 0,
+  "unchecked_languages": [
+    "typescript"
+  ]
+}

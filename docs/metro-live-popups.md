@@ -27,7 +27,7 @@ never renews the original clock. The shared five-second interval/configuration f
 A published reference is shown as `Comboio <reference>`, without claiming physical fleet identity.
 The popup association is an inferred episode keyed by supported route, destination context and reference,
 with an independently generated journey ID. A unique ordered GTFS topology and uniquely matched nearby
-station metadata are required. Conflicting platforms, simultaneous direction contexts, changed values under
+station metadata are required. Popup call IDs use the unique published GTFS station-family root; matching child platforms collapse only through valid published parent relationships. Distinct roots and invalid parent chains remain unresolved. Conflicting platforms, simultaneous direction contexts, changed values under
 the same source clock, backwards clocks and expired support suspend progress and dependent forecasts.
 Source gaps clear transition memory. Plan changes and expired association support create separate episodes;
 midnight and approximate Hub trip changes alone do not reset identity. Return runs remain separate and the
