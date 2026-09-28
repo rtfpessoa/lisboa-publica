@@ -1,5 +1,13 @@
 # Maat cleanup
 
+Current code release `044af1487488d50d16bf481c14f79be9461877c3` passes the normal
+pinned Go gate at **97/100**, delta **+7** against `61c5f32`, with no structural
+regressions and **zero suppressions**. This exceeds the configured absolute95
+score target. TypeScript is not covered by Maat; its production build and all
+57 relevant browser tests passed separately. Passing the gate does not assert
+zero heuristic advisory findings. The paragraphs below preserve earlier dated
+scores and repair evidence.
+
 The pinned Maat bundle and normal global Git hooks remain enabled. No thresholds were lowered and no rules were ignored. Maat analyzes the Go source in this repository; TypeScript is validated separately by its compiler and browser suite.
 
 The initial Go score was **47/100**. After extracting GTFS archive/table handling, authorization, verified Google claims, Metro platform predictions, ingestion normalization/enrichment, schedule rendering, filter parsing and null-safe fleet sorting, the score is **68/100**. Exported API documentation and policy constant names were improved as well. The configured absolute threshold is **95**; that absolute scan **does not pass**.
@@ -59,3 +67,10 @@ The third and fourth prepared candidates scored **78**, delta **−12**, with te
 The fifth prepared candidate passed the normal pinned regression gate: Go **94**, delta **+4**, no structural regressions and zero suppressions. TypeScript remains unchecked by Maat. The subsequent Git signing operation failed in the configured 1Password agent (`failed to fill whole buffer`), so this attempt created no commit. Full PostgreSQL race tests, vet, deterministic generation, the TypeScript production build and 401 local Markdown targets passed. The absolute95 target and remaining advisory findings are still not claimed complete. Further cleanup separates HTTP dispatch, public configuration, transit queries and filter parsing, as well as Metro condition changes from segment compatibility.
 
 Candidate seven passed the normal pinned gate at Go **97**, delta **+7**, no structural regressions and **zero suppressions**. This also exceeds the configured absolute95 score target. The language coverage remains Go only; passing scores do not assert zero heuristic advisory findings. The configured Git signing agent returned an error again, so no commit object, push or deployment was created by this attempt.
+
+The resumed normal signed commit `044af14` succeeded after the local PostgreSQL
+cutover. Its prepared tree `3e6724d2b8d9e0a97200e58ad515b1d20eb64bb6`
+was accepted by pinned bundle `cb1c6a244e1972174357b029bd304d4a3c6fb2aa`
+at97/delta+7, without hook overrides, threshold changes or suppressions.
+The code was pushed to main and deployed from the same clean commit.
+See [release verification](VALIDATION-metro-patterns.md#committed-main-release-and-production-verification-2026-09-28).

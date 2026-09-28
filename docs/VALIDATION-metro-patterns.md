@@ -152,3 +152,97 @@ These preparations are not a deployment result or an independent physical
 validation. The four representative-volume/capacity/reference map tickets remain
 open. No inferred event is promoted to a physical occurrence, dwell measurement,
 measured Metro speed or accuracy improvement by these checks.
+
+## Committed main release and production verification, 2026-09-28
+
+The normal signed code commit succeeded as
+`044af1487488d50d16bf481c14f79be9461877c3`. The pinned Maat gate passed at
+Go97/delta+7 against `61c5f32`, with no structural regressions and zero
+suppressions. TypeScript remains outside Maat coverage and was validated by
+its compiler/build and the 57 passing browser fixtures. The commit was pushed
+as a fast-forward to main; the GitHub API confirmed that exact revision before
+building and again before rollout. Both local main and the clean host checkout
+fast-forwarded to this revision.
+
+### Build and preserved runtime
+
+Docker Compose built `lisboa-publica:044af1487488d50d16bf481c14f79be9461877c3`
+from the clean committed main checkout. The build completed successfully,
+including frontend, server, maintenance executable and the verified Metro TLS
+intermediate. The image revision label matched the commit and its user was
+`dashboard`. The server and frontend were built together from that same source.
+The image config digest was
+`sha256:2a4c9521153cde7f83985bc44ea12421e2914a5f5254d54daba4c1cea687d75a`.
+
+The existing protected environment's `VERSION` was updated to that SHA.
+Every active runtime override was preserved, including the final local-database
+override; an image-only override was appended last to prevent an earlier image
+pin winning. Only dashboard was recreated with `--no-deps --no-build` after
+image verification. Dashboard and PostgreSQL remained healthy. No database
+container, other service or persistent volume was replaced or deleted.
+
+Post-rollout inspection confirmed the same local database connection,
+`lisboa-publica_postgres_20260928` data, archive mount, other environment values,
+CPU/memory limits, read-only filesystem, capabilities, security options, tmpfs,
+logging/restart policies and networks. `TRANSPORT_ARCHIVE_OPERATORS=metro` was
+the only added dashboard setting. Seven later operator stages remain disabled;
+their implemented APIs expose that state rather than claiming active collection.
+The backend, maintenance and all frontend artifact hashes in the running
+container matched the built image.
+
+| Artifact | SHA-256 |
+|---|---|
+| `/app/server` | `f1a1e633181e13e92fe6fc65035324bb1b53fa4da8e1f41f7ec63045dc463096` |
+| `/app/patterns-maintenance` | `6b1d0e0b18e63c7f5f2fd0b5f2aafff6935b8def7289d95271101602aca6119f` |
+| `/app/frontend/dist/index.html` | `0ee7c7d2dfcdb41a01222c65cb891ec194cf4b26da08d2068cc281230b93f764` |
+| `index-DJsXXKm3.js` | `3593cbb9207b931c460c5b7b0afb4c6110e4c34ad870b8f03cd3036770454d57` |
+| `MetroPatterns-D3UsZ1by.js` | `569576f463c490a98e71283deed9c8c4f853e3352a1d83eba2ce58acd48412d9` |
+
+### Real application and persistence checks
+
+Public health returned200 with `database=ok`, `status=ok`. The Metro patterns
+endpoint and all eight operator-scoped patterns endpoints returned200. Metro
+reported `collecting`; later stages reported `disabled`. Responses retained
+30-second sampling, seven-day detail, 12-month aggregate targets and the
+10,000,000,000-byte archive limit. Physical-validation flags were false and
+physical dwell/speed values remained null.
+
+A real Chromium session opened the production Padrões tab without fixtures,
+verified its heading, all eight operator options, populated station selector,
+24-hour grid, both forecast sections and few-data disclosure. No JavaScript
+page error or pattern error panel occurred. Alameda selection
+`metro:ML11060001` returned four fresh official forecasts and zero own points,
+with insufficient association support disclosed. This verifies the independent
+official fallback, not successful own-forecast accuracy. The synthetic browser
+suite separately exercises supported own points and onward calls.
+The live screenshot and scalar result are in
+`/tmp/lisboapublica-patterns-live-release-20260928.png` and the adjacent `.json`
+on the local workstation.
+
+The archive published current detail, aggregate and checkpoint generations.
+Six compressed published blocks had SHA-256 checksums matching the manifest;
+a checkpoint was durably published at `2026-09-28T08:43:36.925859293Z`.
+An earlier post-rollout sample counted352,256 allocated archive bytes.
+Existing archive evidence was preserved subject to normal reconciliation,
+rather than cleared. These short samples are not a representative-week growth
+measurement or a guarantee of 12-month retention.
+
+PostgreSQL generation advanced from706 to760 while retaining10,057 historical
+snapshots; its measured database size was44,742,323bytes. Startup logs contained
+no warning/error records during the performed check. One transient resource
+sample measured556MiB dashboard memory under its1,280MiB limit and60MiB
+PostgreSQL memory under256MiB; dashboard CPU reached its configured1.5-CPU
+limit during warmup. This does not establish steady-state resource capacity.
+
+Protected release files, image hashes, build log, inspections, manifest snapshot,
+Compose command, archive copy and database backup remain under
+`/root/lisboa-patterns-main-release/20260928` on the server. To roll back, use
+the protected prior configuration and main image while retaining the local
+PostgreSQL/archive volumes. Subsequent documentation commits record this
+verification; they do not change the deployed executable revision above.
+
+The four independent-reference/capacity map tickets remain open. Live receipt
+and checkpoint persistence do not establish physical arrivals, dwell, velocity,
+Wilson occurrence denominators, nominal physical interval coverage or accuracy
+improvement over official predictions. Collection can now accumulate evidence
+for later setup improvements without additional capture polling.
