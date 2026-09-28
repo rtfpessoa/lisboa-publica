@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -136,8 +137,10 @@ func TestOperatorCoverageCommittedWindowAndRevision(t *testing.T) {
 	}
 	q.Del("revision")
 	q.Set("weekdays_only", "true")
-	q.Set("hour_start", "0")
-	q.Set("hour_end", "1")
+	// Select an hour that excludes this observation even around midnight.
+	excludedHour := (v.ObservedAt.In(lisbon).Hour() + 1) % 24
+	q.Set("hour_start", strconv.Itoa(excludedHour))
+	q.Set("hour_end", strconv.Itoa(excludedHour+1))
 	status, body = req(t, http.DefaultClient, "GET", ts.URL+"/api/v1/operator-coverage?"+q.Encode(), nil, nil)
 	expectStatus(t, status, 200, body)
 	if decode[api.OperatorCoveragePage](t, body).Data[0].Vehicles != 0 {

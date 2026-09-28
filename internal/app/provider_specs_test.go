@@ -66,7 +66,7 @@ func TestPublishedGTFSWheelchairAndCapacity(t *testing.T) {
 
 func TestPublishedCMDirectSpecificationsTakePrecedence(t *testing.T) {
 	now := time.Now().UTC()
-	f := &Fetcher{Cache: NewCache()}
+	f := &Fetcher{publicationState: publicationState{Cache: NewCache()}}
 	p, _ := providerByID("cm")
 	var raw cmPosition
 	if err := json.Unmarshal([]byte(`{"id":"7","capacity_seated":0,"capacity_total":-1,"wheelchair_accessible":false,"contactless":true}`), &raw); err != nil {

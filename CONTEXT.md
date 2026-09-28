@@ -61,3 +61,40 @@ _Avoid_: Inactive vehicle solely because observations stopped
 
 **Commercial speed estimate**: Distance between valid consecutive vehicle observations divided by elapsed time, including observed stops.
 _Avoid_: Measured road speed
+
+
+**Inferred stop event**: An estimated passage, arrival or departure at a passenger stop, supported by indirect evidence. It retains its uncertainty and is distinct from a physically confirmed event.
+
+**Inference consistency check**: A check that inferred stop events and journey associations agree with the available transport reports, chronology and route context. It does not confirm that the inferred physical operation occurred.
+
+**Independent event reference**: A record of a service's passage, arrival or departure obtained independently of the predictions or estimated positions under evaluation. Its event convention and timing uncertainty determine what it can validate.
+
+**Physical event validation**: Comparison of inferred stop events or journey associations with an admissible independent record of the service's physical operation. Agreement with predictions derived from the same source is not this validation.
+
+**Stop arrival**: The event at which a stopping service becomes stationary at its passenger stop or platform. It is distinct from opening the doors or passing the stop without stopping.
+
+**Stop departure**: The event at which a service starts moving again to continue its journey after stopping at a passenger stop.
+
+**Stop dwell time**: The interval from a vehicle becoming stationary at a passenger stop until it starts moving again. It is distinct from the time its doors remain open.
+
+**Segment travel time**: The interval from departure at one passenger stop to arrival at the next stop on the journey. It excludes dwell at both stops.
+
+**Arrival-to-arrival elapsed time**: The interval between arrival at one passenger stop and arrival at the next stop on the same journey. It includes dwell at the origin and travel to the next stop, and excludes dwell at that next stop.
+
+**Hourly operating pattern**: A summary of a service's passages, intervals, stop dwell times or travel times grouped by hour for a route, direction and passenger stop or segment, on comparable days. Data gaps remain distinct from an hour without service.
+
+**Hourly passage occurrence proportion**: The share of comparable days with at least one admissible passage in a selected hour among days with sufficient evidence coverage for that hour. It describes occurrence across days, not when a particular journey will arrive or how long a passenger will wait.
+
+**Hybrid arrival prediction**: An arrival estimate combining an official prediction to a reference stop with historical travel and intermediate dwell times for the remaining route to the target stop. It depends on the official prediction and a supported association with the same operational journey.
+
+**Waiting time prediction**: An estimate of how long until the next service arrives at a selected passenger stop in a selected direction.
+
+**Onward arrival prediction**: An estimate of when the same identified journey will reach its subsequent passenger stops. Associating a journey does not by itself establish the identity of the physical vehicle.
+
+**Remaining journey time**: The time from a journey's current progress to arrival at a selected downstream stop, including the unfinished travel and intermediate stop dwell times. It excludes travel and stops already completed, and dwell after arrival at the target stop.
+
+**Operational journey**: A service's run along a route in one direction. Reversing direction at a terminal starts a new journey, even if the physical vehicle stays the same.
+
+**Service day**: The operational date assigned to a journey by its operator. It can differ from the local civil date of an event after midnight; an unpublished and unsupported service day remains unknown.
+
+**Journey continuity**: The supported association of updates with the same operational journey. An ambiguous association leaves continuity unknown.

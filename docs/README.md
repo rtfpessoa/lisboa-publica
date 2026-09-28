@@ -41,3 +41,11 @@ Dated delivery evidence for [Metro published routes](research/metro-published-ro
 
 [Station popup rollout verification](research/station-popup-stability-2026-09-27/VALIDATION.md)
 records the normal Maat repair, browser/Go checks and exact-main deployment on 2026-09-27.
+
+## Experimental transport patterns
+
+Read [Metro patterns](metro-patterns.md) for the current experimental model, both forecast functions and unsupported metrics. [Implementation validation](VALIDATION-metro-patterns.md) records checks and limitations; extended live sizing and physical validation remain operational follow-ups.
+
+[Metro patterns gap audit](GAPS-metro-patterns.md) compares agreed decisions with the first experimental implementation and separates missing code from evidence-dependent capabilities.
+
+The local completion follow-up adds route-specific conditions, versioned Lisbon holiday grouping, labeled older/general-context component fallback, unchanged-segment compatibility, conservative mixed-bin calibration and durable bounded MAE/P90/availability/band-support reports. Evidence-backed maintenance revises retained inputs atomically while keeping issued values. Staged normalized observation/prediction capture and experimental own-forecast adapters cover all eight existing operators under the same archive budget. Metro uses ETA transitions; later stages require verified published paths and coherent reported stop-state transitions. Forecast availability depends on actual compatible inputs, and physical validation remains unavailable. See [current behavior](metro-patterns.md) and [remaining live evidence](GAPS-metro-patterns.md).

@@ -550,6 +550,138 @@ export type VehicleJourney = {
     page: Page;
     coverage: PopupCoverage;
 };
+export type MetroHourPattern = {
+    profile: string;
+    offset_seconds: number;
+    /** Common retained histogram resolution in seconds; zero means incompatible widths have no supported common resolution. */
+    resolution_seconds: number;
+    condition: string;
+    hour: number;
+    direction: string;
+    route: string;
+    platform: string;
+    day_type: string;
+    signals: number;
+    days: number;
+    probability: number | null;
+    mean_headway_seconds: number | null;
+    mean_component_seconds: number | null;
+    component_target: string;
+    component_samples: number;
+};
+export type MetroPatternComponent = {
+    origin: string;
+    target: string;
+    origin_at: string;
+    seconds: number;
+    samples: number;
+    days: number;
+    historical_fallback: boolean;
+    general_context: boolean;
+    oldest_date: string;
+    newest_date: string;
+};
+export type MetroPatternForecast = {
+    id: string;
+    episode: string;
+    issued_at: string;
+    route: string;
+    direction: string;
+    stop: string;
+    stop_name: string;
+    destination_name: string;
+    /** Published Metro platform value, or visit:<stop_sequence> for later-stage adapters. A published visit is not a physical platform assignment. */
+    platform: string;
+    /** Published entity identity within its operator context; an unassociated official prediction may use its published trip identity. This does not establish a physical fleet unit. */
+    train: string;
+    "function": string;
+    mode: string;
+    profile: string;
+    condition: string;
+    /** Original source clock associated with the point, never renewed by collection. Null when an official publication omits its clock; collection-bounded validity remains private. */
+    source_at: string | null;
+    official_at: string | null;
+    own_at: string | null;
+    lower_at: string | null;
+    upper_at: string | null;
+    unavailable: string;
+    components: MetroPatternComponent[];
+    calibration_samples: number;
+    selected: boolean;
+    evaluated: boolean;
+    reference_lower: string | null;
+    reference_upper: string | null;
+    error_lower: number | null;
+    error_upper: number | null;
+    result: string;
+};
+export type MetroEvaluationReport = {
+    cohort: string;
+    support: string;
+    "function": string;
+    direction: string;
+    route: string;
+    mode: string;
+    profile: string;
+    condition: string;
+    horizon: number;
+    cases: number;
+    official_available: number;
+    own_available: number;
+    paired: number;
+    evaluated: number;
+    journeys: number;
+    days: number;
+    mae_own_lower: number | null;
+    mae_own_upper: number | null;
+    mae_official_lower: number | null;
+    mae_official_upper: number | null;
+    p90_own_lower: number | null;
+    p90_own_upper: number | null;
+    p90_official_lower: number | null;
+    p90_official_upper: number | null;
+    band_cases: number;
+    band_certain: number;
+    band_possible: number;
+    journey_count_complete: boolean;
+};
+export type TransportOperatorHistory = {
+    operator: string;
+    enabled: boolean;
+    status: string;
+    forecasts: boolean;
+    physical_validation: boolean;
+    as_of: string | null;
+    samples: number;
+};
+export type MetroPatterns = {
+    status: string;
+    message: string;
+    experimental: boolean;
+    physical_validation: boolean;
+    as_of: string | null;
+    profile: string;
+    storage_bytes: number;
+    limit_bytes: number;
+    sample_seconds: number;
+    bin_seconds: number;
+    detail_days: number;
+    aggregate_months: number;
+    collected_days: number;
+    gaps: number;
+    pending: number;
+    evaluated: number;
+    lost_reference: number;
+    dwell_seconds: number | null;
+    speed_kmh: number | null;
+    patterns: MetroHourPattern[];
+    forecasts: MetroPatternForecast[];
+    evaluation: MetroEvaluationReport[];
+    current_day_type: string;
+    calendar: string;
+    operators: TransportOperatorHistory[];
+    operator: string;
+};
 /**
  * getHealth
  */
@@ -1232,6 +1364,47 @@ export function getVehicleJourney(vehicleId: string, { limit, offset, revision }
         limit,
         offset,
         revision
+    }))}`, {
+        ...opts
+    }));
+}
+/**
+ * Experimental Metro patterns and official/own forecasts; no physical validation
+ */
+export function getMetroPatterns({ stopId, episode }: {
+    stopId?: string;
+    episode?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: MetroPatterns;
+    } | {
+        status: number;
+        data: Error;
+    }>(`/api/v1/metro/patterns${QS.query(QS.explode({
+        stop_id: stopId,
+        episode
+    }))}`, {
+        ...opts
+    }));
+}
+/**
+ * Experimental transport patterns and separate official/own forecasts
+ */
+export function getTransportPatterns(operatorId: "metro" | "cm" | "carris" | "cp" | "fertagus" | "ttsl" | "tcb" | "mobi", { stopId, episode }: {
+    stopId?: string;
+    episode?: string;
+} = {}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: MetroPatterns;
+    } | {
+        status: number;
+        data: Error;
+    }>(`/api/v1/transport/patterns${QS.query(QS.explode({
+        operator_id: operatorId,
+        stop_id: stopId,
+        episode
     }))}`, {
         ...opts
     }));

@@ -164,7 +164,7 @@ func TestCMPublishedPatternAndAtomicGeometryRetention(t *testing.T) {
 		t.Fatal("explicit identity lost")
 	}
 	cache, d, _, _ := cmFullCallsFixture(t)
-	f := &Fetcher{Cache: cache}
+	f := &Fetcher{publicationState: publicationState{Cache: cache}}
 	newer := &StaticData{CMPaths: []CMPath{{ID: "wrong", Shape: "wrong"}}}
 	f.retainGeometry(newer, "temporary failure")
 	if len(newer.CMPaths) != len(d.CMPaths) || newer.CMPaths[0].Shape != d.Shapes[0].Id || newer.Shapes[0].Id != d.Shapes[0].Id {
@@ -175,7 +175,7 @@ func TestCMPublishedPatternAndAtomicGeometryRetention(t *testing.T) {
 func TestCMNativePatternPreservesOriginalObservation(t *testing.T) {
 	now := time.Now().UTC()
 	p, _ := providerByID("cm")
-	f := &Fetcher{Cache: NewCache(), CM: "https://api.carrismetropolitana.pt/v2"}
+	f := &Fetcher{CM: "https://api.carrismetropolitana.pt/v2", publicationState: publicationState{Cache: NewCache()}}
 	raw := cmPosition{ID: "unit", Line: "1001", Trip: "[plan][agency]trip", Pattern: "[plan][agency]p", Lat: 38.73, Lon: -9.14}
 	original := now.Add(-time.Minute)
 	v := f.cmVehicle(p, raw, original, now)

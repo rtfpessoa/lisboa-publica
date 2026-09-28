@@ -54,6 +54,7 @@ func TestCMArrivalsThroughHTTP(t *testing.T) {
 
 // The captured identifiers are unmodified. Only temporal fields are rebased to
 // the test's current service day, so recorded observations never become live data.
+// Delay is synthetic too: a captured delay can exceed the seconds since midnight.
 func TestTMLArrivalsSharedFeedAndCapturedIdentities(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	cache := NewCache()
@@ -89,6 +90,7 @@ func TestTMLArrivalsSharedFeedAndCapturedIdentities(t *testing.T) {
 			t.Fatalf("%s missing captured visit", id)
 		}
 		event.Arrival.Time = ptr(expected.Unix())
+		event.Arrival.Delay = ptr(0)
 		fixture.ETA.Stops = []cpStopUpdate{event}
 		fixture.ETA.Timestamp = now.Unix()
 		arrival := int(expected.Sub(serviceStart(now.In(lisbon))).Seconds())

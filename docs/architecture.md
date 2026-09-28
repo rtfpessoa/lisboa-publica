@@ -103,7 +103,7 @@ Permanent vehicle attributes use an independent `vehicle_facts` table keyed by e
 
 ## API, authentication and trust
 
-[OpenAPI](../api/openapi.yaml) generates the strict Go interface and TypeScript client through the [generation workflow](../scripts/generate.sh). [The server](../internal/app/server.go) applies request validation, identity/scopes, per-IP/principal rate limits and generated dispatch. Heavy reads are bounded to two concurrent operations with 15-second contexts and result limits. The frontend distinguishes `busy` responses and uses bounded retry/backoff.
+[OpenAPI](../api/openapi.yaml) generates the strict Go interface and TypeScript client through the [generation workflow](../scripts/generate.sh). [The server](../internal/app/server.go) applies request validation, identity/scopes, per-IP/principal rate limits and generated dispatch. Heavy reads are bounded to two concurrent operations with 15-second contexts and result limits. The frontend distinguishes `busy` responses and uses bounded retry/backoff. Metro patterns station and onward queries inherit this policy rather than waiting only for their 30-second polling interval after transient admission failures.
 
 Reads are public by default. `PUBLIC_READS=false` requires credentials for operations marked public reads. Supplied API keys are still checked for expiry, revocation and scopes on public reads. Key management requires a browser session. [Google sign-in](integrations/google-identity.md) verifies ID tokens and binds login to origin/nonce, then creates an HttpOnly session. Session/key secrets are stored as hashes. `DEV_AUTH` requires a development environment; its login endpoint additionally requires a loopback peer and origin/nonce binding. Production refuses it.
 
@@ -201,3 +201,28 @@ Reporting changes participate in the existing guarded cache/health/history trans
 An independent [reporting worker](../internal/app/vehicle_reporting_worker.go) runs even when `INGEST_ENABLED=false`, checking cached identities every second without browser reads. It reconciles database-only identities in primary-key batches of at most 128 rows every 30 seconds; those expired identities converge over multiple batches, rather than receiving the visible inventory's immediate transition guarantee. Stable reconciliations do not write SQL. Operations use a five-second context. Exact identity loads are lazy; the registry bounds cached identities at 8,192, evicts clean entries and protects pending changes. Capacity failures are logged instead of allowing unbounded growth. Database admission/availability can delay persistence, and source polling determines when omission can first be known.
 
 The API exposes latest reporting state on retained vehicles. The browser displays reporting independently of physical stop status and adds a marker warning immediately for `not_reporting`, retaining its independent five-minute age warning and ten-minute offline display expiry. A source error is `unknown`, not an omission. See the [state evaluation table](data/README.md#backend-owned-reporting-state).
+
+## Metro pattern archive and recovery
+
+The existing direct Metro collector also feeds the independent `internal/patterns` service. It samples detail at its configured cadence and checks known intermediate continuity losses at the existing refresh rate. The service never calls providers or writes the operational database. A failed archive write revokes live historical support and reports a paused/gap state without suppressing official live publication.
+
+One process owns the archive through an OS file lock. Queries, immutable generation publication, checkpointing and FIFO share a bounded serialized file-reading phase; readers close before deletion. Files are fsynced and renamed before an atomic fsynced manifest admits them. Full codec roundtrips and checksums precede admission. Startup reconciles managed orphan generations, rejects an invalid manifest without overwriting it and restores verified checkpoints. A retained verified hour can replay chronological receipts after the checkpoint using its stored topology. Restart always reinitializes association continuity; unavailable/corrupt/retired data never become zero coverage or restored training.
+
+The manifest and state live on the same persistent server volume as detail and aggregates. This avoids increasing the operational database budget and requires one collector. Replacement generations, temporary files, metadata, directories and state count towards allocated archive bytes. Expiration precedes global oldest-data FIFO. New readers cannot retain deleted bytes outside the lock. Hot training state, detail buffers, row counts and query output/duration are independently bounded. See [model](metro-patterns.md), [history](data/history.md) and [configuration](../deploy/README.md).
+
+The local completion follow-up adds route-specific conditions, versioned Lisbon holiday grouping, labeled older/general-context component fallback, unchanged-segment compatibility, conservative mixed-bin calibration and durable bounded MAE/P90/availability/band-support reports. Evidence-backed maintenance revises retained inputs atomically while keeping issued values. Staged normalized observation/prediction capture and experimental own-forecast adapters cover all eight existing operators under the same archive budget. Metro uses ETA transitions; later stages require verified published paths and coherent reported stop-state transitions. Forecast availability depends on actual compatible inputs, and physical validation remains unavailable. See [current behavior](metro-patterns.md) and [remaining live evidence](GAPS-metro-patterns.md).
+
+Other-operator transport archive writes use one bounded eight-receipt queue/worker outside live publication. Overflow/write failure marks a later retained collection-gap receipt, including between normal sampling instants. Cancelling collection can leave queued receipts unwritten; timestamps are not renewed and restart does not prove continuity. Metro's direct wait inference continues to use its existing sampled/intermediate path.
+
+The queue assigns an archive receipt clock while holding its enqueue lock, retaining
+the original snapshot collection clock separately. Independent collectors may
+finish out of order; source observation/prediction clocks and validity are never
+renewed. Per-identity intermediate cuts are retained separately from operator-wide
+collection gaps, preserving unrelated associations during replay. Later-stage
+recovery treats complete newest daily generations as authoritative, suppresses
+already published contributions and replays retained post-checkpoint inputs across
+closed hours. Degraded recovery also resets all live continuity. Maintenance can
+revise later-stage normalized observations with the same exclusive transaction
+and bounded replay/publication policy; original forecasts remain immutable.
+
+Patterns reads expose fresh official values from the existing accepted cache even when the experimental archive is disabled or unreadable. This response-only fallback preserves source clocks/expiry and does not enter historical calibration or evaluation; read failures suppress own points. See [official-cache behavior](metro-patterns.md#published-stop-adapters-for-later-stages).

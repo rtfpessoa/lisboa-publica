@@ -59,9 +59,9 @@ func main() {
 	if err = store.Restore(ctx, cache); err != nil {
 		log.Fatal("cache restoration failed", zap.Error(err))
 	}
-	server, err := app.NewServer(store, cache, runtimeOptions(), log)
-	if err != nil {
-		log.Fatal("server configuration failed", zap.Error(err))
+	server := configuredServer(store, cache, log)
+	if server.Patterns != nil {
+		defer server.Patterns.Close()
 	}
 	services := backgroundServices{server: server, store: store, cache: cache, log: log}
 	services.start(ctx)
@@ -79,6 +79,7 @@ func (services backgroundServices) start(ctx context.Context) {
 	go services.store.RunReporting(ctx, services.cache, services.log)
 	outgoing := &http.Client{Timeout: upstreamRequestTimeout, Transport: app.NewBudgetTransport(upstreamRequestBudget), CheckRedirect: app.CheckUpstreamRedirect}
 	services.server.Metro = app.NewMetroClient(outgoing, services.store, services.cache, os.Getenv("METRO_CLIENT_ID"), os.Getenv("METRO_CLIENT_SECRET"))
+	services.server.Metro.History = services.server.Patterns
 	if os.Getenv("METRO_CLIENT_ID") != "" && os.Getenv("METRO_CLIENT_SECRET") != "" {
 		go services.server.Metro.Run(ctx)
 	}
@@ -88,6 +89,7 @@ func (services backgroundServices) startIngestion(ctx context.Context, outgoing 
 	if env("INGEST_ENABLED", "true") == "true" {
 		fetcher := app.NewFetcher(services.store, services.cache, services.log)
 		fetcher.Client = outgoing
+		fetcher.Patterns = services.server.Patterns
 		go fetcher.Run(ctx)
 	}
 }
@@ -105,4 +107,16 @@ func shutdownHTTP(ctx context.Context, srv *http.Server) {
 	shutdown, c := context.WithTimeout(context.Background(), httpShutdownTimeout)
 	defer c()
 	_ = srv.Shutdown(shutdown)
+}
+
+func configuredServer(store *app.Store, cache *app.Cache, log *zap.Logger) *app.Server {
+	server, err := app.NewServer(store, cache, runtimeOptions(), log)
+	if err != nil {
+		log.Fatal("server configuration failed", zap.Error(err))
+	}
+	server.Patterns, err = configurePatterns()
+	if err != nil {
+		log.Fatal("transport archive initialization failed", zap.Error(err))
+	}
+	return server
 }

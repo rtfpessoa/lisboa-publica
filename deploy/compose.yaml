@@ -18,6 +18,17 @@ services:
       INGEST_ENABLED: "true"
       SNAPSHOT_RETENTION_DAYS: ${SNAPSHOT_RETENTION_DAYS:?select retention to fit available storage}
       HISTORY_INTERVAL_SECONDS: ${HISTORY_INTERVAL_SECONDS:-300}
+      TRANSPORT_ARCHIVE_DIR: /app/transport-history
+      TRANSPORT_ARCHIVE_OPERATORS: ${TRANSPORT_ARCHIVE_OPERATORS:-metro}
+      TRANSPORT_ARCHIVE_LIMIT_BYTES: ${TRANSPORT_ARCHIVE_LIMIT_BYTES:-10000000000}
+      TRANSPORT_SAMPLE_SECONDS: ${TRANSPORT_SAMPLE_SECONDS:-30}
+      TRANSPORT_BIN_SECONDS: ${TRANSPORT_BIN_SECONDS:-30}
+      TRANSPORT_DETAIL_DAYS: ${TRANSPORT_DETAIL_DAYS:-7}
+      TRANSPORT_AGGREGATE_MONTHS: ${TRANSPORT_AGGREGATE_MONTHS:-12}
+      TRANSPORT_CHECKPOINT_SECONDS: ${TRANSPORT_CHECKPOINT_SECONDS:-60}
+      TRANSPORT_EVALUATION_SECONDS: ${TRANSPORT_EVALUATION_SECONDS:-60}
+      TRANSPORT_TRAINING_DAYS: ${TRANSPORT_TRAINING_DAYS:-30}
+      TRANSPORT_CALIBRATION_DAYS: ${TRANSPORT_CALIBRATION_DAYS:-30}
       STORAGE_GUARD: ${STORAGE_GUARD:-true}
       GOMEMLIMIT: 768MiB
       GOMAXPROCS: "2"
@@ -30,6 +41,8 @@ services:
     restart: unless-stopped
     mem_limit: 1280m
     cpus: 1.5
+    volumes:
+      - transport_history:/app/transport-history
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m
@@ -79,3 +92,4 @@ networks:
     internal: true
 volumes:
   database_data:
+  transport_history:

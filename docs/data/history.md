@@ -90,3 +90,42 @@ Existing behavior tests: [aggregation](../../internal/app/snapshots_test.go), [r
 The append-only `stop_events` table stores verified journey/visit arrival and departure occurrences, their original evidence and committed generation. These records are independent of position snapshots, aggregates and forecasts. The internal `saveReportedStopEvents` boundary deduplicates matching occurrences and preserves previous versions for frozen journey readers across later corrections and restart. No public write endpoint exists, and no current adapter is certified to populate this table. Missing past times remain unavailable.
 
 Stop-event writes reserve the existing history budget before their transaction. Configured 1–30-day retention and bounded pruning apply; a storage pause preserves committed events and is exposed in popups as “Recolha de tempos reais em pausa”. The original provider clock is never replaced with polling time. See [popup behavior](../VEHICLE-POPUPS.md).
+
+## Independent experimental Metro archive
+
+`internal/patterns` consumes existing direct Metro responses, separate from the vehicle snapshot history and its database guard. JSON lines compressed with Zstd retain sampled wait payloads (including unknown fields), normalized inputs, sampled forecasts and later outcomes by operator/UTC hour. Sparse Parquet+Zstd files retain additive hourly aggregates by operator/local date, including route/destination, stop/platform, ordered component, local hour/UTC offset, day type, reported condition, profile/reference, resolution and histogram bin. Counts/sums and bounded-duration/error sums remain distinct from model midpoint samples. No physical occurrence denominator is fabricated.
+
+The initial server-only cap is 10,000,000,000 bytes across managed detail, aggregates, manifest, state, temporary/replacement generations and filesystem allocation. Retention targets are seven days and 12 months, subordinate to space. After expiry, FIFO removes the oldest closed data globally without a type/operator preference. Retiring an aggregate day removes cached training for that day; a prepared generation must not resurrect it. Exact allocated bytes are counted after serialized readers close and unlink completes.
+
+Sampling and histogram resolution are independently configurable (30 seconds initially); checkpoints/evaluation use 60 seconds; training/calibration target available 30-day windows without a minimum display age. The bounded hot-state cache can shorten the effective training window without deleting published long-term aggregates. Buffer/budget failures pause history with explicit gaps. Startup recovery uses only retained verified data, and changing sampling/bin configuration creates a distinct model profile. Full details: [Metro patterns](../metro-patterns.md), [recovery](../architecture.md) and [deployment](../../deploy/README.md).
+
+The local completion follow-up adds route-specific conditions, versioned Lisbon holiday grouping, labeled older/general-context component fallback, unchanged-segment compatibility, conservative mixed-bin calibration and durable bounded MAE/P90/availability/band-support reports. Evidence-backed maintenance revises retained inputs atomically while keeping issued values. Staged normalized observation/prediction capture and experimental own-forecast adapters cover all eight existing operators under the same archive budget. Metro uses ETA transitions; later stages require verified published paths and coherent reported stop-state transitions. Forecast availability depends on actual compatible inputs, and physical validation remains unavailable. See [current behavior](../metro-patterns.md) and [remaining live evidence](../GAPS-metro-patterns.md).
+
+## Later-stage inference and revisions
+
+Later-stage detail also retains normalized official predictions, their original
+source clock/validity and verified published path dictionaries. Full position
+and partial prediction sources sample independently at the configured cadence;
+receipt counts can therefore include multiple sources and are not event counts.
+Path definitions are deduplicated within bounded independently retained chunks.
+Each later-stage engine has 5,000 hot aggregates and 2,000 tracks/calls/prediction
+sampling keys, separate from Metro's larger hot limit but inside the same global
+archive budget. API summaries filter archived daily blocks by operator.
+
+Daily generations are authoritative during recovery, including empty revised
+days; a cached row cannot resurrect a retired or withdrawn day. Replay across
+closed hours uses recorded issuance and suppresses contributions already covered
+by a newer daily generation. Failed detail publication restores uncommitted hot
+state and cadence. Every restart cuts continuity. Evidence-backed maintenance
+supports normalized observations with `-operator`; context-changing/stale or
+unreconstructable inputs fail explicitly. Aggregates retain the earliest input
+instant as well as latest knowledge time, so revisions cannot silently replace
+summaries whose input provenance predates retained detail. See [full rules](../metro-patterns.md).
+
+Read-time Metro display validity is separate from immutable issuance evidence. The retained forecast stores an optional `own_valid_until` bound derived from the original official anchor source clock plus 90 seconds. A legacy forecast without that bound is unavailable for current model display. A past point, inactive association, expired anchor or expired collector receipt withdraws the model point and band; official display uses its own original source clock and future point. Reads never modify the original issuance used for evaluation. When incompatible retained bin widths cannot yield a supported common resolution, the summary returns `resolution_seconds: 0` and the UI identifies the resolution as unavailable.
+
+Provider recovery tracks the durable `AsOf` coverage of every verified daily generation even when that complete day cannot fit in the hot cache. Capacity-rejected replay updates do not mark an untouched retained day dirty, preventing publication of an empty replacement. The retained day remains readable from its verified Parquet generation; limited hot training support is disclosed separately.
+
+Hot-day eviction is allowed only after pending daily changes have been durably published. A complete day excluded from hot memory is marked cold and cannot be reopened from a partial update; its full retained generation remains the read authority, with limited training support disclosed. Cold-day markers expire with the configured aggregate window. Maintenance reads complete affected days into a private working copy, rejects a capacity-limited replay, and replaces live state only after the atomic manifest commit.
+
+An admitted hot day also remains in memory while a current association references a signal window in that day, including windows spanning local midnight. This preserves the complete input needed for conservative withdrawal after a later contradiction. Under capacity pressure, newer training contributions may be unavailable until publication and association cleanup make eviction safe. A fresh official cold-start point keeps its association-unavailable explanation; read-time expiry only replaces that explanation when an own point actually expires.

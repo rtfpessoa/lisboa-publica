@@ -528,7 +528,7 @@ func TestSpecScopePolicy(t *testing.T) {
 		}
 	}
 	sort.Strings(ids)
-	if len(ids) != 29 {
+	if len(ids) != 31 {
 		t.Fatalf("unexpected operation count%d", len(ids))
 	}
 }

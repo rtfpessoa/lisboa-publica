@@ -12,14 +12,17 @@ import (
 
 	"go.uber.org/zap"
 	"lisboapublica/internal/api"
+	"lisboapublica/internal/patterns"
 )
 
 // Fetcher fetches official provider feeds and publishes normalized snapshots.
 type Fetcher struct {
-	Client      *http.Client
-	Store       *Store
-	Cache       *Cache
-	Log         *zap.Logger
+	Patterns         *patterns.Service
+	history          chan patterns.ProviderReceipt
+	historyGaps      map[string]bool
+	historyOperators map[string]bool
+	Client           *http.Client
+	publicationState
 	Hub, CM     string
 	etaMu       sync.Mutex
 	mu          sync.Mutex
@@ -30,7 +33,7 @@ type Fetcher struct {
 
 // NewFetcher creates a provider fetcher with bounded HTTP requests.
 func NewFetcher(s *Store, c *Cache, log *zap.Logger) *Fetcher {
-	return &Fetcher{Client: &http.Client{Timeout: upstreamTimeout, CheckRedirect: CheckUpstreamRedirect}, Store: s, Cache: c, Log: log, Hub: hubBase, CM: cmBase, etag: map[string]string{}, blobs: map[string][]byte{}, lastPersist: map[string]time.Time{}}
+	return &Fetcher{Client: &http.Client{Timeout: upstreamTimeout, CheckRedirect: CheckUpstreamRedirect}, publicationState: publicationState{Store: s, Cache: c, Log: log}, Hub: hubBase, CM: cmBase, etag: map[string]string{}, blobs: map[string][]byte{}, lastPersist: map[string]time.Time{}}
 }
 
 func (f *Fetcher) fetch(ctx context.Context, u string, max int64) ([]byte, error) {
@@ -197,31 +200,17 @@ func (f *Fetcher) refreshLive(ctx context.Context) {
 }
 func (f *Fetcher) saveLive(ctx context.Context, p provider, vehicles []api.Vehicle, now time.Time) {
 	vehicles = normalizeVehicleAttributes(vehicles)
-	ids := map[string]bool{}
-	for _, v := range vehicles {
-		if ids[v.Id] {
-			f.markError(ctx, p, false, fmt.Errorf("duplicate vehicle identifier"))
-			return
-		}
-		ids[v.Id] = true
+	if !uniqueLiveVehicleIDs(vehicles) {
+		f.markError(ctx, p, false, fmt.Errorf("duplicate vehicle identifier"))
+		return
 	}
+	f.recordProviderHistory(p.ID, vehicles, now, "")
 	f.Store.PublishMu.Lock()
 	defer f.Store.PublishMu.Unlock()
 	state, _ := f.Cache.state("")
 	live, dist := f.prepareVehiclePublication(ctx, p.ID, state, vehicles, now)
 
-	for i := range live.Vehicles {
-		enrichVehicle(&live.Vehicles[i], state.Static[p.ID])
-	}
-	for i := range live.Samples {
-		enrichVehicle(&live.Samples[i], state.Static[p.ID])
-	}
-	latest := time.Time{}
-	for _, v := range live.Vehicles {
-		if v.ObservedAt.After(latest) {
-			latest = v.ObservedAt
-		}
-	}
+	latest := enrichLivePublication(live, state.Static[p.ID])
 	op := state.Operators[p.ID]
 	op.Status = api.OperatorStatusOk
 	op.Error = nil
@@ -467,4 +456,38 @@ func (f *Fetcher) refreshCMLive(ctx context.Context, p provider, batch hubObserv
 		enrichCMOperationalDates(vehicles, batch.positions)
 	}
 	f.saveLive(ctx, p, vehicles, batch.collected)
+}
+
+func uniqueLiveVehicleIDs(vehicles []api.Vehicle) bool {
+	ids := map[string]bool{}
+	for _, v := range vehicles {
+		if ids[v.Id] {
+			return false
+		}
+		ids[v.Id] = true
+	}
+	return true
+}
+
+func enrichLivePublication(live *LiveData, static *StaticData) time.Time {
+	for i := range live.Vehicles {
+		enrichVehicle(&live.Vehicles[i], static)
+	}
+	for i := range live.Samples {
+		enrichVehicle(&live.Samples[i], static)
+	}
+	latest := time.Time{}
+	for _, v := range live.Vehicles {
+		if v.ObservedAt.After(latest) {
+			latest = v.ObservedAt
+		}
+	}
+	return latest
+}
+
+// publicationState ties the durable store, immutable cache and publication logger.
+type publicationState struct {
+	Store *Store
+	Cache *Cache
+	Log   *zap.Logger
 }

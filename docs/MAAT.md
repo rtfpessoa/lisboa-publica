@@ -45,3 +45,17 @@ Full Go/race, vet, generation consistency and the TypeScript build passed;
 49 distinct relevant browser cases passed across targeted runs.
 TypeScript remains unchecked by Maat, and the absolute95 target remains unresolved.
 See [dated verification](research/station-popup-stability-2026-09-27/VALIDATION.md).
+
+## Transport patterns candidate, 2026-09-28
+
+The first normal commit attempt was blocked: scoped Go score **68**, delta **−22** against main `53fbe4c`, with zero suppressions. TypeScript remains unchecked by Maat. New findings include excessive inference/archive/reprocessing complexity, maintainability and size, checkpoint/configuration logical conditions and oversized integration tests. No commit was created and no push or deployment followed this blocked candidate.
+
+Repair is in progress. Official-cache selection, journey construction, geometry evidence, configuration/checkpoint checks, Metro receipt/signal/association/forecast/calibration/evaluation, provider observation/track/signal/prediction/case handling and archive ownership/recovery/FIFO/publication have been separated by responsibility. Source clocks, admissibility, remaining-component semantics, original issuance and archive transaction order remain covered by regression tests. This paragraph is not a clean gate verdict; further candidate checks and repairs are required before publication.
+
+The second normal candidate was also blocked (**74**, delta **−16**, 141 blocking regressions, zero suppressions). Further repairs separate complete-day restoration, per-frame revision scope, recorded-forecast replay, durable revision publication, station summaries and read-time expiry. Integration assertions remain in smaller purpose-specific helpers; no gate rule, threshold or suppression was changed.
+
+The third and fourth prepared candidates scored **78**, delta **−12**, with ten and one blocking structural findings respectively. Complete diagnostics from the verified pinned bundle identified additional ownership/cohesion penalties. Repairs group archive resources separately from the Metro publication cursor, group ingestion publication dependencies, and isolate Metro token/refresh state. Stateless cache helpers and scalar engine policy queries no longer masquerade as stateful methods. No suppression or threshold adjustment was used.
+
+The fifth prepared candidate passed the normal pinned regression gate: Go **94**, delta **+4**, no structural regressions and zero suppressions. TypeScript remains unchecked by Maat. The subsequent Git signing operation failed in the configured 1Password agent (`failed to fill whole buffer`), so this attempt created no commit. Full PostgreSQL race tests, vet, deterministic generation, the TypeScript production build and 401 local Markdown targets passed. The absolute95 target and remaining advisory findings are still not claimed complete. Further cleanup separates HTTP dispatch, public configuration, transit queries and filter parsing, as well as Metro condition changes from segment compatibility.
+
+Candidate seven passed the normal pinned gate at Go **97**, delta **+7**, no structural regressions and **zero suppressions**. This also exceeds the configured absolute95 score target. The language coverage remains Go only; passing scores do not assert zero heuristic advisory findings. The configured Git signing agent returned an error again, so no commit object, push or deployment was created by this attempt.

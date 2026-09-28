@@ -156,3 +156,31 @@ Actual arrival/departure records additionally require an explicit occurrence, so
 ## Reporting identity and omission
 
 Latest reporting state uses the exact operator/source key separately from physical-fleet registration contexts. No proximity, route or cross-ID match merges reporting identities. This includes Metro inferred entity IDs without asserting physical-unit identity. Successful accepted normalized membership, rather than raw provider array presence, drives omission; source filters and rejected observations can remove rows. Durable original observation clocks reject older reports even after the position continuity ledger expires. Repeated accepted reports refresh membership collection time without renewing the original observation time. Source errors/restart/expired collection are unconfirmed states. See the [state evaluation and clock definitions](README.md#backend-owned-reporting-state).
+
+## Metro experimental journey associations
+
+The pattern model groups published train ID, destination code and a unique planned route context; it does not identify a physical unit or a dated official journey. Unique nearby station matching accepts the existing normalized name prefix or an exact alphanumeric name with punctuation removed, including Baixa / Chiado versus Baixa/Chiado. Multiple nearby candidates are rejected. Planned orders retain sequence numbers, refuse skipped visits/repeated-stop simple paths and require unanimous next-stop adjacency. The last retained visit is not automatically a terminal.
+
+Three ordered positive-to-zero station signals and eligible presence in every sampled receipt admit a proxy association only when the third signal becomes known. Intermediate observed losses also revoke support. Conflicts, missing presence, gaps or later ambiguous association cut future support. An isolated ID return needs a new supported episode. Published service-condition changes reset continuity and separate training strata. Later association contradictions conservatively withdraw affected route/destination/day summaries from future reuse while preserving issued forecasts. No disappearing ID is labeled cancelled. See [Metro patterns](../metro-patterns.md) for forecast and calibration rules.
+
+The local completion follow-up adds route-specific conditions, versioned Lisbon holiday grouping, labeled older/general-context component fallback, unchanged-segment compatibility, conservative mixed-bin calibration and durable bounded MAE/P90/availability/band-support reports. Evidence-backed maintenance revises retained inputs atomically while keeping issued values. Staged normalized observation/prediction capture and experimental own-forecast adapters cover all eight existing operators under the same archive budget. Metro uses ETA transitions; later stages require verified published paths and coherent reported stop-state transitions. Forecast availability depends on actual compatible inputs, and physical validation remains unavailable. See [current behavior](../metro-patterns.md) and [remaining live evidence](../GAPS-metro-patterns.md).
+
+## Later-stage pattern associations
+
+CM uses a uniquely verified native pattern/line path. Other stages require exact
+published plan/trip/route/operating date and active calendar. A local contiguous
+run is admitted only around a unique published stop; omitted visits are never
+bridged. Published incoming-to-stopped transitions and position proximity define
+proxy windows. Three consecutive windows are required, and all clock/context,
+ambiguity and intermediate-loss checks still apply. Explicit visit sequence
+separates repeated stop calls. Neither a receipt-day fallback scope for undated
+CM instances nor a reported position establishes a physical journey.
+
+A prediction may join only one current supported route/trip instance and must
+match any published plan/date/vehicle/sequence. A missing sequence cannot choose
+between repeated visits. Unassociated official points remain visible. Full path
+profiles isolate later-stage component reuse; no spatial shortcut supplies plan
+compatibility. Revision hashes guard exact retained normalized rows; maintenance
+cannot change the source/journey/normalized stop context. See [adapter rules](../metro-patterns.md#published-stop-adapters-for-later-stages).
+
+Current official-cache values without a supported vehicle association remain separate response-only waiting rows. They do not replace the official member of an earlier emitted comparison pair or become calibration/evaluation cases. A direction-selected view displays unassociated published predictions separately. Original source clocks and validity still govern eligibility.

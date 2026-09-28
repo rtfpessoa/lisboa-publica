@@ -35,7 +35,7 @@ async function stationFixture(page:Page,validFor=60000,total=25){
 }
 for(const width of [1280,390])test(`complete station frame survives delayed revision and preserves reading at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:850});const f=await stationFixture(page),panel=page.locator('.detail-panel');
- const row=panel.locator('.transit-call').filter({hasText:'row-10'});await row.locator('a').first().focus();await row.evaluate(el=>el.scrollIntoView({block:'start'}));
+ const row=panel.locator('[data-call-id="row-10:airport"]');await row.locator('a').first().focus();await row.evaluate(el=>el.scrollIntoView({block:'start'}));
  const y=await row.evaluate(el=>el.getBoundingClientRect().top),scroll=await panel.evaluate(el=>el.scrollTop),coverage=await panel.locator('.notice').first().textContent();
  f.hold();await expect.poll(f.pending,{timeout:9000}).toBeGreaterThan(0);
  await expect(panel.locator('.direction-detail .transit-call:not(.call-head)')).toHaveCount(25);

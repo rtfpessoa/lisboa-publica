@@ -91,7 +91,7 @@ test('speed capability follows a Metro route filter within a mixed operator sele
 
 test('estimated Metro vehicle detail omits routine estimation and speed warnings',async({page})=>{
  await fixture(page);const now=new Date().toISOString();await page.route('**/api/v1/vehicles?**',r=>r.fulfill({json:{data:[{id:'metro:1',source_id:'1',operator_id:'metro',position_kind:'estimated',lat:38.731,lon:-9.145,observed_at:now,collected_at:now,source_url:'https://go.tmlmobilidade.pt',stale:false,speed_kmh:null}],page:{limit:500,offset:0,total:1,has_more:false}}}));
- await page.goto('/');await expect(page.locator('.map')).toHaveAttribute('aria-busy','false');await page.waitForTimeout(300);const box=await page.locator('.map canvas').boundingBox();await page.mouse.click(box!.x+box!.width/2,box!.y+box!.height/2);await expect(page.locator('.detail-panel')).toBeVisible();await expect(page.locator('.detail-panel')).not.toContainText('A velocidade amostral não é suportada');await expect(page.locator('.vehicle-update-age')).toBeVisible();
+ await page.goto('/');await expect(page.locator('.map')).toHaveAttribute('aria-busy','false');await page.waitForTimeout(300);const box=await page.locator('.map canvas').boundingBox();await page.mouse.click(box!.x+box!.width/2,box!.y+box!.height/2);await expect(page.locator('.detail-panel')).toBeVisible();await expect(page.locator('.detail-panel')).not.toContainText('A velocidade amostral não é suportada');await expect(page.locator('.vehicle-update-age')).toBeVisible();await expect(page.locator('.detail-panel')).not.toContainText('Velocidade amostral');
 });
 
 

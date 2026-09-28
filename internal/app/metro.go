@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/text/unicode/norm"
 	"lisboapublica/internal/api"
+	"lisboapublica/internal/patterns"
 )
 
 const metroBase = "https://api.metrolisboa.pt:8243/estadoServicoML/1.0.1"
@@ -50,6 +51,8 @@ type MetroData struct {
 	Status   api.MetroStatus `json:"status"`
 	Waits    []MetroWait     `json:"waits"`
 	Stations []MetroStation  `json:"stations"`
+	// Original wait JSON preserves fields whose meaning is not yet known.
+	RawWaits json.RawMessage `json:"raw_waits,omitempty"`
 }
 
 // MetroClient serializes OAuth token reuse and cached direct Metro refreshes.
@@ -58,12 +61,8 @@ type MetroClient struct {
 	Store                            *Store
 	Cache                            *Cache
 	ClientID, Secret, Base, TokenURL string
-	mu                               sync.Mutex
-	tokenValue                       string
-	expires                          time.Time
-	lastAttempt                      time.Time
-	lastPersist                      time.Time
-	data                             *MetroData
+	metroRefreshState
+	History *patterns.Service
 }
 
 // NewMetroClient creates a client for server-side consumer credentials.
@@ -167,6 +166,12 @@ func (m *MetroClient) Refresh(ctx context.Context) *MetroData {
 
 // publish updates live health immediately and limits durable writes independently.
 func (m *MetroClient) publish(ctx context.Context, data *MetroData, now time.Time) {
+	if m.History != nil {
+		state, _ := m.Cache.state("")
+		if state != nil {
+			m.recordPatterns(data, state.Static["metro"], now)
+		}
+	}
 	m.Store.PublishMu.Lock()
 	defer m.Store.PublishMu.Unlock()
 	op := m.Cache.operator("metro")
@@ -316,12 +321,17 @@ func metroStationID(static *StaticData, published []MetroStation, stations map[s
 		if gtfs.Id != stop {
 			continue
 		}
+		matches := []string{}
 		for _, station := range published {
 			lat, latErr := strconv.ParseFloat(station.Lat, numericBitSize)
 			lon, lonErr := strconv.ParseFloat(station.Lon, numericBitSize)
-			if latErr == nil && lonErr == nil && strings.HasPrefix(normalizeName(gtfs.Name), normalizeName(station.Name)) && abs(gtfs.Lat-lat) < metroStationTolerance && abs(gtfs.Lon-lon) < metroStationTolerance {
-				return station.ID
+			nameMatches := strings.HasPrefix(normalizeName(gtfs.Name), normalizeName(station.Name)) || compactMetroName(gtfs.Name) == compactMetroName(station.Name)
+			if latErr == nil && lonErr == nil && nameMatches && abs(gtfs.Lat-lat) < metroStationTolerance && abs(gtfs.Lon-lon) < metroStationTolerance {
+				matches = append(matches, station.ID)
 			}
+		}
+		if len(matches) == 1 {
+			return matches[0]
 		}
 	}
 	return stationID
@@ -415,29 +425,22 @@ func (m *MetroClient) fetchData(ctx context.Context, previous *MetroData, now ti
 	}
 	var states map[string]string
 	var waits []MetroWait
+	var rawWaits json.RawMessage
 	err := m.get(ctx, "/estadoLinha/todos", &states)
 	if err == nil {
-		err = m.get(ctx, "/tempoEspera/Estacao/todos", &waits)
+		err = m.get(ctx, "/tempoEspera/Estacao/todos", &rawWaits)
+		if err == nil {
+			err = json.Unmarshal(rawWaits, &waits)
+		}
 	}
 	if err == nil && len(stations) == 0 {
 		err = m.get(ctx, "/infoEstacao/todos", &stations)
 	}
 	data := &MetroData{Status: api.MetroStatus{Status: api.MetroStatusStatusOk, CheckedAt: &now, SourceUrl: metroBase, Message: "Tempos de espera e estado do serviço verificados na API oficial do Metro.", Lines: []api.MetroLine{}}, Waits: waits, Stations: stations}
-	if err != nil {
-		data.Status.Status = api.MetroStatusStatusError
-		data.Status.Message = err.Error() + ". Previsões diretas indisponíveis; horários planeados e posições TML mantêm-se."
-		if previous != nil {
-			data.Waits = previous.Waits
-			data.Stations = previous.Stations
-		}
-	} else {
-		data.Status.Lines, err = metroLines(states)
-		if err != nil {
-			data.Status.Status = api.MetroStatusStatusError
-			data.Status.Message = err.Error()
-			data.Waits = nil
-		}
+	if err == nil {
+		data.RawWaits = rawWaits
 	}
+	completeMetroFetch(data, previous, states, err)
 	return data
 }
 
@@ -457,4 +460,32 @@ func metroLines(states map[string]string) ([]api.MetroLine, error) {
 		lines = append(lines, api.MetroLine{Line: line, State: state, Description: value + " · " + description})
 	}
 	return lines, nil
+}
+
+func completeMetroFetch(data, previous *MetroData, states map[string]string, err error) {
+	if err != nil {
+		data.Status.Status = api.MetroStatusStatusError
+		data.Status.Message = err.Error() + ". Previsões diretas indisponíveis; horários planeados e posições TML mantêm-se."
+		if previous != nil {
+			data.Waits = previous.Waits
+			data.Stations = previous.Stations
+		}
+	} else {
+		data.Status.Lines, err = metroLines(states)
+		if err != nil {
+			data.Status.Status = api.MetroStatusStatusError
+			data.Status.Message = err.Error()
+			data.Waits = nil
+		}
+	}
+}
+
+// metroRefreshState serializes token reuse and direct snapshot publication.
+type metroRefreshState struct {
+	mu          sync.Mutex
+	tokenValue  string
+	expires     time.Time
+	lastAttempt time.Time
+	lastPersist time.Time
+	data        *MetroData
 }

@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Lisboa P\u00fablica API",
+    "title": "Lisboa Pública API",
     "version": "1.0.0",
     "description": "Provider-backed Lisbon transit. apiKey scopes use x-required-scopes; all data lists are paginated. Live revisions expire with410; snapshot revisions freeze committed ingestion membership. Scheduled and estimated data are explicitly classified. Dashboard reads are public for now and rate-limited; supplied API keys still enforce x-required-scopes. Key management requires a Google session. Expensive reads share two fail-fast slots and a 15-second operation deadline (503 busy/timeout). Schedule and historical grouped lists reject over 100000 results with 400 result_limit instead of truncation; narrow operators, route or time window. Busy503 responses include Retry-After."
   },
@@ -1805,6 +1805,146 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/metro/patterns": {
+      "get": {
+        "operationId": "getMetroPatterns",
+        "summary": "Experimental Metro patterns and official/own forecasts; no physical validation",
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-public-read": true,
+        "x-required-scopes": [
+          "read:transit",
+          "read:history"
+        ],
+        "responses": {
+          "200": {
+            "description": "Partial data and unavailable metrics remain explicit; collection status includes archive failures.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetroPatterns"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "stop_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          },
+          {
+            "name": "episode",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/transport/patterns": {
+      "get": {
+        "operationId": "getTransportPatterns",
+        "summary": "Experimental transport patterns and separate official/own forecasts",
+        "security": [
+          {},
+          {
+            "ApiKey": []
+          },
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-public-read": true,
+        "x-required-scopes": [
+          "read:transit",
+          "read:history"
+        ],
+        "responses": {
+          "200": {
+            "description": "Partial data and unavailable metrics remain explicit; collection status includes archive failures.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetroPatterns"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error (400,401,403,404,410,429,500,503). 429 and busy503 include Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "operator_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "metro",
+                "cm",
+                "carris",
+                "cp",
+                "fertagus",
+                "ttsl",
+                "tcb",
+                "mobi"
+              ]
+            }
+          },
+          {
+            "name": "stop_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 240
+            }
+          },
+          {
+            "name": "episode",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{24}$"
+            }
+          }
+        ]
       }
     }
   },
@@ -4403,6 +4543,597 @@
           "last_seen_at",
           "persisted"
         ]
+      },
+      "MetroPatterns": {
+        "type": "object",
+        "required": [
+          "status",
+          "message",
+          "experimental",
+          "physical_validation",
+          "as_of",
+          "profile",
+          "storage_bytes",
+          "limit_bytes",
+          "sample_seconds",
+          "bin_seconds",
+          "detail_days",
+          "aggregate_months",
+          "collected_days",
+          "gaps",
+          "pending",
+          "evaluated",
+          "lost_reference",
+          "dwell_seconds",
+          "speed_kmh",
+          "patterns",
+          "forecasts",
+          "evaluation",
+          "current_day_type",
+          "calendar",
+          "operators",
+          "operator"
+        ],
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "experimental": {
+            "type": "boolean"
+          },
+          "physical_validation": {
+            "type": "boolean"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "profile": {
+            "type": "string"
+          },
+          "storage_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "limit_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sample_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "bin_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "detail_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "aggregate_months": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "collected_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "gaps": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pending": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "evaluated": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lost_reference": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "dwell_seconds": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "speed_kmh": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "patterns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetroHourPattern"
+            }
+          },
+          "forecasts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetroPatternForecast"
+            }
+          },
+          "evaluation": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetroEvaluationReport"
+            }
+          },
+          "current_day_type": {
+            "type": "string"
+          },
+          "calendar": {
+            "type": "string"
+          },
+          "operators": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransportOperatorHistory"
+            }
+          },
+          "operator": {
+            "type": "string"
+          }
+        },
+        "description": "Experimental operator-scoped patterns and separate official/own predictions. The historical schema name is retained for Metro endpoint compatibility. Availability requires source-specific evidence; no physical validation is implied."
+      },
+      "MetroHourPattern": {
+        "type": "object",
+        "required": [
+          "profile",
+          "offset_seconds",
+          "resolution_seconds",
+          "condition",
+          "hour",
+          "direction",
+          "route",
+          "platform",
+          "day_type",
+          "signals",
+          "days",
+          "probability",
+          "mean_headway_seconds",
+          "mean_component_seconds",
+          "component_target",
+          "component_samples"
+        ],
+        "properties": {
+          "profile": {
+            "type": "string"
+          },
+          "offset_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "resolution_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Common retained histogram resolution in seconds; zero means incompatible widths have no supported common resolution."
+          },
+          "condition": {
+            "type": "string"
+          },
+          "hour": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "route": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "day_type": {
+            "type": "string"
+          },
+          "signals": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "probability": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "mean_headway_seconds": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "mean_component_seconds": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "component_target": {
+            "type": "string"
+          },
+          "component_samples": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "MetroPatternForecast": {
+        "type": "object",
+        "required": [
+          "id",
+          "episode",
+          "issued_at",
+          "route",
+          "direction",
+          "stop",
+          "stop_name",
+          "destination_name",
+          "platform",
+          "train",
+          "function",
+          "mode",
+          "profile",
+          "condition",
+          "source_at",
+          "official_at",
+          "own_at",
+          "lower_at",
+          "upper_at",
+          "unavailable",
+          "components",
+          "calibration_samples",
+          "selected",
+          "evaluated",
+          "reference_lower",
+          "reference_upper",
+          "error_lower",
+          "error_upper",
+          "result"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "episode": {
+            "type": "string"
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "route": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "stop": {
+            "type": "string"
+          },
+          "stop_name": {
+            "type": "string"
+          },
+          "destination_name": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string",
+            "description": "Published Metro platform value, or visit:<stop_sequence> for later-stage adapters. A published visit is not a physical platform assignment."
+          },
+          "train": {
+            "type": "string",
+            "description": "Published entity identity within its operator context; an unassociated official prediction may use its published trip identity. This does not establish a physical fleet unit."
+          },
+          "function": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "profile": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "source_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Original source clock associated with the point, never renewed by collection. Null when an official publication omits its clock; collection-bounded validity remains private."
+          },
+          "official_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "own_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lower_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "upper_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "unavailable": {
+            "type": "string"
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetroPatternComponent"
+            }
+          },
+          "calibration_samples": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "selected": {
+            "type": "boolean"
+          },
+          "evaluated": {
+            "type": "boolean"
+          },
+          "reference_lower": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "reference_upper": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "error_lower": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "error_upper": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "result": {
+            "type": "string"
+          }
+        }
+      },
+      "MetroPatternComponent": {
+        "type": "object",
+        "required": [
+          "origin",
+          "target",
+          "origin_at",
+          "seconds",
+          "samples",
+          "days",
+          "historical_fallback",
+          "general_context",
+          "oldest_date",
+          "newest_date"
+        ],
+        "properties": {
+          "origin": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "origin_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "seconds": {
+            "type": "number",
+            "format": "double"
+          },
+          "samples": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "historical_fallback": {
+            "type": "boolean"
+          },
+          "general_context": {
+            "type": "boolean"
+          },
+          "oldest_date": {
+            "type": "string"
+          },
+          "newest_date": {
+            "type": "string"
+          }
+        }
+      },
+      "MetroEvaluationReport": {
+        "type": "object",
+        "required": [
+          "cohort",
+          "support",
+          "function",
+          "direction",
+          "route",
+          "mode",
+          "profile",
+          "condition",
+          "horizon",
+          "cases",
+          "official_available",
+          "own_available",
+          "paired",
+          "evaluated",
+          "journeys",
+          "days",
+          "mae_own_lower",
+          "mae_own_upper",
+          "mae_official_lower",
+          "mae_official_upper",
+          "p90_own_lower",
+          "p90_own_upper",
+          "p90_official_lower",
+          "p90_official_upper",
+          "band_cases",
+          "band_certain",
+          "band_possible",
+          "journey_count_complete"
+        ],
+        "properties": {
+          "cohort": {
+            "type": "string"
+          },
+          "support": {
+            "type": "string"
+          },
+          "function": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "route": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "profile": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "horizon": {
+            "type": "integer"
+          },
+          "cases": {
+            "type": "integer"
+          },
+          "official_available": {
+            "type": "integer"
+          },
+          "own_available": {
+            "type": "integer"
+          },
+          "paired": {
+            "type": "integer"
+          },
+          "evaluated": {
+            "type": "integer"
+          },
+          "journeys": {
+            "type": "integer"
+          },
+          "days": {
+            "type": "integer"
+          },
+          "mae_own_lower": {
+            "type": "number",
+            "nullable": true
+          },
+          "mae_own_upper": {
+            "type": "number",
+            "nullable": true
+          },
+          "mae_official_lower": {
+            "type": "number",
+            "nullable": true
+          },
+          "mae_official_upper": {
+            "type": "number",
+            "nullable": true
+          },
+          "p90_own_lower": {
+            "type": "number",
+            "nullable": true
+          },
+          "p90_own_upper": {
+            "type": "number",
+            "nullable": true
+          },
+          "p90_official_lower": {
+            "type": "number",
+            "nullable": true
+          },
+          "p90_official_upper": {
+            "type": "number",
+            "nullable": true
+          },
+          "band_cases": {
+            "type": "integer"
+          },
+          "band_certain": {
+            "type": "integer"
+          },
+          "band_possible": {
+            "type": "integer"
+          },
+          "journey_count_complete": {
+            "type": "boolean"
+          }
+        },
+        "description": "Sampled agreement with inferred windows from the same source. Errors and coverage are bounded, not measured physical accuracy. Counts of journeys refer to supported associations; incomplete support is explicit."
+      },
+      "TransportOperatorHistory": {
+        "type": "object",
+        "required": [
+          "operator",
+          "enabled",
+          "status",
+          "forecasts",
+          "physical_validation",
+          "as_of",
+          "samples"
+        ],
+        "properties": {
+          "operator": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          },
+          "forecasts": {
+            "type": "boolean"
+          },
+          "physical_validation": {
+            "type": "boolean"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "samples": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
       }
     }
   }

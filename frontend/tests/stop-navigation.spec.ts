@@ -103,7 +103,7 @@ for(const width of [1280,390])test(`returning map drag keeps the stop group at $
  await page.getByRole('button',{name:'Carris Metropolitana',exact:true}).click();await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click();
  await page.getByLabel('Pesquisar carreira ou paragem').fill('Alfa');await page.locator('.search-results button').last().click();const panel=page.locator('.detail-panel');await expect(panel).toContainText('1 de 2');
  const box=(await page.locator('.map canvas').boundingBox())!,metrics=(await page.locator('.live-metrics').boundingBox())!,x=box.x+box.width-110,y=metrics.y+metrics.height+30;
- expect(await page.evaluate(({x,y})=>!!document.elementFromPoint(x,y)?.closest('.map canvas'),{x,y})).toBe(true);
+ await expect.poll(async()=>page.evaluate(({x,y})=>!!document.elementFromPoint(x,y)?.closest('.map canvas'),{x,y})).toBe(true);
  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x-50,y+20,{steps:5});await page.mouse.move(x,y,{steps:5});await page.mouse.up();
  await expect(panel).toContainText('1 de 2');await expect(panel).toContainText('Paragem Alfa');
 });
@@ -113,7 +113,7 @@ test('mobile touch pinch keeps the stop group',async({page})=>{
  await page.getByRole('button',{name:'Carris Metropolitana',exact:true}).click();await page.getByRole('button',{name:'Metro de Lisboa',exact:true}).click();
  await page.getByLabel('Pesquisar carreira ou paragem').fill('Alfa');await page.locator('.search-results button').last().click();const panel=page.locator('.detail-panel');await expect(panel).toContainText('1 de 2');
  const metrics=(await page.locator('.live-metrics').boundingBox())!,y=metrics.y+metrics.height+30;
- expect(await page.evaluate(y=>!!document.elementFromPoint(250,y)?.closest('.map canvas'),y)).toBe(true);
+ await expect.poll(async()=>page.evaluate(y=>!!document.elementFromPoint(250,y)?.closest('.map canvas'),y)).toBe(true);
  const session=await page.context().newCDPSession(page);
  const touch=(type:string,points:{x:number,y:number,id:number}[])=>session.send('Input.dispatchTouchEvent',{type,touchPoints:points});
  await touch('touchStart',[{x:210,y,id:1},{x:290,y,id:2}]);

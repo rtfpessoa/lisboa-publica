@@ -2,7 +2,7 @@ package app
 
 import (
 	"context"
-	"encoding/json"
+
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,19 +10,17 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"sort"
-	"strconv"
+
 	"strings"
-	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/getkin/kin-openapi/routers"
-	"github.com/getkin/kin-openapi/routers/legacy"
-	"github.com/jackc/pgx/v5/pgconn"
+
 	"go.uber.org/zap"
 	"google.golang.org/api/idtoken"
 	"lisboapublica/internal/api"
+	"lisboapublica/internal/patterns"
 )
 
 // Options configures the public origin, authentication and request limits.
@@ -36,6 +34,7 @@ type Options struct {
 // Server implements the generated API using cached feeds and retained observations.
 type Server struct {
 	Metro          *MetroClient
+	Patterns       *patterns.Service
 	Store          *Store
 	Cache          *Cache
 	Options        Options
@@ -99,54 +98,12 @@ func proxyPrefixes(value string) ([]netip.Prefix, error) {
 	return prefixes, nil
 }
 
-func (s *Server) error(w http.ResponseWriter, r *http.Request, err error) {
-	var pg *pgconn.PgError
-	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) || errors.As(err, &pg) && pg.Code == "57014" {
-		err = fail(http.StatusServiceUnavailable, "request_timeout", "Pedido interrompido; reduza o intervalo e tente novamente.")
-	}
-	var ae *apiError
-	if !errors.As(err, &ae) {
-		s.Log.Error("API operation failed", zap.String("path", r.URL.Path), zap.Error(err))
-		ae = &apiError{http.StatusInternalServerError, "internal", "Erro interno."}
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	if ae.Status == http.StatusTooManyRequests {
-		w.Header().Set("Retry-After", "60")
-	}
-	w.WriteHeader(ae.Status)
-	_ = json.NewEncoder(w).Encode(api.Error{Code: ae.Code, Message: ae.Message})
-}
-
-// Handler returns the generated API with validation, authentication and rate limiting.
-func (s *Server) Handler() (http.Handler, error) {
-	spec, e := api.GetSwagger()
-	if e != nil {
-		return nil, e
-	}
-	spec.Servers = nil
-	if e = spec.Validate(context.Background()); e != nil {
-		return nil, e
-	}
-	router, e := legacy.NewRouter(spec)
-	if e != nil {
-		return nil, e
-	}
-	strict := api.NewStrictHandlerWithOptions(s, nil, api.StrictHTTPServerOptions{RequestErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, e error) {
-		s.error(w, r, fail(http.StatusBadRequest, "request", e.Error()))
-	}, ResponseErrorHandlerFunc: s.error})
-	generated := api.HandlerWithOptions(strict, api.StdHTTPServerOptions{ErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, e error) {
-		s.error(w, r, fail(http.StatusBadRequest, "request", e.Error()))
-	}})
-	return s.middleware(generated, router), nil
-}
-
 func expensiveRead(path string) bool {
 	if strings.HasPrefix(path, "/api/v1/stops/") || strings.HasPrefix(path, "/api/v1/vehicles/") {
 		return true
 	}
 	switch path {
-	case "/api/v1/cp/predictions", "/api/v1/trips", "/api/v1/arrivals", "/api/v1/metrics", "/api/v1/history", "/api/v1/fleet", "/api/v1/traffic", "/api/v1/rankings", "/api/v1/operator-coverage":
+	case "/api/v1/transport/patterns", "/api/v1/metro/patterns", "/api/v1/cp/predictions", "/api/v1/trips", "/api/v1/arrivals", "/api/v1/metrics", "/api/v1/history", "/api/v1/fleet", "/api/v1/traffic", "/api/v1/rankings", "/api/v1/operator-coverage":
 		return true
 	}
 	return false
@@ -261,226 +218,6 @@ func contains(s []string, q string) bool {
 		}
 	}
 	return false
-}
-
-// GetHealth checks database readiness with a bounded timeout.
-func (s *Server) GetHealth(ctx context.Context, _ api.GetHealthRequestObject) (api.GetHealthResponseObject, error) {
-	health, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	if e := s.Store.DB.Ping(health); e != nil {
-		return nil, fail(http.StatusServiceUnavailable, "database", "Base de dados indisponível.")
-	}
-	return api.GetHealth200JSONResponse{Status: "ok", Database: "ok"}, nil
-}
-
-// GetConfig returns public UI configuration and a fresh browser login nonce.
-func (s *Server) GetConfig(ctx context.Context, _ api.GetConfigRequestObject) (api.GetConfigResponseObject, error) {
-	nonce, e := randomSecret()
-	if e != nil {
-		return nil, e
-	}
-	s.cookie(writer(ctx), "lp_login", nonce, time.Now().Add(loginNonceLifetime), http.SameSiteStrictMode)
-	return api.GetConfig200JSONResponse{GoogleClientId: optional(s.Options.GoogleClientID), DevAuth: s.Options.DevAuth, LoginNonce: nonce, LiveRefreshSeconds: int(providerRefreshInterval.Seconds()), HistoryRetentionDays: s.Store.retentionDays(), HistoryResolutionSeconds: s.Store.historyResolution(), HistoryStorageLimitBytes: s.Store.storageLimit(), HistoryCollectionStatus: s.Store.historyCollectionStatus()}, nil
-}
-
-type Filter struct {
-	Limit, Offset        int
-	Revision             string
-	Operators            []string
-	Route, Q, Stop, Sort string
-	From, To             time.Time
-	HourStart, HourEnd   int
-	Weekdays             bool
-}
-
-func (s *Server) filter(ctx context.Context, historical bool) (Filter, error) {
-	query := request(ctx).URL.Query()
-	filter := Filter{Limit: defaultPageSize, Revision: query.Get("revision"), Route: query.Get("route_id"), Q: strings.ToLower(query.Get("q")), Stop: query.Get("stop_id"), Sort: query.Get("sort"), HourEnd: 24}
-	if v := query.Get("limit"); v != "" {
-		filter.Limit, _ = strconv.Atoi(v)
-	}
-	if v := query.Get("offset"); v != "" {
-		filter.Offset, _ = strconv.Atoi(v)
-	}
-	if err := readFilterSelectors(&filter, query); err != nil {
-		return filter, err
-	}
-	now := time.Now().UTC()
-	if historical {
-		local := now.In(lisbon)
-		filter.From = time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, lisbon)
-		filter.To = now
-	} else {
-		filter.From = now
-		filter.To = now.Add(24 * time.Hour)
-	}
-	if err := readFilterDates(&filter, query, historical); err != nil {
-		return filter, err
-	}
-	if !filter.To.After(filter.From) {
-		return filter, fail(http.StatusBadRequest, "range", "Intervalo de datas inválido.")
-	}
-	if historical {
-		if filter.From.Before(now.AddDate(0, 0, -s.Store.retentionDays())) {
-			return filter, fail(http.StatusGone, "history_expired", fmt.Sprintf("Histórico disponível apenas nos últimos %d dias.", s.Store.retentionDays()))
-		}
-		if filter.To.After(now.Add(time.Minute)) || filter.To.Sub(filter.From) > time.Duration(s.Store.retentionDays())*24*time.Hour+time.Hour {
-			return filter, fail(http.StatusBadRequest, "range", "Intervalo histórico fora dos limites.")
-		}
-	} else if filter.To.Sub(filter.From) > maximumScheduleWindow {
-		return filter, fail(http.StatusBadRequest, "range", "Horários limitados a48 horas por pedido.")
-	}
-	if v := query.Get("hour_start"); v != "" {
-		filter.HourStart, _ = strconv.Atoi(v)
-	}
-	if v := query.Get("hour_end"); v != "" {
-		filter.HourEnd, _ = strconv.Atoi(v)
-	}
-	if filter.HourStart >= filter.HourEnd {
-		return filter, fail(http.StatusBadRequest, "hours", "Intervalo horário inválido.")
-	}
-	filter.Weekdays = query.Get("weekdays_only") == "true"
-	return filter, nil
-}
-func (f Filter) selected(p string) bool { return len(f.Operators) == 0 || contains(f.Operators, p) }
-func paginate[T any](items []T, f Filter, revision string) (api.Page, []T) {
-	total := len(items)
-	start := min(f.Offset, total)
-	end := min(start+f.Limit, total)
-	return api.Page{Limit: f.Limit, Offset: f.Offset, Total: total, HasMore: end < total, Revision: optional(revision)}, items[start:end]
-}
-func routeSummary(r api.RouteDetail) api.Route {
-	return api.Route{Id: r.Id, SourceId: r.SourceId, OperatorId: r.OperatorId, ShortName: r.ShortName, LongName: r.LongName, Color: r.Color, StopIds: r.StopIds, PlanId: r.PlanId}
-}
-
-// ListOperators lists provider capabilities and source freshness.
-func (s *Server) ListOperators(ctx context.Context, _ api.ListOperatorsRequestObject) (api.ListOperatorsResponseObject, error) {
-	filter, err := s.filter(ctx, false)
-	if err != nil {
-		return nil, err
-	}
-	state, err := s.Cache.state(filter.Revision)
-	if err != nil {
-		return nil, err
-	}
-	out := []api.Operator{}
-	now := time.Now()
-	for _, p := range providers {
-		out = append(out, projectOperator(state, p.ID, now))
-	}
-	page, data := paginate(out, filter, state.Revision)
-	return api.ListOperators200JSONResponse{Data: data, Page: page}, nil
-}
-
-func projectOperator(state *State, id string, now time.Time) api.Operator {
-	v := state.Operators[id]
-	_, v.ReportedPositions, v.EstimatedPositions, v.LastKnownPositions, v.LastKnownTruncated = projectLive(state.Live[id], v, state.Static[id], now)
-	markOperatorFreshness(&v, now)
-	return v
-}
-
-func markOperatorFreshness(v *api.Operator, now time.Time) {
-	if v.Status == "ok" && (v.LiveUpdatedAt == nil || now.Sub(*v.LiveUpdatedAt) > 90*time.Second) {
-		v.Status = api.OperatorStatusStale
-	}
-	if v.ObservedAt != nil && now.Sub(*v.ObservedAt) > 180*time.Second && v.Status == "ok" {
-		v.Status = api.OperatorStatusStale
-	}
-	if v.StaticStatus == "ok" && (v.StaticUpdatedAt == nil || now.Sub(*v.StaticUpdatedAt) > 12*time.Hour) {
-		v.StaticStatus = api.OperatorStaticStatusStale
-	}
-}
-
-// ListRoutes searches published routes within an immutable collection.
-func (s *Server) ListRoutes(ctx context.Context, _ api.ListRoutesRequestObject) (api.ListRoutesResponseObject, error) {
-	filter, err := s.filter(ctx, false)
-	if err != nil {
-		return nil, err
-	}
-	state, err := s.Cache.state(filter.Revision)
-	if err != nil {
-		return nil, err
-	}
-	out := []api.Route{}
-	for p, d := range state.Static {
-		if !filter.selected(p) {
-			continue
-		}
-		for _, r := range d.Routes {
-			if filter.Q != "" && !nameSearch(r.ShortName+" "+r.LongName+" "+r.SourceId+" "+passengerRouteSearchName(r), filter.Q) {
-				continue
-			}
-			out = append(out, routeSummary(r))
-		}
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Id < out[j].Id })
-	page, data := paginate(out, filter, state.Revision)
-	return api.ListRoutes200JSONResponse{Data: data, Page: page}, nil
-}
-
-// GetRoute returns a qualified route and its published geometry.
-func (s *Server) GetRoute(ctx context.Context, r api.GetRouteRequestObject) (api.GetRouteResponseObject, error) {
-	state, _ := s.Cache.state("")
-	for _, d := range state.Static {
-		for _, v := range d.Routes {
-			if v.Id == r.RouteId {
-				return api.GetRoute200JSONResponse(v), nil
-			}
-		}
-	}
-	return nil, fail(http.StatusNotFound, "not_found", "Carreira não encontrada.")
-}
-
-// ListStops searches published stops within an immutable collection.
-func (s *Server) ListStops(ctx context.Context, _ api.ListStopsRequestObject) (api.ListStopsResponseObject, error) {
-	filter, err := s.filter(ctx, false)
-	if err != nil {
-		return nil, err
-	}
-	state, err := s.Cache.state(filter.Revision)
-	if err != nil {
-		return nil, err
-	}
-	out := []api.Stop{}
-	for p, d := range state.Static {
-		if !filter.selected(p) {
-			continue
-		}
-		for _, v := range d.Stops {
-			if filter.Route != "" && !contains(v.RouteIds, filter.Route) {
-				continue
-			}
-			if filter.Q != "" && !nameSearch(v.Name+" "+v.SourceId, filter.Q) {
-				continue
-			}
-			out = append(out, v)
-		}
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Id < out[j].Id })
-	page, data := paginate(out, filter, state.Revision)
-	return api.ListStops200JSONResponse{Data: data, Page: page}, nil
-}
-
-// ListVehicles lists reported or explicitly estimated positions.
-func (s *Server) ListVehicles(ctx context.Context, _ api.ListVehiclesRequestObject) (api.ListVehiclesResponseObject, error) {
-	filter, err := s.filter(ctx, false)
-	if err != nil {
-		return nil, err
-	}
-	state, asOf, revision, err := s.vehicleState(filter, time.Now().UTC())
-	if err != nil {
-		return nil, err
-	}
-	if filter.Stop != "" {
-		_, err = arrivalOperator(state, filter)
-	}
-	var out []api.Vehicle
-	if err == nil {
-		out, err = listedVehicles(ctx, state, filter, asOf)
-	}
-	sortVehicles(out)
-	page, data := paginate(out, filter, revision)
-	return api.ListVehicles200JSONResponse{Data: data, Page: page}, err
 }
 
 var _ api.StrictServerInterface = (*Server)(nil)

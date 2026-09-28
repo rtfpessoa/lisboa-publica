@@ -115,3 +115,18 @@ CM operational-date enrichment requires exactly one shared Hub row with the same
 ## Reporting membership
 
 Accepted normalized successful position snapshots drive backend-owned latest reporting state. Missing identity means missing accepted publication membership, including source eligibility filtering or local rejection; it does not prove physical stopping or raw provider absence. Repeated rows retain original position clocks, so publication presence alone cannot keep a stale observation reporting. Source failures and collection expiry produce an unconfirmed state. The latest exact operator/source state is persisted independently of display retention; see the [state evaluation table](../data/README.md#backend-owned-reporting-state).
+
+## Staged transport-pattern evidence
+
+When its operator stage is enabled, the transport archive consumes the already accepted normalized live snapshot before last-known projection, with no extra source calls. It retains original observation clocks, source identity/service references, stop/status/position-kind, coordinates and optional reported speed, plus refresh-failure receipts. Sampling and server-only detail/FIFO limits are shared with Metro. These records are published source evidence and may include estimated positions; they do not establish physical stop arrival/departure, dwell, headway or independently validated forecast accuracy. CM now has an experimental native-pattern/published-stop adapter; its own points require compatible source evidence and retained components. See [operator stages and maintenance](../metro-patterns.md#other-operator-stages).
+
+## Experimental native-pattern adapter
+
+The patterns archive verifies the existing explicit native line/pattern path and
+shape before using a reported stop-state sequence. Three adjacent disjoint
+incoming-to-stopped windows, reported position proximity and strict source-clock
+continuity admit an experimental association. This is published source progress,
+not physical validation. Existing normalized direct-stop and shared predictions
+remain official; no extra position/feed poll is introduced. Selecting a CM stop
+in patterns registers the station board's existing bounded arrival interest.
+See [adapter rules and correction limits](../metro-patterns.md#published-stop-adapters-for-later-stages).

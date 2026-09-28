@@ -129,6 +129,7 @@ func (f *Fetcher) publishArrivals(stop string, v arrivalSnapshot) {
 	operator, _, _ := strings.Cut(stop, ":")
 	if f.Cache.current.Static[operator] == v.static {
 		f.Cache.arrivals.publish(stop, v)
+		f.recordArrivalHistory(operator, stop, v)
 	}
 }
 

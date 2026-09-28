@@ -31,6 +31,7 @@ func (f *Fetcher) refreshSharedPredictions(parent context.Context) {
 		results[operator] = result
 	}
 	f.Cache.updateProviderPredictions(state.Static, results)
+	f.recordFeedHistory(results)
 }
 func (c *Cache) updateProviderPredictions(static map[string]*StaticData, results map[string]*CPData) {
 	c.mu.Lock()

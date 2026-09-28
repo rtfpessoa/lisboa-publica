@@ -4,6 +4,7 @@ import (
 	"context"
 	"go.uber.org/zap"
 	"lisboapublica/internal/api"
+	"lisboapublica/internal/patterns"
 	"strings"
 	"sync"
 	"time"
@@ -13,6 +14,13 @@ import (
 func (f *Fetcher) Run(ctx context.Context) {
 	var wg sync.WaitGroup
 	wg.Add(providerCollectorCount)
+	if f.Patterns != nil {
+		f.historyOperators = f.Patterns.EnabledOperators()
+		f.history = make(chan patterns.ProviderReceipt, 8)
+		f.historyGaps = map[string]bool{}
+		wg.Add(1)
+		go func() { defer wg.Done(); f.historyLoop(ctx) }()
+	}
 	go func() { defer wg.Done(); f.staticLoop(ctx) }()
 	go func() { defer wg.Done(); f.cpLoop(ctx) }()
 	go func() { defer wg.Done(); f.cmArrivalLoop(ctx) }()
@@ -56,6 +64,9 @@ func (f *Fetcher) staticLoop(ctx context.Context) {
 	}
 }
 func (f *Fetcher) markError(ctx context.Context, p provider, static bool, err error) {
+	if !static {
+		f.recordProviderHistory(p.ID, nil, time.Now().UTC(), "upstream_refresh_failed")
+	}
 	f.Store.PublishMu.Lock()
 	defer f.Store.PublishMu.Unlock()
 	op := f.Cache.operator(p.ID)
