@@ -1,6 +1,6 @@
 # Application architecture
 
-Lisboa Pública runs as one Go process that serves the generated HTTP API and the built React frontend. Collection, normalization, cache publication and historical persistence are responsibilities within that process. Postgres or CockroachDB stores durable state. There are no independently deployed services per operator.
+Lisboa Pública runs as one Go process that serves the generated HTTP API and the built React frontend. Collection, normalization, cache publication and historical persistence are responsibilities within that process. Postgres or CockroachDB stores durable state. Production selects PostgreSQL 17 in the dashboard’s Compose project with a persistent volume and an internal network; Cockroach Cloud remains an optional external configuration. There are no independently deployed services per operator.
 
 ## Runtime boundaries
 
@@ -120,6 +120,7 @@ Metro secrets stay in the server environment. `PUBLIC_ORIGIN` establishes the al
 | Static/geometry failure | Preserve eligible prior data; geometry availability may differ from schedule availability; fallback is source-specific |
 | Database write failure/storage pause | Live memory can continue while durability/history lags or has gaps; collection status explains the interruption |
 | Expired revision | HTTP 410; callers restart pagination |
+| Clean database cutover | Initialize an empty schema and recollect static/live feeds; previous database history, sessions and API keys are absent; separate filesystem archives remain independent |
 | Restart/shutdown | Restore durable state with original clocks; CP is transient; unfinished history and changes since successful writes may be lost |
 
 ## Runtime configuration

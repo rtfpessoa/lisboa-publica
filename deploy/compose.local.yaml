@@ -1,0 +1,15 @@
+# Append after existing overrides when switching from Cloud to local PostgreSQL.
+services:
+  dashboard:
+    environment:
+      DATABASE_URL: postgresql://lisboapublica:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@database:5432/lisboapublica?sslmode=disable
+    depends_on:
+      database:
+        condition: service_healthy
+  database:
+    profiles: !reset []
+    volumes: !override
+      - postgres_data:/var/lib/postgresql/data
+volumes:
+  postgres_data:
+    name: ${POSTGRES_VOLUME_NAME:-lisboa-publica_postgres_data}

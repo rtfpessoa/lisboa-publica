@@ -2,6 +2,8 @@
 
 History contains selected observations collected by this installation. It does not reconstruct missing movement, prove that scheduled trips occurred or import a provider's historical archive. CP predictions are memory-only; direct Metro predictions have a durable last-state cache but are not retained vehicle history.
 
+A clean database cutover deliberately starts a new database history without importing Cloud rows. Existing filesystem transport archives are separate and are preserved. See the [deployment procedure](../../deploy/README.md#switch-from-cloud-to-a-clean-local-database).
+
 ## Collection modes
 
 [History configuration](../../cmd/server/config.go) accepts `HISTORY_INTERVAL_SECONDS=0` or `300`. `0` is the code default; [production configuration](../../deploy/README.md) explicitly selects `300`.

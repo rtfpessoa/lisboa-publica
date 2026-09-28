@@ -45,7 +45,7 @@ New features must update affected documentation in the same change. See [project
 
 Reads are public by default; optional Google sign-in manages personal scoped API keys. Supplied keys are always validated, including expiry, revocation and scopes. Set `PUBLIC_READS=false` to require a session or scoped key for protected reads. [Google Identity](docs/integrations/google-identity.md) explains login and session/key data.
 
-For production, set `ENVIRONMENT=production`, an HTTPS `PUBLIC_ORIGIN`, the intended `LISTEN_ADDR`, and a TLS-secured `DATABASE_URL`. Configure `GOOGLE_CLIENT_ID` and register the matching origin when sign-in is needed. Follow the [deployment guide](deploy/README.md) for reverse-proxy trust, credentials, one-collector topology, retention, aggregate history and storage guards. [Runtime configuration](docs/architecture.md#runtime-configuration) distinguishes defaults from production settings.
+For production, set `ENVIRONMENT=production`, an HTTPS `PUBLIC_ORIGIN`, the intended `LISTEN_ADDR`, and `DATABASE_URL` pointing to the private PostgreSQL service in Compose. The local database is persistent and has no published host port; external database connections require verified TLS. Configure `GOOGLE_CLIENT_ID` and register the matching origin when sign-in is needed. Follow the [deployment guide](deploy/README.md) for reverse-proxy trust, credentials, one-collector topology, retention, aggregate history and storage guards. [Runtime configuration](docs/architecture.md#runtime-configuration) distinguishes defaults from production settings.
 
 ## Data interpretation
 
