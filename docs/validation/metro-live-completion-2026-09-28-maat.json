@@ -1,0 +1,29 @@
+{
+  "analysis_patterns": [
+    "./cmd/metro-calibrate/...",
+    "./cmd/server/...",
+    "./internal/api/...",
+    "./internal/app/...",
+    "./internal/patterns/..."
+  ],
+  "base": "b3786a60df60282c34084505f80180b0eabc1bfe",
+  "candidate_tree": "e14d69e59ce7f4fadf7d96a5bc089795f7ebc24b",
+  "checked_languages": [
+    "go"
+  ],
+  "coverage_map": {
+    "implementation-simplicity": "incomplete",
+    "maintainability": "incomplete"
+  },
+  "critical_regressions": [],
+  "go_only": true,
+  "maat_bundle": "a0882b2d071c7343492bd189f47e778c97255da5",
+  "reason": "Maat found no structural regression.",
+  "score": 98.0,
+  "score_delta": 1.0,
+  "status": "passed",
+  "suppressed_count": 0,
+  "unchecked_languages": [
+    "typescript"
+  ]
+}

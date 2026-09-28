@@ -1,0 +1,106 @@
+{
+  "started": "2026-09-28T23:08:06.273Z",
+  "finished": "2026-09-28T23:08:09.904Z",
+  "scope": "Actual production Go/Caddy/compiled frontend/native browser EventSource initial reset, two sequential viewports; no synthetic feed, no physical timing/cadence measurement",
+  "health": {
+    "database": "ok",
+    "status": "ok"
+  },
+  "metro_snapshot": {
+    "status": "ok",
+    "history_status": "collecting",
+    "vehicles": 23,
+    "trains": 18,
+    "forecast_contexts": 0,
+    "model_projections": 0,
+    "source_checked_at": "2026-09-28T23:08:06.168152694Z"
+  },
+  "clients": [
+    {
+      "width": 1280,
+      "app_rendered": true,
+      "native_eventsource": {
+        "reset_ms": 320.7999999523163,
+        "revision": "3ef494dad04ab7af0ac21c7fe619a683bdcc720c3fb7b6020a355c078082b475",
+        "train_count": 7,
+        "vehicle_count": 7,
+        "history_status": "collecting",
+        "status": "ok",
+        "recovery": "none"
+      },
+      "page_errors": []
+    },
+    {
+      "width": 390,
+      "app_rendered": true,
+      "native_eventsource": {
+        "reset_ms": 380.40000009536743,
+        "revision": "d37cd8d453c9c9f106fb4a1b3fa56ee3777fc5f6a733054ef63634a5663d6025",
+        "train_count": 7,
+        "vehicle_count": 7,
+        "history_status": "collecting",
+        "status": "ok",
+        "recovery": "none"
+      },
+      "page_errors": []
+    }
+  ],
+  "deployment": {
+    "verified_at": "2026-09-28T23:07:38.709319+00:00",
+    "source_commit": "cd68383e9d07baad6bf832977f8ccbed1d5be080",
+    "image": "lisboa-publica:cd68383e9d07baad6bf832977f8ccbed1d5be080",
+    "image_id": "sha256:b8929fb49ecbaa8ca810ad409a506307faac57dd53d69389aaca97cc40b53ebb",
+    "oci_revision": "cd68383e9d07baad6bf832977f8ccbed1d5be080",
+    "dashboard_health": "healthy",
+    "database_health": "healthy",
+    "environment_unchanged": true,
+    "limits_isolation_networks_unchanged": true,
+    "archive_volume": "lisboa-publica_transport_history",
+    "database_volumes": [
+      "lisboa-publica_postgres_20260928"
+    ],
+    "database_ports_published": false,
+    "collector_count": 1,
+    "artifact_hashes": {
+      "/app/server": "9e4e8dbcb9a33530ef4daa9cd4a5a05bf80ea5705786762907c54d6f4c46b90a",
+      "/app/frontend/dist/index.html": "016fe43269f40fd6c9bffaddefb3fdce884530a9e4daf9c2b2431c0f062abaed"
+    },
+    "packaged_artifacts_match_running": true,
+    "archive_backup": {
+      "members": 33,
+      "bytes": 12738560,
+      "sha256": "ed1d0d462fc2151275ab772165bcad463fb03703ec0ccce6cefc2a87a1177fed",
+      "single_owner_stopped": true
+    },
+    "database_backup_bytes": 41486529,
+    "database_backup_catalog_entries": 32,
+    "model_allowlist": "unset",
+    "metro_direct_target_ms": "500",
+    "startup_error_messages": {},
+    "startup_message_counts": {
+      "server started": 1,
+      "vehicle publication": 77
+    },
+    "container_memory": "737.9MiB / 1.25GiB",
+    "container_cpu": "151.86%",
+    "rollback_exercised": false
+  },
+  "later_checkpoint_sample": {
+    "verified_at": "2026-09-28T23:08:38.628426706Z",
+    "train_count": 18,
+    "history_status": "collecting",
+    "persistence_states": {
+      "committed": 15,
+      "pending": 3
+    },
+    "association_states": {
+      "supported": 18
+    },
+    "model_projections": 0
+  },
+  "initial_read_failure": {
+    "http_status": 503,
+    "code": "busy",
+    "resolved_on_retry": true
+  }
+}

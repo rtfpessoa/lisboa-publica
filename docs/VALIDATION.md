@@ -171,3 +171,7 @@ Production evidence: [short desktop search](acceptance/search-desktop.png), [sho
 
 
 The separate existing real **quasar-alpha/xhigh final reviewer recommends final acceptance of deployed72c8a63**, with no code or deployment blockers after inspecting real production search/history/depot/speed screenshots and the test/resource results. Main confirms the search clipping fix, explicit current-application support states, depot/passenger-stop distinction and Metro speed provenance meet this correction's requirements. Existing generated API contract, public UI, provider request limits and storage settings are unchanged. Documentation/evidence commits do not change executable VERSION.
+
+## Metro completion release, 2026-09-29 Lisbon time
+
+The [completion checks](validation/metro-live-completion-2026-09-28.md) and [main rollout](validation/metro-live-main-rollout-2026-09-29.md) record implementation `cd68383e9d07`, normal Maat98/+1, final full database-enabled race/vet, affected browser/native checks and production verification. Reviewed model activation remains unavailable without a qualified actual-source allowlist; no physical timing accuracy is asserted.

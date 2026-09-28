@@ -47,6 +47,33 @@ failures, not new provider observations or production incidents.
 Final native, latest affected race, Maat and deployment results are recorded below as they complete.
 Physical timing error and production upstream source cadence/duplicate fraction remain unmeasured.
 
-Final current-code native Go/compiled-frontend/EventSource check passed:60 changed DOM samples, P95597ms, zero fallback reads/browser errors, and successful pinned50-call checkpoint recovery. The [JSON evidence](metro-live-completion-2026-09-28.json) retains scope and clocks. This is two synthetic clients with no Caddy/network-delay/provider freshness profile. Heap239,874,392 bytes, system361,040,232 bytes,11 goroutines and2 streams were measured.
+Pre-Maat native Go/compiled-frontend/EventSource check passed:60 changed DOM samples, P95597ms, zero fallback reads/browser errors, and successful pinned50-call checkpoint recovery. The [JSON evidence](metro-live-completion-2026-09-28.json) retains scope and clocks. This is two synthetic clients with no Caddy/network-delay/provider freshness profile. Heap239,874,392 bytes, system361,040,232 bytes,11 goroutines and2 streams were measured.
 
 Latest database-enabled affected Metro/Hub/positions/budget race checks passed: app78.180s and patterns3.815s after the final direction-gap/correction/immutable-revision changes.
+
+## Final committed-source verification
+
+Implementation commit: `cd68383e9d07baad6bf832977f8ccbed1d5be080`.
+The normal signed commit gate passed with score **98**, delta **+1** against
+`b3786a60df60282c34084505f80180b0eabc1bfe`, zero critical regressions and zero suppressions.
+The [gate result](metro-live-completion-2026-09-28-maat.json) identifies pinned Maat bundle
+`a0882b2d071c7343492bd189f47e778c97255da5`. Coverage is Go only; TypeScript is unchecked
+by Maat, and implementation-simplicity/maintainability coverage remains incomplete.
+Earlier blocked attempts scored90/91; the repairs separated collection phases, archive
+transaction phases, view projection and cohesive runtime state without changing gate thresholds.
+A full test launch during those edits failed compilation; the final stable-source run is reported separately.
+
+The final rebuilt native fixture passed with59 changed DOM samples, P95 **585 ms**,
+zero fallback reads/browser errors and successful pinned50-call history recovery.
+[Final JSON](metro-live-completion-2026-09-28-final.json) records two synthetic clients,
+238,877,048 heap bytes,362,019,160 system bytes,11 goroutines and2 streams.
+No production proxy, upstream request or physical timing is involved.
+Final affected browser run passed **29**, with **1 fixture-dependent skip**, in1.3min;
+this includes14 Metro live checks and other Metro-related matching tests.
+
+The final stable committed-source `make test` passed with the dedicated Cockroach test
+database: full app race **173.353s**, patterns race **16.924s**, then `go vet ./...`.
+Final local documentation verification checked15 Markdown files,423 local targets,
+35 fragments and257 authoritative OpenAPI references, with no failures.
+
+The [2026-09-29 Lisbon main rollout](metro-live-main-rollout-2026-09-29.md) records the subsequently performed production checks and protected backup boundary.

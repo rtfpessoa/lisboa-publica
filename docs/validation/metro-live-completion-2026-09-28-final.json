@@ -1,0 +1,703 @@
+{
+  "started": "2026-09-28T22:59:45.412Z",
+  "finished": "2026-09-28T23:00:02.781Z",
+  "scope": "Synthetic direct Go + compiled frontend + native browser EventSource; two viewports; no proxy/network-delay profile or provider requests",
+  "pinned_checkpoint_recovery": true,
+  "clients": 2,
+  "changed_dom_samples": 59,
+  "p95_ms": 585,
+  "resets": [
+    2,
+    4
+  ],
+  "snapshot_reads": [
+    0,
+    0
+  ],
+  "browser_errors": [],
+  "runtime": {
+    "goroutines": 11,
+    "heap_bytes": 238877048,
+    "streams": 2,
+    "sys_bytes": 362019160
+  },
+  "baseline_admission_latency": "not measured; browser setup occurred after first baseline flush",
+  "physical_accuracy": "not measured",
+  "native_events": [
+    [
+      {
+        "at": "2026-09-28T22:59:47.125Z",
+        "kind": "connect",
+        "hidden": false,
+        "url": "/api/v1/metro/live/stream?"
+      },
+      {
+        "at": "2026-09-28T22:59:47.321Z",
+        "kind": "open",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?",
+        "ready_state": 1
+      },
+      {
+        "at": "2026-09-28T22:59:47.322Z",
+        "kind": "reset",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:47.715Z",
+        "kind": "close",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?"
+      },
+      {
+        "at": "2026-09-28T22:59:47.716Z",
+        "kind": "connect",
+        "hidden": false,
+        "url": "/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm"
+      },
+      {
+        "at": "2026-09-28T22:59:47.934Z",
+        "kind": "open",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "ready_state": 1
+      },
+      {
+        "at": "2026-09-28T22:59:47.936Z",
+        "kind": "reset",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:48.604Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:49.241Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:49.742Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:50.096Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:50.596Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:51.089Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:51.597Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:52.093Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:52.590Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:53.090Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:53.591Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:54.089Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:54.595Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:55.090Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:55.591Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:56.090Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:56.590Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:57.095Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:57.594Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:58.095Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:58.596Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:59.089Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:59.590Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T23:00:00.091Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T23:00:00.590Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T23:00:01.090Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T23:00:01.594Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T23:00:02.092Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T23:00:02.590Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      }
+    ],
+    [
+      {
+        "at": "2026-09-28T22:59:48.285Z",
+        "kind": "connect",
+        "hidden": false,
+        "url": "/api/v1/metro/live/stream?"
+      },
+      {
+        "at": "2026-09-28T22:59:48.450Z",
+        "kind": "open",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?",
+        "ready_state": 1
+      },
+      {
+        "at": "2026-09-28T22:59:48.451Z",
+        "kind": "reset",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:48.899Z",
+        "kind": "close",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?"
+      },
+      {
+        "at": "2026-09-28T22:59:48.900Z",
+        "kind": "connect",
+        "hidden": false,
+        "url": "/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm"
+      },
+      {
+        "at": "2026-09-28T22:59:49.087Z",
+        "kind": "open",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "ready_state": 1
+      },
+      {
+        "at": "2026-09-28T22:59:49.088Z",
+        "kind": "reset",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+        "selected": null,
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:49.225Z",
+        "kind": "close",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm"
+      },
+      {
+        "at": "2026-09-28T22:59:49.225Z",
+        "kind": "connect",
+        "hidden": false,
+        "url": "/api/v1/metro/live/stream?vehicle_id=metro%3A1"
+      },
+      {
+        "at": "2026-09-28T22:59:49.406Z",
+        "kind": "open",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1",
+        "ready_state": 1
+      },
+      {
+        "at": "2026-09-28T22:59:49.407Z",
+        "kind": "reset",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "none"
+      },
+      {
+        "at": "2026-09-28T22:59:49.408Z",
+        "kind": "close",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1"
+      },
+      {
+        "at": "2026-09-28T22:59:49.408Z",
+        "kind": "connect",
+        "hidden": false,
+        "url": "/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34"
+      },
+      {
+        "at": "2026-09-28T22:59:49.589Z",
+        "kind": "open",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "ready_state": 1
+      },
+      {
+        "at": "2026-09-28T22:59:49.590Z",
+        "kind": "reset",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:50.260Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:50.759Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:51.259Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:51.764Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:52.259Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:52.759Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:53.282Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:53.762Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:54.257Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:54.763Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:55.258Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:55.778Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:56.259Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:56.756Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:57.258Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:57.756Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:58.259Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:58.758Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:59.256Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T22:59:59.757Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T23:00:00.259Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T23:00:00.763Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T23:00:01.258Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "current"
+      },
+      {
+        "at": "2026-09-28T23:00:02.598Z",
+        "kind": "frame",
+        "hidden": false,
+        "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+        "selected": "metro:run:210dadec141a8ec897de9b34",
+        "selected_present": true,
+        "recovery": "historical"
+      }
+    ]
+  ],
+  "http_events": [
+    {
+      "at": "2026-09-28T22:59:47.344Z",
+      "width": 1280,
+      "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?",
+      "status": 200
+    },
+    {
+      "at": "2026-09-28T22:59:47.944Z",
+      "width": 1280,
+      "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+      "status": 200
+    },
+    {
+      "at": "2026-09-28T22:59:48.455Z",
+      "width": 390,
+      "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?",
+      "status": 200
+    },
+    {
+      "at": "2026-09-28T22:59:49.096Z",
+      "width": 390,
+      "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?stop_id=metro%3Agtfs-rm",
+      "status": 200
+    },
+    {
+      "at": "2026-09-28T22:59:49.415Z",
+      "width": 390,
+      "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1",
+      "status": 200
+    },
+    {
+      "at": "2026-09-28T22:59:49.592Z",
+      "width": 390,
+      "url": "http://127.0.0.1:18082/api/v1/metro/live/stream?vehicle_id=metro%3A1&journey_id=metro%3Arun%3A210dadec141a8ec897de9b34",
+      "status": 200
+    }
+  ]
+}
