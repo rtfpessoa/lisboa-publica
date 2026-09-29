@@ -534,6 +534,21 @@ export type MetroDepartureRevision = {
     reason: string;
     evidence?: MetroEventEvidence;
 };
+export type MetroPlatformForecast = {
+    platform: string;
+    source_updated_at: string;
+    at: string | null;
+    valid_until: string;
+};
+export type MetroForecastAssociation = {
+    source_reference: string | null;
+    estimated_reference: string | null;
+    method: "published" | "unknown" | "order";
+    evidence_at: string | null;
+    anchors: string[];
+    platforms: MetroPlatformForecast[];
+    limitations: string[];
+};
 export type StopCall = {
     id: string;
     journey_id: string | null;
@@ -554,6 +569,7 @@ export type StopCall = {
     vehicle_ref?: VehicleReference;
     own_prediction?: (CallTimeEvidence) | null;
     departure_revisions?: MetroDepartureRevision[];
+    metro_forecast?: MetroForecastAssociation;
 };
 export type StopCallPage = {
     data: StopCall[];
@@ -760,6 +776,8 @@ export type MetroTrain = {
     lifecycle?: MetroJourneyLifecycle;
     direction_evidence?: MetroDirectionEvidence;
     model_projection?: MetroModelProjection;
+    /** Whether compatible published paths agree on the origin; false means shared geometry only, not a known full journey. */
+    origin_known?: boolean;
 };
 export type MetroJourneyRecovery = {
     status: "none" | "current" | "historical" | "partial" | "recovering" | "expired" | "unavailable" | "corrupt";
@@ -774,6 +792,8 @@ export type MetroForecastContext = {
     status: "admissible" | "incompatible";
     reason: string;
     calls: StopCall[];
+    /** Whether all compatible source paths agree on the origin. A shared downstream axis cannot fabricate earlier visits. */
+    origin_known?: boolean;
 };
 export type MetroLiveFrame = {
     revision: string;
@@ -785,7 +805,7 @@ export type MetroLiveFrame = {
     directions: BoardDirection[];
     selected_journey_id: string | null;
     history_status: string;
-    /** Usable official predictions without a supported journey association; never a fabricated map link. */
+    /** Usable official or independently supported own predictions without a qualified current journey association; never a fabricated map link. */
     unassociated_forecasts: StopCall[];
     recovery?: MetroJourneyRecovery;
     forecast_contexts?: MetroForecastContext[];

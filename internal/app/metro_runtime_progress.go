@@ -5,22 +5,6 @@ import (
 	"time"
 )
 
-func latestMetroPoints(points []metroPoint) (map[string]metroPoint, bool) {
-	current := map[string]metroPoint{}
-	conflict := false
-	for _, p := range points {
-		if old, ok := current[p.Stop]; ok {
-			if old.Platform != p.Platform || metroPointClockConflict(old, p) {
-				conflict = true
-			}
-			if !p.Clock.After(old.Clock) {
-				continue
-			}
-		}
-		current[p.Stop] = p
-	}
-	return current, conflict
-}
 func metroPointClockConflict(old, p metroPoint) bool {
 	return old.Clock.Equal(p.Clock) && !equalMetroSeconds(old.Seconds, p.Seconds)
 }
@@ -120,10 +104,12 @@ func metroCallPhases(t *api.MetroTrain) {
 	}
 	for n := range t.Calls {
 		c := &t.Calls[n]
-		if n < *t.NextIndex {
+		if n < *t.NextIndex && (t.OriginKnown == nil || *t.OriginKnown || c.Arrival.Inferred != nil || c.Arrival.Actual != nil) {
 			c.Phase = "previous"
-		} else {
+		} else if n >= *t.NextIndex {
 			c.Phase = "future"
+		} else {
+			c.Phase = "unknown"
 		}
 		if t.CurrentIndex != nil && n == *t.CurrentIndex {
 			c.Phase = "current"

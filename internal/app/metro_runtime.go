@@ -151,29 +151,45 @@ func (r *metroRuntime) updateTopology(data *MetroData, static *StaticData) {
 	}
 	data.Topology = r.topology
 }
+
+// A shared axis may support downstream ordering without proving the origin.
 func uniqueMetroPath(topology patterns.Topology, stop, direction string) (patterns.Pattern, bool) {
-	var selected *patterns.Pattern
+	paths := []patterns.Pattern{}
+	var selected patterns.Pattern
 	for _, path := range topology.Patterns {
 		if path.Direction != direction || !metroPathContains(path, stop) {
 			continue
 		}
-		if selected != nil {
-			if selected.Route != path.Route {
-				return patterns.Pattern{}, false
-			}
-			// Different stop orders are ambiguous, even if an approximate trip ID matches.
-			if strings.Join(selected.Stops, "|") != strings.Join(path.Stops, "|") {
-				return patterns.Pattern{}, false
-			}
-		} else {
-			copy := path
-			selected = &copy
+		paths = append(paths, path)
+		if len(path.Stops) > len(selected.Stops) || len(path.Stops) == len(selected.Stops) && strings.Join(path.Stops, "|") < strings.Join(selected.Stops, "|") {
+			selected = path
 		}
 	}
-	if selected == nil {
+	if len(paths) == 0 {
 		return patterns.Pattern{}, false
 	}
-	return *selected, true
+	for _, path := range paths {
+		seen := map[string]bool{}
+		for _, code := range path.Stops {
+			if seen[code] {
+				return patterns.Pattern{}, false
+			}
+			seen[code] = true
+		}
+		if path.Route != selected.Route || metroPathEmbeddings(selected.Stops, path.Stops) != 1 {
+			return patterns.Pattern{}, false
+		}
+	}
+	return selected, true
+}
+func metroPathEmbeddings(axis, stops []string) int {
+	count := 0
+	for start := 0; start+len(stops) <= len(axis); start++ {
+		if strings.Join(axis[start:start+len(stops)], "|") == strings.Join(stops, "|") {
+			count++
+		}
+	}
+	return count
 }
 func metroPathCalls(path patterns.Pattern, data *MetroData, static *StaticData, id string) []api.StopCall {
 	calls := []api.StopCall{}
@@ -222,6 +238,7 @@ func (r *metroRuntime) applyPoints(t *metroTrack, points []metroPoint, now time.
 		return
 	}
 	before := cloneMetroTrain(t.Train)
+	clearMetroSourceGap(t, points)
 	current, conflict := latestMetroPoints(points)
 	conflict = conflict || conflictingMetroPoints(t, current, now)
 	if !conflict {
@@ -239,6 +256,17 @@ func (r *metroRuntime) applyPoints(t *metroTrack, points []metroPoint, now time.
 	r.projectPoints(t, current, now)
 	r.applyMetroMovement(t, current, now)
 	r.closeAtTerminal(t, before)
+}
+func clearMetroSourceGap(t *metroTrack, points []metroPoint) {
+	latest := t.Train.SourceUpdatedAt
+	for _, p := range points {
+		if p.Clock.After(latest) {
+			latest = p.Clock
+		}
+	}
+	if !t.Train.SourceUpdatedAt.IsZero() && latest.Sub(t.Train.SourceUpdatedAt) > 60*time.Second {
+		suspendMetroTrack(t, "Intervalo entre publicações superior a 60 segundos; continuidade por confirmar")
+	}
 }
 func equalMetroSeconds(a, b *int) bool {
 	return a == nil && b == nil || a != nil && b != nil && *a == *b

@@ -4,10 +4,11 @@ import (
 	"lisboapublica/internal/api"
 	"lisboapublica/internal/patterns"
 	"strings"
+	"time"
 )
 
 func (b *metroFrameBuilder) stationForecasts() {
-	linked := linkedMetroForecasts(b.frame.Trains)
+	linked := linkedMetroForecastsAt(b.frame.Trains, b.now)
 	for _, context := range b.contexts {
 		if !b.includeForecastContext(context) {
 			continue
@@ -77,10 +78,10 @@ func (b *metroFrameBuilder) contextMatchesVehicle(context api.MetroForecastConte
 	}
 	return false
 }
-func linkedMetroForecasts(trains []api.MetroTrain) map[string]bool {
+func linkedMetroForecastsAt(trains []api.MetroTrain, now time.Time) map[string]bool {
 	linked := map[string]bool{}
 	for _, t := range trains {
-		if t.Association == "supported" {
+		if metroCurrentDirection(t, now) {
 			linkMetroCalls(linked, t)
 		}
 	}
@@ -88,7 +89,7 @@ func linkedMetroForecasts(trains []api.MetroTrain) map[string]bool {
 }
 func linkMetroCalls(linked map[string]bool, t api.MetroTrain) {
 	for _, c := range t.Calls {
-		if c.Arrival.Prediction != nil {
+		if c.Arrival.Prediction != nil || c.OwnPrediction != nil {
 			linked[t.RouteId+"|"+t.Reference+"|"+c.StopId+"|"+t.Destination] = true
 		}
 	}
@@ -127,7 +128,7 @@ func (b *metroFrameBuilder) boardDirection(p patterns.Pattern, direction string)
 		}
 	}
 	for _, t := range b.frame.Trains {
-		if t.RouteId == p.Route && t.DirectionCode == direction && t.Association == "supported" {
+		if t.RouteId == p.Route && t.DirectionCode == direction && metroCurrentDirection(t, b.now) {
 			*dir.Count++
 		}
 	}

@@ -18,6 +18,9 @@ func (b *metroFrameBuilder) selectJourney() {
 		if t.JourneyId == id {
 			b.frame.SelectedJourneyId = ptr(id)
 			b.frame.Recovery.Status, b.frame.Recovery.Reason = "current", "Viagem selecionada disponível"
+			if !metroCurrentDirection(t, b.now) {
+				b.frame.Recovery.Status, b.frame.Recovery.Reason = "historical", "Viagem selecionada disponível; associação atual por confirmar"
+			}
 			return
 		}
 	}

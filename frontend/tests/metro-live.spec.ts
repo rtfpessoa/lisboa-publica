@@ -1,11 +1,12 @@
 import {test,expect,type Page} from '@playwright/test';
+import {createServer,type ServerResponse} from 'node:http';
 async function fixture(page:Page){
  const now=Date.now(),iso=(n:number)=>new Date(now+n*1000).toISOString(),missing={kind:'unavailable',at:null,reason:'Sem previsão atual',actual:null,prediction:null,schedule:null};
  const stop={id:'metro:A',operator_id:'metro',source_id:'A',name:'Alameda',lat:38.731,lon:-9.145,route_ids:['metro:r']};
  const vehicle={id:'metro:7',source_id:'7',operator_id:'metro',route_id:'metro:r',route_name:'Linha Vermelha',position_kind:'estimated',lat:38.731,lon:-9.145,observed_at:iso(0),collected_at:iso(0),source_url:'https://official.example',stale:false,last_known:false,inactive_at:iso(300),last_known_expires_at:iso(600)};
  const arrival={...missing,kind:'prediction',at:iso(60),reason:'',prediction:{at:iso(60),source_url:'https://official.example',source_updated_at:iso(0),collected_at:iso(0),valid_until:iso(90)}};
  const call={id:'visit',journey_id:'metro:run:one',line_key:'metro:r',direction_key:'60',stop_id:stop.id,stop_name:stop.name,stop_sequence:0,destination:'Aeroporto',arrival,departure:missing,phase:'future'};
- const train={journey_id:'metro:run:one',reference:'7',route_id:'metro:r',direction_code:'60',destination:'Aeroporto',association:'supported',reason:'Associação inferida',source_updated_at:iso(0),valid_until:iso(90),next_index:0,current_index:null,vehicle_id:vehicle.id,calls:[call]};
+ const train={journey_id:'metro:run:one',reference:'7',route_id:'metro:r',direction_code:'60',destination:'Aeroporto',association:'supported',direction_evidence:{state:'confirmed',reason:'Synthetic qualified direction'},reason:'Associação inferida',source_updated_at:iso(0),valid_until:iso(90),next_index:0,current_index:null,vehicle_id:vehicle.id,calls:[call]};
  const frame={revision:'first',published_at:iso(0),plan_id:'plan',history_status:'collecting',status:{status:'ok',message:'Fonte oficial',checked_at:iso(0),lines:[],source_url:'https://official.example'},vehicles:[vehicle],trains:[train,{...train,journey_id:'metro:run:two',reference:'8',vehicle_id:null,calls:[{...call,id:'second',arrival:missing}]},{...train,journey_id:'metro:run:three',reference:'9',vehicle_id:null,calls:[{...call,id:'third',phase:'previous',arrival:missing}]},{...train,journey_id:'metro:run:four',reference:'10',vehicle_id:null,association:'suspended',calls:[{...call,id:'fourth',arrival:missing}]}],directions:[{line_key:'metro:r',line_name:'Linha Vermelha',color:'#e22',direction_key:'60',label:'Aeroporto',count:3},{line_key:'metro:r',line_name:'Linha Vermelha',color:'#e22',direction_key:'38',label:'São Sebastião',count:0}],selected_journey_id:null,unassociated_forecasts:[]};
  await page.addInitScript(value=>{
   const w=window as unknown as {metroFrame:typeof value;streams:MockSource[];emitMetro:(kind:string)=>void;failMetro:()=>void;holdMetro:boolean;nextJourneyId?:string};w.metroFrame=value;w.streams=[];
@@ -175,4 +176,57 @@ test('Metro completed journey and withdrawn departure retain revision history',a
  });
  const panel=page.locator('.detail-panel');await expect(panel).toContainText('regresso por confirmar');await expect(panel.locator('.journey-timeline')).toContainText('Estimativa retirada');
  await panel.getByText('Revisões da partida').click();await expect(panel).toContainText('Synthetic correction');await expect(panel.getByRole('button',{name:'A seguir comboio'})).toBeDisabled();
+});
+
+for(const width of [1280,390])test(`Metro native SSE preserves uncertain own-only forecasts at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:850});
+ await page.addInitScript(()=>{(window as any).nativeMetroEventSource=window.EventSource});
+ await fixture(page);
+ await page.getByRole('button',{name:'Abrir comboio',exact:true}).click();
+ const frame=await page.evaluate(()=>structuredClone((window as any).metroFrame));
+ const call=frame.trains[0].calls[0],now=Date.now();
+ const own={at:new Date(now+40000).toISOString(),source_updated_at:new Date(now).toISOString(),valid_until:new Date(now+90000).toISOString(),model_version:'synthetic-supported-own',association_episode:'synthetic-episode'};
+ const ownOnly={...call,id:'own-only',service_label:'7',arrival:{kind:'unavailable',at:null,reason:'Sem previsão atual'},own_prediction:own};
+ frame.revision='native-own-only';frame.unassociated_forecasts=[ownOnly];
+ frame.trains[0].direction_evidence={state:'context',reason:'Possible forecast context'};
+ frame.trains[0].vehicle_id=null;
+ frame.forecast_contexts=[{reference:'7',route_id:'metro:r',direction_code:'60',destination:'Aeroporto',status:'admissible',reason:'',calls:[ownOnly]}];
+ const clients=new Set<ServerResponse>();
+ const server=createServer((req,res)=>{
+  res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache','Access-Control-Allow-Origin':'*'});
+  const params=new URL(req.url??'/', 'http://localhost').searchParams;
+  const next={...frame,selected_journey_id:params.get('journey_id')};
+  res.write(`id: 1\nevent: reset\ndata: ${JSON.stringify(next)}\n\n`);
+  clients.add(res);req.on('close',()=>clients.delete(res));
+ });
+ await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const address=server.address();if(!address||typeof address==='string')throw new Error('Native SSE server missing');
+ try{
+  await page.route(`http://127.0.0.1:${address.port}/**`,route=>route.continue());
+  await page.evaluate(base=>{
+   const w=window as any,Native=w.nativeMetroEventSource;
+   Object.defineProperty(window,'EventSource',{value:class extends Native{constructor(url:string){super(base+url)}}});
+   w.failMetro();
+  },`http://127.0.0.1:${address.port}`);
+  const panel=page.locator('.detail-panel');
+  await expect(panel.locator('[data-metro-revision]')).toHaveAttribute('data-metro-revision','native-own-only',{timeout:15000});
+  await expect(panel.locator('.vehicle-journey')).toBeVisible();
+  await expect(panel).toContainText('Viagem por confirmar');
+  const vehicleOwn=panel.locator('[data-call-id="own-only"]');
+  await expect(vehicleOwn).toContainText('Nossa previsão (experimental)');
+  await expect(vehicleOwn).toContainText('Sem previsão atual');
+  await expect(panel.locator('.vehicle-journey h4').first()).not.toContainText('→');
+  const before=await vehicleOwn.locator('time').textContent();
+  await expect.poll(()=>vehicleOwn.locator('time').textContent()).not.toBe(before);
+  if(width<760)await page.getByRole('button',{name:'Abrir operadores'}).click();
+  await page.getByLabel('Pesquisar carreira ou paragem').fill('Alameda');
+  await page.getByRole('button',{name:'Alameda Metro de Lisboa'}).press('Enter');
+  await expect(panel.locator('.station-popup')).toBeVisible();
+  await expect(panel.locator('[data-metro-revision]')).toHaveAttribute('data-metro-revision','native-own-only');
+  await expect(panel.locator('[data-call-id="own-only"]')).toContainText('Nossa previsão (experimental)');
+  await expect(panel.getByRole('button',{name:'Abrir comboio',exact:true})).toHaveCount(0);
+ }finally{
+  for(const client of clients)client.destroy();
+  await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));
+ }
 });

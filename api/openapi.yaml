@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Lisboa P\u00fablica API",
+    "title": "Lisboa Pública API",
     "version": "1.0.0",
     "description": "Provider-backed Lisbon transit. apiKey scopes use x-required-scopes; all data lists are paginated. Live revisions expire with410; snapshot revisions freeze committed ingestion membership. Scheduled and estimated data are explicitly classified. Dashboard reads are public for now and rate-limited; supplied API keys still enforce x-required-scopes. Key management requires a Google session. Expensive reads share two fail-fast slots and a 15-second operation deadline (503 busy/timeout). Schedule and historical grouped lists reject over 100000 results with 400 result_limit instead of truncation; narrow operators, route or time window. Busy503 responses include Retry-After."
   },
@@ -4494,6 +4494,9 @@
             "items": {
               "$ref": "#/components/schemas/MetroDepartureRevision"
             }
+          },
+          "metro_forecast": {
+            "$ref": "#/components/schemas/MetroForecastAssociation"
           }
         },
         "required": [
@@ -5470,6 +5473,10 @@
           },
           "model_projection": {
             "$ref": "#/components/schemas/MetroModelProjection"
+          },
+          "origin_known": {
+            "type": "boolean",
+            "description": "Whether compatible published paths agree on the origin; false means shared geometry only, not a known full journey."
           }
         },
         "required": [
@@ -5534,7 +5541,7 @@
             "items": {
               "$ref": "#/components/schemas/StopCall"
             },
-            "description": "Usable official predictions without a supported journey association; never a fabricated map link."
+            "description": "Usable official or independently supported own predictions without a qualified current journey association; never a fabricated map link."
           },
           "recovery": {
             "$ref": "#/components/schemas/MetroJourneyRecovery"
@@ -5672,6 +5679,10 @@
             "items": {
               "$ref": "#/components/schemas/StopCall"
             }
+          },
+          "origin_known": {
+            "type": "boolean",
+            "description": "Whether all compatible source paths agree on the origin. A shared downstream axis cannot fabricate earlier visits."
           }
         },
         "description": "Published reference forecasts in a scoped possible context. Coexisting contexts are not simultaneous active journeys or physical vehicle allocation."
@@ -5838,6 +5849,88 @@
             "format": "double"
           }
         }
+      },
+      "MetroPlatformForecast": {
+        "type": "object",
+        "required": [
+          "platform",
+          "source_updated_at",
+          "at",
+          "valid_until"
+        ],
+        "properties": {
+          "platform": {
+            "type": "string"
+          },
+          "source_updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Original platform prediction evidence. Different platforms do not establish physical platform allocation; each retains its own source clock."
+      },
+      "MetroForecastAssociation": {
+        "type": "object",
+        "required": [
+          "source_reference",
+          "estimated_reference",
+          "method",
+          "evidence_at",
+          "anchors",
+          "platforms",
+          "limitations"
+        ],
+        "properties": {
+          "source_reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "estimated_reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "published",
+              "unknown",
+              "order"
+            ]
+          },
+          "evidence_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "anchors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetroPlatformForecast"
+            }
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Forecast identity and provenance, separate from current vehicle/journey linkage. Order association requires a unique supported continuous cohort; anonymous forecasts never mint a source reference or physical train."
       }
     }
   }

@@ -84,6 +84,8 @@ func TestMetroScopedContextPreservesContinuityAndVehicleLink(t *testing.T) {
 	data.Waits = []MetroWait{metroTestRow(now, "RM", "7", "120")}
 	publishMetroTest(s, d, data, now)
 	id := data.Trains[0].JourneyId
+	// Synthetic qualified direction: this test checks scoped linking, not model admission.
+	s.Cache.metroRuntime.tracks[id].Train.DirectionEvidence = &api.MetroDirectionEvidence{State: "confirmed", Reason: "synthetic qualified direction"}
 	// An unmapped optional destination cannot override the classified candidate.
 	extra := metroTestRow(now, "CS", "7", "null")
 	extra.Destination = "unknown"
@@ -261,7 +263,7 @@ func TestMetroPendingCheckpointAccountingIncludesEncodedMetadata(t *testing.T) {
 
 func TestMetroStationForecastDeduplicationRemainsLineScoped(t *testing.T) {
 	call := api.StopCall{Id: "first-line-call", StopId: "metro:interchange", Arrival: api.CallTime{Kind: "prediction", Prediction: &api.CallTimeEvidence{}}}
-	train := api.MetroTrain{Reference: "shared-reference", RouteId: "metro:first", Destination: "Shared destination", Association: "supported", Calls: []api.StopCall{call}}
+	train := api.MetroTrain{Reference: "shared-reference", RouteId: "metro:first", Destination: "Shared destination", Association: "supported", ValidUntil: time.Now().Add(time.Minute), DirectionEvidence: &api.MetroDirectionEvidence{State: "confirmed", Reason: "synthetic qualified direction"}, Calls: []api.StopCall{call}}
 	other := call
 	other.Id = "second-line-call"
 	b := &metroFrameBuilder{metroFrameRequest: metroFrameRequest{interest: metroInterest{Stop: call.StopId}}, frame: api.MetroLiveFrame{Trains: []api.MetroTrain{train}, ForecastContexts: &[]api.MetroForecastContext{}}, contexts: []api.MetroForecastContext{

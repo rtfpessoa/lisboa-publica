@@ -1,3 +1,4 @@
+import {metroCurrentDirection} from './metroEvidence';
 import {useEffect,useMemo,useState} from 'react';
 import type {MetroLiveFrame,Vehicle} from './api';
 
@@ -5,7 +6,7 @@ import type {MetroLiveFrame,Vehicle} from './api';
 // renews no observation clock and performs no network requests.
 export function metroModelVehicles(frame:MetroLiveFrame|undefined,now:number):Vehicle[]{
  if(!frame)return [];
- const linked=new Map(frame.trains.filter(t=>t.association==='supported'&&Date.parse(t.valid_until)>now&&t.vehicle_id).map(t=>[t.vehicle_id,t]));
+ const linked=new Map(frame.trains.filter(t=>metroCurrentDirection(t,now)&&t.vehicle_id).map(t=>[t.vehicle_id,t]));
  return frame.vehicles.map(vehicle=>{
   const train=linked.get(vehicle.id),p=train?.model_projection;
   if(!p||train?.lifecycle?.state!=='active'||vehicle.last_known||vehicle.stale)return vehicle;
@@ -18,9 +19,9 @@ export function metroModelVehicles(frame:MetroLiveFrame|undefined,now:number):Ve
 const emptyVehicles:Vehicle[]=[];
 export function useMetroModelVehicles(frame:MetroLiveFrame|undefined){
  const [now,setNow]=useState(Date.now());
- const signature=JSON.stringify([frame?.vehicles,frame?.trains.map(t=>[t.vehicle_id,t.association,t.valid_until,t.lifecycle?.state,t.model_projection])]);
+ const signature=JSON.stringify([frame?.vehicles,frame?.trains.map(t=>[t.vehicle_id,t.association,t.valid_until,t.lifecycle?.state,t.direction_evidence,t.model_projection])]);
  const stable=useMemo(()=>frame,[signature]);
- const modeled=!!stable?.trains.some(t=>t.model_projection&&t.association==='supported');
+ const modeled=!!stable?.trains.some(t=>t.model_projection&&metroCurrentDirection(t,Date.now()));
  useEffect(()=>{if(!modeled)return;const timer=setInterval(()=>{if(!document.hidden)setNow(Date.now())},500);const visible=()=>setNow(Date.now());visible();document.addEventListener('visibilitychange',visible);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',visible)}},[modeled]);
  return useMemo(()=>modeled?metroModelVehicles(stable,now):stable?.vehicles??emptyVehicles,[stable,modeled,now]);
 }

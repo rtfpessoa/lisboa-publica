@@ -4,6 +4,7 @@ import (
 	"lisboapublica/internal/api"
 	"lisboapublica/internal/patterns"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -77,7 +78,7 @@ func (s metroContextSelection) prior(scope string) string {
 	return prior
 }
 func (s metroContextSelection) supportedPrior(key string) bool {
-	if key == "" || s.batch.rejected[key] {
+	if key == "" || s.batch.rejected[key] || !metroQualifiedDirection(s.runtime.tracks[s.runtime.active[key]], s.now) {
 		return false
 	}
 	points, exists := s.batch.groups[key]
@@ -93,7 +94,7 @@ func (s metroContextSelection) choose(scope string) string {
 	if s.supportedPrior(prior) {
 		return prior
 	}
-	if prior == "" && len(valid) == 1 {
+	if len(valid) == 1 && (prior == "" || valid[0] == prior) && !s.rejectedAlternative(scope, valid[0]) {
 		return valid[0]
 	}
 	if prior == "" && len(valid) == 0 && len(present) == 1 && len(s.batch.references[scope]) == 1 {
@@ -101,6 +102,21 @@ func (s metroContextSelection) choose(scope string) string {
 	}
 	s.suspend(scope, len(valid))
 	return ""
+}
+
+// Rejected path/event support is not proof that another direction is current.
+func (s metroContextSelection) rejectedAlternative(scope, selected string) bool {
+	for key := range s.batch.references[scope] {
+		if key == selected || !s.batch.rejected[key] {
+			continue
+		}
+		for _, p := range s.batch.groups[key] {
+			if p.Seconds != nil && s.now.Before(p.Clock.Add(sourceFreshness)) && !p.Clock.Add(time.Duration(*p.Seconds)*time.Second).Before(s.now) {
+				return true
+			}
+		}
+	}
+	return false
 }
 func (s metroContextSelection) suspend(scope string, count int) {
 	for key, id := range s.runtime.active {
@@ -146,25 +162,53 @@ func (r *metroRuntime) pathForecastContext(key string, now time.Time) api.MetroF
 	direction := canonicalMetroDirection(r.topology, path)
 	context := api.MetroForecastContext{Reference: parts[len(parts)-1], RouteId: path.Route, DirectionCode: &direction, Destination: metroDestinationName(r.publication, path), Status: "admissible", Calls: []api.StopCall{}}
 	if r.batch.rejected[key] {
-		context.Status = "incompatible"
-		context.Reason = "Dados incompatíveis nesta direção"
-		return context
+		context.Reason = "Suporte de percurso ou movimento indisponível; previsões locais preservadas"
 	}
-	points, _ := latestMetroPoints(r.batch.groups[key])
+	context.OriginKnown = ptr(metroPathOriginKnown(r.topology, path))
 	calls := metroPathCalls(path, r.publication, r.plan, "metro:forecast:"+key)
+	points := metroLatestForecastPoints(r.batch.groups[key])
 	for n, code := range path.Stops {
-		p, found := points[code]
-		if !found || p.Seconds == nil {
-			continue
-		}
-		if c, ok := metroSourceForecast(calls[n], p, now); ok {
-			c.JourneyId = nil
-			c.ServiceLabel, c.DirectionKey = ptr(context.Reference), &direction
-			context.Calls = append(context.Calls, c)
-		}
+		call := calls[n]
+		call.JourneyId = nil
+		call.ServiceLabel, call.DirectionKey = ptr(context.Reference), &direction
+		own := r.contextOwnPrediction(key, code, now)
+		context.Calls = append(context.Calls, metroContextVisitCalls(metroForecastVisit{call: call, code: code, scope: key, own: own}, points, now)...)
 	}
+
+	context.Calls = canonicalMetroForecastCalls(context.Calls)
+
 	return context
 }
+
+type metroForecastVisit struct {
+	call  api.StopCall
+	code  string
+	scope string
+	own   *api.CallTimeEvidence
+}
+
+func metroContextVisitCalls(visit metroForecastVisit, points []metroPoint, now time.Time) []api.StopCall {
+	base, own := visit.call, visit.own
+	calls := []api.StopCall{}
+	for _, p := range points {
+		if p.Stop != visit.code || p.Seconds == nil {
+			continue
+		}
+		if c, ok := metroSourceForecast(base, p, now); ok {
+			c.Id = metroForecastCallID(visit.scope, p)
+			c.MetroForecast = metroForecastEvidence(textValue(base.ServiceLabel), p)
+			c.OwnPrediction = own
+			calls = append(calls, c)
+		}
+	}
+	if len(calls) == 0 && own != nil {
+		base.OwnPrediction = own
+		base.MetroForecast = &api.MetroForecastAssociation{SourceReference: base.ServiceLabel, Method: "published", Anchors: []string{}, Platforms: []api.MetroPlatformForecast{}, Limitations: []string{}}
+		calls = append(calls, base)
+	}
+	return calls
+}
+
 func metroSourceForecast(c api.StopCall, p metroPoint, now time.Time) (api.StopCall, bool) {
 	at, expiry := p.Clock.Add(time.Duration(*p.Seconds)*time.Second), p.Clock.Add(sourceFreshness)
 	if !now.Before(expiry) || at.Before(now) {
@@ -181,10 +225,26 @@ func (r *metroRuntime) localForecastContexts(now time.Time) []api.MetroForecastC
 	for _, station := range r.publication.Stations {
 		local.stations[station.ID] = station
 	}
+	latest := map[string]time.Time{}
+	for _, f := range r.batch.localOnly {
+		if f.Clock.After(latest[metroLocalForecastKey(f)]) {
+			latest[metroLocalForecastKey(f)] = f.Clock
+		}
+	}
 	for _, forecast := range r.batch.localOnly {
-		local.add(forecast)
+		if forecast.Valid && forecast.Clock.Equal(latest[metroLocalForecastKey(forecast)]) {
+			local.add(forecast)
+		}
 	}
 	return local.sorted()
+}
+
+func metroLocalForecastKey(f metroLocalForecast) string {
+	key := metroWaitRowKey(f.Row) + "|" + f.Reference
+	if f.Reference == "" {
+		key += "|" + strconv.Itoa(f.Slot)
+	}
+	return key
 }
 
 type metroLocalContexts struct {
@@ -210,10 +270,23 @@ func (l metroLocalContexts) add(f metroLocalForecast) {
 		return
 	}
 	context := l.context(f, arrival)
+	context.Calls = append(context.Calls, metroLocalForecastCall(f, station, arrival, context))
+}
+
+func metroLocalForecastCall(f metroLocalForecast, station MetroStation, arrival api.Arrival, context *api.MetroForecastContext) api.StopCall {
+	at, expiry := f.Clock.Add(time.Duration(f.Seconds)*time.Second), f.Clock.Add(sourceFreshness)
 	call := api.StopCall{Id: metroForecastID(f.Row, f.Reference), StopId: arrival.StopId, StopName: station.Name, ServiceLabel: ptr(f.Reference), LineKey: arrival.RouteId, DirectionKey: context.DirectionCode, Destination: context.Destination, Phase: "unknown", Departure: missingCallTime("Sem dados de partida")}
 	call.Arrival = api.CallTime{Kind: "prediction", At: &at, Prediction: &api.CallTimeEvidence{At: at, SourceUpdatedAt: &f.Clock, ValidUntil: &expiry, SourceUrl: arrival.SourceUrl}}
-	context.Calls = append(context.Calls, call)
+	point := metroPoint{f.Row.Stop, f.Row.Platform, f.Clock, ptr(f.Seconds)}
+	call.MetroForecast = metroForecastEvidence(f.Reference, point)
+	call.Id = metroForecastCallID(arrival.RouteId+"|"+f.Row.Destination+"|"+f.Reference, point)
+	if f.Reference == "" {
+		call.ServiceLabel = nil
+		call.Id += ":slot:" + strconv.Itoa(f.Slot)
+	}
+	return call
 }
+
 func (l metroLocalContexts) context(f metroLocalForecast, arrival api.Arrival) *api.MetroForecastContext {
 	key := arrival.RouteId + "|" + f.Reference + "|" + f.Row.Destination
 	if c := l.contexts[key]; c != nil {
@@ -247,6 +320,7 @@ func (l metroLocalContexts) sorted() []api.MetroForecastContext {
 	out := []api.MetroForecastContext{}
 	for _, key := range keys {
 		c := l.contexts[key]
+		c.Calls = canonicalMetroForecastCalls(c.Calls)
 		sort.Slice(c.Calls, func(i, j int) bool { return c.Calls[i].Id < c.Calls[j].Id })
 		out = append(out, *c)
 	}

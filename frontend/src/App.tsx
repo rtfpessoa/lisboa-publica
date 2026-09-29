@@ -1,3 +1,4 @@
+import {metroCurrentDirection} from './metroEvidence';
 import {useMetroModelVehicles} from './metroModelPosition';
 import {positionDeadline} from './vehicleFreshness';
 import {StationPopup} from './TransitPopups';
@@ -161,7 +162,7 @@ export default function App(){const [tab,setTab]=useState<Tab>('live'),[sidebar,
  },[chart,sources,auth,term,detailOpen,routeId,stop,vehicle,sidebar]);
 
  const selectedTrain=metroLive.frame?.trains.find(t=>t.journey_id===metroLive.frame?.selected_journey_id);
- const followVehicle=vehicleDetail?.operator_id==='metro'&&!followPaused&&selectedTrain?.association==='supported'&&now<Date.parse(selectedTrain.valid_until)&&selectedTrain.vehicle_id===vehicleDetail.id&&!vehicleDetail.last_known?vehicleDetail:undefined;
+ const followVehicle=vehicleDetail?.operator_id==='metro'&&!followPaused&&metroCurrentDirection(selectedTrain,now)&&selectedTrain?.vehicle_id===vehicleDetail.id&&!vehicleDetail.last_known?vehicleDetail:undefined;
  return <MetroLiveContext.Provider value={{...metroLive,stops:visibleStops,stopsPlanId:opData.find(o=>o.id==='metro')?.plan_id,onVehicle:selectVehicle,onStop:chooseStop,followPaused,resumeFollow:()=>setFollowPaused(false)}}><div className={`app ${sidebar?'sidebar-open':''} tab-${tab}`}>
  <Suspense fallback={<div className="map"/>}><TransitMap now={now} followVehicle={followVehicle} onFollowPause={()=>setFollowPaused(true)} selectedStopId={stop?.id} onTargets={openTargets} vehiclePath={tab==='live'&&detailOpen&&busRoutes&&vehicleDetail&&selected.includes(vehicleDetail.operator_id)&&vehiclePath?.vehicleId===vehicleDetail.id&&vehiclePath.patternId===vehicleDetail.pattern_id?vehiclePath.shape:undefined} cpPredictions={cpCurrent} vehicles={liveData} stops={mapStops} operators={opData} route={route.data} traffic={tab==='traffic'?traffic.data??[]:undefined} bins={bins} focus={focus} shapes={overlayOperators?shapes.data?.data??[]:[]} metroLines={metroLines} busRoutes={busRoutes} onMetroLines={setMetroLines} onBusRoutes={setBusRoutes} trainLines={trainLines} ferryRoutes={ferryRoutes} onTrainLines={setTrainLines} onFerryRoutes={setFerryRoutes} overlayNotice={overlayNotice} onVehicle={v=>selectVehicle(v,true)} onStop={s=>chooseStop(s,true)}/></Suspense>
  {!sidebar&&<button className="circle open-menu" aria-label="Abrir operadores" onClick={()=>setSidebar(true)}><Menu size={20}/></button>}

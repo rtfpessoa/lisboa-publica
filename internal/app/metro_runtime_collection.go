@@ -11,7 +11,6 @@ type metroPointBatch struct {
 	groups     map[string][]metroPoint
 	paths      map[string]patterns.Pattern
 	references map[string]map[string]bool
-	rowCounts  map[string]int
 	rejected   map[string]bool
 	localOnly  []metroLocalForecast
 }
@@ -21,13 +20,12 @@ type metroLocalForecast struct {
 	Reference string
 	Clock     time.Time
 	Seconds   int
+	Slot      int
+	Valid     bool
 }
 
 func collectMetroPoints(data *MetroData, topology patterns.Topology, now time.Time) *metroPointBatch {
-	b := &metroPointBatch{groups: map[string][]metroPoint{}, paths: map[string]patterns.Pattern{}, references: map[string]map[string]bool{}, rowCounts: map[string]int{}, rejected: map[string]bool{}}
-	for _, row := range data.Waits {
-		b.rowCounts[metroWaitRowKey(row)]++
-	}
+	b := &metroPointBatch{groups: map[string][]metroPoint{}, paths: map[string]patterns.Pattern{}, references: map[string]map[string]bool{}, rejected: map[string]bool{}}
 	for _, row := range data.Waits {
 		b.collectRow(row, topology, now)
 	}
@@ -49,16 +47,24 @@ func (b *metroPointBatch) collectRow(row MetroWait, topology patterns.Topology, 
 		counts[strings.TrimSpace(v)]++
 	}
 	for n, ref := range refs {
-		if !pathOK {
-			ref = strings.TrimSpace(ref)
-			seconds, valid := metroWaitSeconds(values[n])
-			if metroReference(ref) && valid && counts[ref] == 1 && b.rowCounts[metroWaitRowKey(row)] == 1 {
-				b.localOnly = append(b.localOnly, metroLocalForecast{row, ref, clock, seconds})
-			}
+		if !pathOK || !metroReference(strings.TrimSpace(ref)) {
+			b.collectLocalForecast(row, ref, values[n], clock, n)
 			continue
 		}
 		b.collectReference(metroRowReference{row: row, path: path, clock: clock, train: strings.TrimSpace(ref), wait: values[n], counts: counts})
 	}
+}
+
+func (b *metroPointBatch) collectLocalForecast(row MetroWait, ref string, wait json.RawMessage, clock time.Time, slot int) {
+	ref = strings.TrimSpace(ref)
+	seconds, valid := metroWaitSeconds(wait)
+	if !metroReference(ref) && ref != "" && ref != "0" {
+		return
+	}
+	if !metroReference(ref) {
+		ref = ""
+	}
+	b.localOnly = append(b.localOnly, metroLocalForecast{Row: row, Reference: ref, Clock: clock, Seconds: seconds, Slot: slot, Valid: valid})
 }
 
 type metroRowReference struct {
@@ -81,9 +87,8 @@ func (b *metroPointBatch) collectReference(v metroRowReference) {
 	}
 	b.references[scope][key] = true
 	b.paths[key] = v.path
-	if b.rowCounts[metroWaitRowKey(v.row)] != 1 || v.counts[v.train] != 1 {
+	if v.counts[v.train] != 1 {
 		b.rejected[key] = true
-		return
 	}
 	seconds, valid := metroWaitSeconds(v.wait)
 	var eta *int

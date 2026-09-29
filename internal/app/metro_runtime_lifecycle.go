@@ -10,7 +10,13 @@ func metroTrackClosed(t *metroTrack) bool {
 }
 func visibleMetroTrain(t *metroTrack) api.MetroTrain {
 	if t.BarrierBefore != nil {
-		return cloneMetroTrain(*t.BarrierBefore)
+		copy := cloneMetroTrain(*t.BarrierBefore)
+		// Preserve the committed history while withholding an unsupported
+		// current link during a mandatory terminal/reversal checkpoint.
+		copy.Association, copy.NextIndex, copy.CurrentIndex, copy.ModelProjection = "suspended", nil, nil, nil
+		copy.Reason = "Transição de viagem a aguardar gravação; associação atual suspensa"
+		copy.DirectionEvidence = &api.MetroDirectionEvidence{State: "unknown", Reason: copy.Reason}
+		return copy
 	}
 	return cloneMetroTrain(t.Train)
 }
@@ -51,6 +57,7 @@ func (r *metroRuntime) stageLifecycle(t *metroTrack, before api.MetroTrain) bool
 	r.queueCheckpoint(t)
 	if t.Revision == revision || t.CheckpointUnavailable {
 		t.Train = before
+		suspendMetroTrack(t, "Transição de viagem sem gravação disponível; associação atual suspensa")
 		return false
 	}
 	t.BarrierBefore = &before
@@ -135,5 +142,6 @@ func (r *metroRuntime) cancelLifecycle(t *metroTrack, before api.MetroTrain) {
 	t.BarrierBefore = nil
 	t.BarrierRevision = 0
 	t.CheckpointHash = ""
+	suspendMetroTrack(t, "Transição atómica incompleta; associação atual suspensa")
 	r.queueCheckpoint(t)
 }

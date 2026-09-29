@@ -8,7 +8,7 @@ import (
 func (b *metroFrameBuilder) associateVehicles() {
 	counts := map[string]int{}
 	for _, t := range b.frame.Trains {
-		if t.Association == "supported" && b.now.Before(t.ValidUntil) {
+		if metroCurrentDirection(t, b.now) {
 			counts[t.RouteId+"|"+t.Reference]++
 		}
 	}
@@ -41,7 +41,7 @@ func (b *metroFrameBuilder) linkVehicle(v api.Vehicle, counts map[string]int) {
 }
 func (b *metroFrameBuilder) vehicleMatches(v api.Vehicle, t api.MetroTrain) bool {
 	fresh := !v.LastKnown && !v.Stale && b.now.Sub(v.ObservedAt) <= sourceFreshness
-	supported := t.Association == "supported" && b.now.Before(t.ValidUntil)
+	supported := metroCurrentDirection(t, b.now)
 	if !fresh || !supported || v.RouteId == nil {
 		return false
 	}
@@ -89,4 +89,11 @@ func metroCallsAtStop(calls []api.StopCall, id string) []api.StopCall {
 		}
 	}
 	return out
+}
+
+func metroCurrentDirection(t api.MetroTrain, now time.Time) bool {
+	return t.Association == "supported" && now.Before(t.ValidUntil) && t.DirectionEvidence != nil && t.DirectionEvidence.State == "confirmed"
+}
+func metroQualifiedDirection(t *metroTrack, now time.Time) bool {
+	return t != nil && metroCurrentDirection(t.Train, now)
 }

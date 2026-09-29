@@ -75,6 +75,7 @@ func (r *metroRuntime) startTrack(v metroTrackStart) *metroTrack {
 	track := &metroTrack{Train: api.MetroTrain{JourneyId: id, Reference: v.reference, RouteId: v.path.Route, DirectionCode: v.path.Direction, Destination: metroDestinationName(v.data, v.path), Calls: calls, Association: "supported"}, ProviderDirection: v.path.Direction, Profile: r.topology.Profile, Codes: append([]string{}, v.path.Stops...), Points: map[string]metroPoint{}, Proofs: map[string]metroEventProof{}}
 	track.Train.Lifecycle = &api.MetroJourneyLifecycle{State: "active", Reason: "Viagem inferida em curso"}
 	track.Train.DirectionEvidence = &api.MetroDirectionEvidence{State: "context", Reason: "Direção do percurso admitido; movimento independente por confirmar"}
+	track.Train.OriginKnown = ptr(metroPathOriginKnown(r.topology, v.path))
 	track.Train.DirectionCode = canonicalMetroDirection(r.topology, v.path)
 	for n := range track.Train.Calls {
 		track.Train.Calls[n].DirectionKey = ptr(track.Train.DirectionCode)
