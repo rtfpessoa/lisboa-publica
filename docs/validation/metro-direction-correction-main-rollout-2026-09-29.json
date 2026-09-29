@@ -1,0 +1,488 @@
+{
+  "release": {
+    "commit": "64b1ec4ba45c4dff78693ac7f596bb7870f5be75",
+    "image": "lisboa-publica:64b1ec4ba45c4dff78693ac7f596bb7870f5be75",
+    "image_id": "sha256:5e56d01af9088a871916cbc730653b098f81873eadb7243f48d49ddf77c0df49",
+    "revision": "64b1ec4ba45c4dff78693ac7f596bb7870f5be75",
+    "health": "healthy",
+    "database_health": "healthy",
+    "database_container_preserved": true,
+    "runtime_environment_preserved": true,
+    "mounts_preserved": true,
+    "resources_security_networks_preserved": true,
+    "prior_compose_input_count": 10,
+    "single_collector": true,
+    "model_allowlist_unset": true,
+    "verified_at": "2026-09-29T10:45:11.936148+00:00",
+    "archive_volume": "lisboa-publica_transport_history",
+    "database_volumes": [
+      "lisboa-publica_postgres_20260928"
+    ],
+    "previous_image": "lisboa-publica:cd68383e9d07baad6bf832977f8ccbed1d5be080"
+  },
+  "backups": {
+    "database_bytes": 53526393,
+    "database_catalog_verified": true,
+    "archive_bytes": 21401600,
+    "archive_members": 541,
+    "archive_sha256": "8c80c0690589ae7f2c399beb7c7cfb618dc27f27ad2519a9746847cf8e84d891"
+  },
+  "public_and_browser": {
+    "verified_at": "2026-09-29T10:45:26.460Z",
+    "public_health": {
+      "database": "ok",
+      "status": "ok"
+    },
+    "snapshot": {
+      "revision": "85e070c6d7a290acfe915acb6dda34e1a81dbe10625472c505159280e27052ef",
+      "history_status": "collecting",
+      "vehicles": 32,
+      "trains": 15,
+      "contexts": 0,
+      "current_links": 0,
+      "confirmed_directions": 0,
+      "context_directions": 15,
+      "forecasts": 0,
+      "forecasts_with_platform_provenance": 0
+    },
+    "red_contexts": [],
+    "browser_checks": [
+      {
+        "width": 1280,
+        "native_stream": {
+          "initial": {
+            "ms": 1074.8999999761581,
+            "revision": "3f1f20b45cbab3e82dbb48466cfaa01c83c550a9a5ee529dba913c2bae9de6e0",
+            "trains": 15,
+            "vehicles": 32,
+            "history_status": "collecting"
+          },
+          "reconnect": {
+            "ms": 667.9000000953674,
+            "revision": "330846965f72cf77128d3c26310caf6e408985e1509d2b446446b4953c168b89",
+            "trains": 15,
+            "vehicles": 32,
+            "history_status": "collecting"
+          }
+        },
+        "page_errors": []
+      },
+      {
+        "width": 390,
+        "native_stream": {
+          "initial": {
+            "ms": 726.8999999761581,
+            "revision": "da04bba33bf936affa0050d9c38fb379e9af8682c5cf1ddea7bbf076e5589cb0",
+            "trains": 15,
+            "vehicles": 32,
+            "history_status": "collecting"
+          },
+          "reconnect": {
+            "ms": 512.7000000476837,
+            "revision": "e9c52bfc39921f7b53e0a80f42e543ef55fe0b91d607babf3151e7bcb1c04c98",
+            "trains": 15,
+            "vehicles": 32,
+            "history_status": "collecting"
+          }
+        },
+        "page_errors": []
+      }
+    ]
+  },
+  "red_vehicle_scopes": {
+    "verified_at": "2026-09-29T10:46:09.029Z",
+    "results": [
+      {
+        "vehicle_id": "metro:21D",
+        "selected_journey_id": null,
+        "association_reason": "Sem dados atuais para confirmar a viagem",
+        "contexts": [
+          {
+            "reference": "21D",
+            "direction_code": "38",
+            "destination": "São Sebastião",
+            "origin_known": true,
+            "calls": 9,
+            "provenance_calls": 9,
+            "stop_id": "metro:ML11060073",
+            "source_clocks": [
+              "2026-09-29T11:45:54+01:00",
+              "2026-09-29T11:45:55+01:00",
+              "2026-09-29T11:45:53+01:00"
+            ]
+          }
+        ]
+      },
+      {
+        "vehicle_id": "metro:22D",
+        "selected_journey_id": null,
+        "association_reason": "Várias viagens possíveis",
+        "contexts": [
+          {
+            "reference": "22D",
+            "direction_code": "38",
+            "destination": "São Sebastião",
+            "origin_known": true,
+            "calls": 6,
+            "provenance_calls": 6,
+            "stop_id": "metro:ML11060073",
+            "source_clocks": [
+              "2026-09-29T11:45:54+01:00",
+              "2026-09-29T11:45:55+01:00"
+            ]
+          },
+          {
+            "reference": "22D",
+            "direction_code": "60",
+            "destination": "Aeroporto",
+            "origin_known": false,
+            "calls": 1,
+            "provenance_calls": 1,
+            "stop_id": "metro:ML11060073",
+            "source_clocks": [
+              "2026-09-29T11:45:54+01:00"
+            ]
+          }
+        ]
+      },
+      {
+        "vehicle_id": "metro:23D",
+        "selected_journey_id": null,
+        "association_reason": "Sem dados atuais para confirmar a viagem",
+        "contexts": [
+          {
+            "reference": "23D",
+            "direction_code": "60",
+            "destination": "Aeroporto",
+            "origin_known": false,
+            "calls": 8,
+            "provenance_calls": 8,
+            "stop_id": "metro:ML11060073",
+            "source_clocks": [
+              "2026-09-29T11:45:54+01:00",
+              "2026-09-29T11:45:55+01:00",
+              "2026-09-29T11:45:53+01:00"
+            ]
+          }
+        ]
+      },
+      {
+        "vehicle_id": "metro:24D",
+        "selected_journey_id": null,
+        "association_reason": "Sem dados atuais para confirmar a viagem",
+        "contexts": [
+          {
+            "reference": "24D",
+            "direction_code": "60",
+            "destination": "Aeroporto",
+            "origin_known": false,
+            "calls": 10,
+            "provenance_calls": 10,
+            "stop_id": "metro:ML11060001",
+            "source_clocks": [
+              "2026-09-29T11:45:55+01:00",
+              "2026-09-29T11:45:54+01:00",
+              "2026-09-29T11:45:53+01:00"
+            ]
+          }
+        ]
+      },
+      {
+        "vehicle_id": "metro:25D",
+        "selected_journey_id": null,
+        "association_reason": "Várias viagens possíveis",
+        "contexts": [
+          {
+            "reference": "25D",
+            "direction_code": "38",
+            "destination": "São Sebastião",
+            "origin_known": true,
+            "calls": 5,
+            "provenance_calls": 5,
+            "stop_id": "metro:ML11060001",
+            "source_clocks": [
+              "2026-09-29T11:45:53+01:00",
+              "2026-09-29T11:45:55+01:00"
+            ]
+          },
+          {
+            "reference": "25D",
+            "direction_code": "60",
+            "destination": "Aeroporto",
+            "origin_known": false,
+            "calls": 3,
+            "provenance_calls": 3,
+            "stop_id": "metro:ML11060001",
+            "source_clocks": [
+              "2026-09-29T11:45:55+01:00",
+              "2026-09-29T11:45:54+01:00",
+              "2026-09-29T11:45:53+01:00"
+            ]
+          }
+        ]
+      },
+      {
+        "vehicle_id": "metro:26D",
+        "selected_journey_id": null,
+        "association_reason": "Várias viagens possíveis",
+        "contexts": [
+          {
+            "reference": "26D",
+            "direction_code": "38",
+            "destination": "São Sebastião",
+            "origin_known": true,
+            "calls": 8,
+            "provenance_calls": 8,
+            "stop_id": "metro:ML11060001",
+            "source_clocks": [
+              "2026-09-29T11:46:03+01:00",
+              "2026-09-29T11:45:55+01:00",
+              "2026-09-29T11:46:05+01:00",
+              "2026-09-29T11:46:04+01:00"
+            ]
+          },
+          {
+            "reference": "26D",
+            "direction_code": "60",
+            "destination": "Aeroporto",
+            "origin_known": false,
+            "calls": 1,
+            "provenance_calls": 1,
+            "stop_id": "metro:ML11060063",
+            "source_clocks": [
+              "2026-09-29T11:46:03+01:00"
+            ]
+          }
+        ]
+      },
+      {
+        "vehicle_id": "metro:27D",
+        "selected_journey_id": null,
+        "association_reason": "Várias viagens possíveis",
+        "contexts": [
+          {
+            "reference": "27D",
+            "direction_code": "38",
+            "destination": "São Sebastião",
+            "origin_known": true,
+            "calls": 2,
+            "provenance_calls": 2,
+            "stop_id": "metro:ML11060073",
+            "source_clocks": [
+              "2026-09-29T11:46:04+01:00"
+            ]
+          },
+          {
+            "reference": "27D",
+            "direction_code": "60",
+            "destination": "Aeroporto",
+            "origin_known": false,
+            "calls": 4,
+            "provenance_calls": 4,
+            "stop_id": "metro:ML11060073",
+            "source_clocks": [
+              "2026-09-29T11:46:04+01:00",
+              "2026-09-29T11:45:55+01:00"
+            ]
+          }
+        ]
+      },
+      {
+        "vehicle_id": "metro:28D",
+        "selected_journey_id": null,
+        "association_reason": "Várias viagens possíveis",
+        "contexts": [
+          {
+            "reference": "28D",
+            "direction_code": "38",
+            "destination": "São Sebastião",
+            "origin_known": true,
+            "calls": 2,
+            "provenance_calls": 2,
+            "stop_id": "metro:ML11060001",
+            "source_clocks": [
+              "2026-09-29T11:46:03+01:00",
+              "2026-09-29T11:45:55+01:00"
+            ]
+          },
+          {
+            "reference": "28D",
+            "direction_code": "60",
+            "destination": "Aeroporto",
+            "origin_known": false,
+            "calls": 7,
+            "provenance_calls": 7,
+            "stop_id": "metro:ML11060001",
+            "source_clocks": [
+              "2026-09-29T11:45:55+01:00",
+              "2026-09-29T11:46:04+01:00",
+              "2026-09-29T11:46:03+01:00"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "red_station_scope": {
+    "verified_at": "2026-09-29T10:46:32.967Z",
+    "stop_id": "metro:ML11060073",
+    "directions": [
+      {
+        "color": "#ff3366",
+        "count": 0,
+        "direction_key": "38",
+        "label": "São Sebastião",
+        "line_key": "metro:4_0",
+        "line_name": "Vermelha"
+      },
+      {
+        "color": "#ff3366",
+        "count": 0,
+        "direction_key": "60",
+        "label": "Aeroporto",
+        "line_key": "metro:4_0",
+        "line_name": "Vermelha"
+      }
+    ],
+    "unassociated_forecasts": [
+      {
+        "id": "metro:forecast:metro:4_0|38|21D:AP:AP8APO",
+        "line_key": "metro:4_0",
+        "direction_key": "38",
+        "source_reference": "21D",
+        "method": "published",
+        "platforms": [
+          {
+            "at": "2026-09-29T11:47:21+01:00",
+            "platform": "AP8APO",
+            "source_updated_at": "2026-09-29T11:46:24+01:00",
+            "valid_until": "2026-09-29T11:47:54+01:00"
+          }
+        ],
+        "official_prediction": {
+          "at": "2026-09-29T11:47:21+01:00",
+          "collected_at": null,
+          "source_updated_at": "2026-09-29T11:46:24+01:00",
+          "source_url": "https://api.metrolisboa.pt:8243/estadoServicoML/1.0.1/tempoEspera/Estacao/todos",
+          "valid_until": "2026-09-29T11:47:54+01:00"
+        }
+      },
+      {
+        "id": "metro:forecast:metro:4_0|38|22D:AP:AP8APO",
+        "line_key": "metro:4_0",
+        "direction_key": "38",
+        "source_reference": "22D",
+        "method": "published",
+        "platforms": [
+          {
+            "at": "2026-09-29T11:53:21+01:00",
+            "platform": "AP8APO",
+            "source_updated_at": "2026-09-29T11:46:24+01:00",
+            "valid_until": "2026-09-29T11:47:54+01:00"
+          }
+        ],
+        "official_prediction": {
+          "at": "2026-09-29T11:53:21+01:00",
+          "collected_at": null,
+          "source_updated_at": "2026-09-29T11:46:24+01:00",
+          "source_url": "https://api.metrolisboa.pt:8243/estadoServicoML/1.0.1/tempoEspera/Estacao/todos",
+          "valid_until": "2026-09-29T11:47:54+01:00"
+        }
+      },
+      {
+        "id": "metro:forecast:metro:4_0|38|27D:AP:AP8APO",
+        "line_key": "metro:4_0",
+        "direction_key": "38",
+        "source_reference": "27D",
+        "method": "published",
+        "platforms": [
+          {
+            "at": "2026-09-29T11:59:21+01:00",
+            "platform": "AP8APO",
+            "source_updated_at": "2026-09-29T11:46:24+01:00",
+            "valid_until": "2026-09-29T11:47:54+01:00"
+          }
+        ],
+        "official_prediction": {
+          "at": "2026-09-29T11:59:21+01:00",
+          "collected_at": null,
+          "source_updated_at": "2026-09-29T11:46:24+01:00",
+          "source_url": "https://api.metrolisboa.pt:8243/estadoServicoML/1.0.1/tempoEspera/Estacao/todos",
+          "valid_until": "2026-09-29T11:47:54+01:00"
+        }
+      },
+      {
+        "id": "metro:forecast:metro:4_0|60|22D:AP:AP5APO",
+        "line_key": "metro:4_0",
+        "direction_key": "60",
+        "source_reference": "22D",
+        "method": "published",
+        "platforms": [
+          {
+            "at": "2026-09-29T11:46:53+01:00",
+            "platform": "AP5APO",
+            "source_updated_at": "2026-09-29T11:46:24+01:00",
+            "valid_until": "2026-09-29T11:47:54+01:00"
+          }
+        ],
+        "official_prediction": {
+          "at": "2026-09-29T11:46:53+01:00",
+          "collected_at": null,
+          "source_updated_at": "2026-09-29T11:46:24+01:00",
+          "source_url": "https://api.metrolisboa.pt:8243/estadoServicoML/1.0.1/tempoEspera/Estacao/todos",
+          "valid_until": "2026-09-29T11:47:54+01:00"
+        }
+      },
+      {
+        "id": "metro:forecast:metro:4_0|60|23D:AP:AP5APO",
+        "line_key": "metro:4_0",
+        "direction_key": "60",
+        "source_reference": "23D",
+        "method": "published",
+        "platforms": [
+          {
+            "at": "2026-09-29T11:59:41+01:00",
+            "platform": "AP5APO",
+            "source_updated_at": "2026-09-29T11:46:24+01:00",
+            "valid_until": "2026-09-29T11:47:54+01:00"
+          }
+        ],
+        "official_prediction": {
+          "at": "2026-09-29T11:59:41+01:00",
+          "collected_at": null,
+          "source_updated_at": "2026-09-29T11:46:24+01:00",
+          "source_url": "https://api.metrolisboa.pt:8243/estadoServicoML/1.0.1/tempoEspera/Estacao/todos",
+          "valid_until": "2026-09-29T11:47:54+01:00"
+        }
+      },
+      {
+        "id": "metro:forecast:metro:4_0|60|27D:AP:AP5APO",
+        "line_key": "metro:4_0",
+        "direction_key": "60",
+        "source_reference": "27D",
+        "method": "published",
+        "platforms": [
+          {
+            "at": "2026-09-29T11:54:04+01:00",
+            "platform": "AP5APO",
+            "source_updated_at": "2026-09-29T11:46:24+01:00",
+            "valid_until": "2026-09-29T11:47:54+01:00"
+          }
+        ],
+        "official_prediction": {
+          "at": "2026-09-29T11:54:04+01:00",
+          "collected_at": null,
+          "source_updated_at": "2026-09-29T11:46:24+01:00",
+          "source_url": "https://api.metrolisboa.pt:8243/estadoServicoML/1.0.1/tempoEspera/Estacao/todos",
+          "valid_until": "2026-09-29T11:47:54+01:00"
+        }
+      }
+    ]
+  },
+  "startup_log_sample": {
+    "error": 1,
+    "fatal": 0,
+    "panic": 0,
+    "error_class": "API write failure: broken pipe to proxy"
+  }
+}

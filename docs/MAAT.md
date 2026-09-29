@@ -82,3 +82,8 @@ release was created by that attempt. TypeScript remains outside Maat coverage
 and its build and nine Metro browser fixtures passed separately. The absolute95
 score target is met, without claiming zero advisories or complete metric coverage.
 See the [dated release preparation](validation/metro-live-main-rollout-2026-09-28.md).
+
+
+## Metro direction correction, 2026-09-29
+
+The normal signed implementation commit `64b1ec4` passed the pinned Go gate at **97/delta 0**, with no structural regressions and **zero suppressions**. The first candidate was blocked by 18 complexity/maintainability regressions. Focused platform revision, station equivalence, forecast canonicalization, order matching and call construction helpers repaired these without changing evidence admission, clocks, budgets, hooks or thresholds. TypeScript remains unchecked by Maat; its build and earlier targeted browser checks are separate. The report marks simplicity and maintainability coverage incomplete. The complete Go race/vet suite, staged-tree build, generated-contract checks and frontend build passed after repair. See [accepted verdict](validation/metro-direction-correction-2026-09-29-maat.json) and [main rollout verification](validation/metro-direction-correction-main-rollout-2026-09-29.md).

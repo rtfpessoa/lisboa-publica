@@ -74,3 +74,6 @@ Maat repairs, post-refactor checks, commit dependency closure and production rol
 The [Metro completion follow-up](validation/metro-live-completion-2026-09-28.md) records lifecycle/direction/model-admission checks. The [live popup reference](metro-live-popups.md) describes implemented guards; [model admission](metro-departure-calibration.md) distinguishes supported experimental estimates from unmeasured physical timing.
 
 [Metro completion main rollout](validation/metro-live-main-rollout-2026-09-29.md) records the clean-main image, preserved configuration/volumes, protected backups and actual production health/EventSource checks.
+
+
+[Metro direction correction rollout](validation/metro-direction-correction-main-rollout-2026-09-29.md) records the normal Maat repair, complete final Go checks, clean-main deployment and actual Red-line forecast/provenance and browser reset observations. Current direction remains distinct from possible forecast direction; consult the canonical live and association references for implemented semantics.
