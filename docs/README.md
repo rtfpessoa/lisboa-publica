@@ -77,3 +77,7 @@ The [Metro completion follow-up](validation/metro-live-completion-2026-09-28.md)
 
 
 [Metro direction correction rollout](validation/metro-direction-correction-main-rollout-2026-09-29.md) records the normal Maat repair, complete final Go checks, clean-main deployment and actual Red-line forecast/provenance and browser reset observations. Current direction remains distinct from possible forecast direction; consult the canonical live and association references for implemented semantics.
+
+[Metro first-principles plan](plans/20260929-metro-first-principles.md), [accepted review](plans/20260929-metro-plan-review-final.md) and [model research](plans/20260929-metro-model-research.md) preserve the dated design and source evidence. Current implemented semantics belong in [the live reference](metro-live-popups.md), [source reference](integrations/metro.md), [associations](data/associations.md) and [history](data/history.md).
+
+[First-principles validation](validation/metro-first-principles-20260929.md) records actual-source replay, independent review corrections, native/browser measurements and physical uncertainty for the current increment.

@@ -8,11 +8,17 @@ import (
 )
 
 type metroPointBatch struct {
+	provenance map[string]metroSourceSlot
 	groups     map[string][]metroPoint
 	paths      map[string]patterns.Pattern
 	references map[string]map[string]bool
 	rejected   map[string]bool
 	localOnly  []metroLocalForecast
+}
+
+type metroSourceSlot struct {
+	Revision string
+	Slot     int
 }
 
 type metroLocalForecast struct {
@@ -25,7 +31,7 @@ type metroLocalForecast struct {
 }
 
 func collectMetroPoints(data *MetroData, topology patterns.Topology, now time.Time) *metroPointBatch {
-	b := &metroPointBatch{groups: map[string][]metroPoint{}, paths: map[string]patterns.Pattern{}, references: map[string]map[string]bool{}, rejected: map[string]bool{}}
+	b := &metroPointBatch{provenance: map[string]metroSourceSlot{}, groups: map[string][]metroPoint{}, paths: map[string]patterns.Pattern{}, references: map[string]map[string]bool{}, rejected: map[string]bool{}}
 	for _, row := range data.Waits {
 		b.collectRow(row, topology, now)
 	}
@@ -51,7 +57,7 @@ func (b *metroPointBatch) collectRow(row MetroWait, topology patterns.Topology, 
 			b.collectLocalForecast(row, ref, values[n], clock, n)
 			continue
 		}
-		b.collectReference(metroRowReference{row: row, path: path, clock: clock, train: strings.TrimSpace(ref), wait: values[n], counts: counts})
+		b.collectReference(metroRowReference{row: row, path: path, clock: clock, train: strings.TrimSpace(ref), wait: values[n], counts: counts, slot: n})
 	}
 }
 
@@ -73,6 +79,7 @@ type metroRowReference struct {
 	clock  time.Time
 	train  string
 	wait   json.RawMessage
+	slot   int
 	counts map[string]int
 }
 
@@ -81,6 +88,19 @@ func (b *metroPointBatch) collectReference(v metroRowReference) {
 		return
 	}
 	key := metroTrackKey(metroTrackIdentity{v.path.Route, v.row.Destination, v.train})
+	b.collectReferencePath(key, v)
+	seconds, valid := metroWaitSeconds(v.wait)
+	var eta *int
+	if valid {
+		eta = ptr(seconds)
+	}
+	point := metroPoint{v.row.Stop, v.row.Platform, v.clock, eta}
+	b.groups[key] = append(b.groups[key], point)
+	if eta != nil {
+		b.collectReferenceProvenance(key, point, v)
+	}
+}
+func (b *metroPointBatch) collectReferencePath(key string, v metroRowReference) {
 	scope := v.path.Route + "|" + v.train
 	if b.references[scope] == nil {
 		b.references[scope] = map[string]bool{}
@@ -90,10 +110,12 @@ func (b *metroPointBatch) collectReference(v metroRowReference) {
 	if v.counts[v.train] != 1 {
 		b.rejected[key] = true
 	}
-	seconds, valid := metroWaitSeconds(v.wait)
-	var eta *int
-	if valid {
-		eta = ptr(seconds)
+}
+func (b *metroPointBatch) collectReferenceProvenance(key string, point metroPoint, v metroRowReference) {
+	id := metroForecastPointID(key, point)
+	source := metroSourceSlot{metroWaitRevision(v.row), v.slot + 1}
+	old, exists := b.provenance[id]
+	if !exists || source.Revision < old.Revision {
+		b.provenance[id] = source
 	}
-	b.groups[key] = append(b.groups[key], metroPoint{v.row.Stop, v.row.Platform, v.clock, eta})
 }

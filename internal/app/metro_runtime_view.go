@@ -10,10 +10,13 @@ func (r *metroRuntime) current(now time.Time) []api.MetroTrain {
 	out := []api.MetroTrain{}
 	for _, id := range r.active {
 		t := r.tracks[id]
-		if t == nil || t.CommittedRevision == 0 || t.Train.SourceUpdatedAt.Before(now.AddDate(0, 0, -7)) {
+		if t == nil || t.Train.SourceUpdatedAt.Before(now.AddDate(0, 0, -7)) {
 			continue
 		}
 		if !now.Before(t.Train.ValidUntil) {
+			if t.Train.Association == "supported" {
+				r.forecastCacheUntil = time.Time{}
+			}
 			if t.BarrierRevision == 0 {
 				suspendMetroTrack(t, "Dados expirados")
 			}
@@ -29,7 +32,7 @@ func (r *metroRuntime) retained(id string, now time.Time) (api.MetroTrain, bool)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	t, ok := r.tracks[id]
-	if !ok || t.CommittedRevision == 0 {
+	if !ok {
 		return api.MetroTrain{}, false
 	}
 	if t.Train.SourceUpdatedAt.Before(now.AddDate(0, 0, -7)) {

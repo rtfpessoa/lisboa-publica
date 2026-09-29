@@ -250,12 +250,12 @@ func TestMetroNoArchiveDoesNotPromiseDurability(t *testing.T) {
 	next := *data
 	next.Waits = []MetroWait{metroTestRow(now.Add(time.Second), "RM", "7", "0")}
 	publishMetroTest(s, d, &next, now.Add(time.Second))
-	if len(next.Trains) != 0 || len(s.Cache.metroRuntime.pending) != 0 {
-		t.Fatal("absent archive exposed selectable identity", next.Trains)
+	if len(next.Trains) != 1 || next.Trains[0].Persistence == nil || next.Trains[0].Persistence.State != "unavailable" || len(s.Cache.metroRuntime.pending) != 0 {
+		t.Fatal("archive absence suppressed live estimates or promised durability", next.Trains)
 	}
 	frame, _, err := s.metroFrame(context.Background(), metroInterest{Stop: "metro:gtfs-rm"})
-	if err != nil || len(frame.Trains) != 0 || frame.SelectedJourneyId != nil {
-		t.Fatal("absent baseline exposed journey", frame, err)
+	if err != nil || len(frame.Trains) != 1 || frame.Trains[0].Persistence.State != "unavailable" {
+		t.Fatal("archive absence suppressed live journey", frame, err)
 	}
 }
 
@@ -567,18 +567,23 @@ func TestMetroCollector500msSerializesSlowCyclesWithoutCatchup(t *testing.T) {
 	starts := make(chan time.Time, 16)
 	var requests, active, maximum atomic.Int32
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/estadoLinha/todos" {
+			fmt.Fprint(w, `{"codigo":"200","resposta":{"azul":"Ok","amarela":"Ok","verde":"Ok","vermelha":"Ok"}}`)
+			return
+		}
 		current := active.Add(1)
 		defer active.Add(-1)
 		for old := maximum.Load(); current > old && !maximum.CompareAndSwap(old, current); old = maximum.Load() {
 		}
 		if req.URL.Path == "/estadoLinha/todos" {
-			starts <- time.Now()
+
 			fmt.Fprint(w, `{"codigo":"200","resposta":{"azul":"Ok","amarela":"Ok","verde":"Ok","vermelha":"Ok"}}`)
 			return
 		}
 		if req.URL.Path != "/tempoEspera/Estacao/todos" {
 			t.Error("unexpected uncached request", req.URL.Path)
 		}
+		starts <- time.Now()
 		if requests.Add(1) == 1 {
 			time.Sleep(750 * time.Millisecond)
 		}
@@ -588,6 +593,9 @@ func TestMetroCollector500msSerializesSlowCyclesWithoutCatchup(t *testing.T) {
 	client := NewMetroClient(upstream.Client(), &Store{}, s.Cache, "synthetic", "synthetic")
 	client.Base = upstream.URL
 	client.data = data
+	client.metadataStations = data.Stations
+	client.metadataStationsAt = time.Now()
+	client.metadataDestinationsAt = time.Now()
 	client.lastPersist = time.Now()
 	client.tokenValue = "cached-synthetic-token"
 	client.expires = time.Now().Add(time.Hour)

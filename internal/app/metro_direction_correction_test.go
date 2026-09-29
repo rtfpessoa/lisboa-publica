@@ -51,6 +51,7 @@ func TestMetroRedActualForecastRetentionAndPermutations(t *testing.T) {
 		input.Waits = append([]MetroWait{}, data.Waits...)
 		rand.New(rand.NewSource(seed)).Shuffle(len(input.Waits), func(i, j int) { input.Waits[i], input.Waits[j] = input.Waits[j], input.Waits[i] })
 		r := newMetroRuntime()
+		r.session = "permutation-control" // Hold episode identity fixed while permuting source rows.
 		r.observe(&input, &static, nil, *data.Status.CheckedAt)
 		contexts := r.forecastContexts(*data.Status.CheckedAt)
 		if seed == 0 {
@@ -229,7 +230,7 @@ func TestMetroSourceGapWithdrawsQualifiedContinuityWithoutCompletion(t *testing.
 	track.Train.DirectionEvidence = &api.MetroDirectionEvidence{State: "confirmed", Reason: "synthetic admitted prior"}
 	data.Waits = []MetroWait{metroTestRow(now.Add(61*time.Second), "RM", "7", "100")}
 	publishMetroTest(s, static, data, now.Add(61*time.Second))
-	if metroQualifiedDirection(track, now.Add(61*time.Second)) || track.Train.Lifecycle.State != "active" || track.Train.Calls[0].Arrival.Inferred != nil {
+	if metroQualifiedDirection(track, now.Add(61*time.Second)) || track.Train.Lifecycle.State != "superseded" || track.Train.Calls[0].Arrival.Inferred != nil {
 		t.Fatal("source gap retained linkage or fabricated closure/event", track.Train)
 	}
 }
@@ -259,13 +260,13 @@ func TestMetroMandatoryCheckpointCannotRestoreQualifiedOldLink(t *testing.T) {
 	}
 }
 
-func TestMetroFailedMandatoryCheckpointWithholdsLinkAndKeepsHistory(t *testing.T) {
+func TestMetroUnavailableArchiveKeepsMemoryClosureAndHistory(t *testing.T) {
 	r := newMetroRuntime()
 	now := time.Now().UTC()
 	prior := api.MetroTrain{Association: "supported", SourceUpdatedAt: now, ValidUntil: now.Add(time.Minute), DirectionEvidence: &api.MetroDirectionEvidence{State: "confirmed", Reason: "synthetic admitted direction"}, Lifecycle: &api.MetroJourneyLifecycle{State: "active"}, Calls: []api.StopCall{{Id: "history", Arrival: missingCallTime("historical")}}}
 	track := &metroTrack{Train: cloneMetroTrain(prior), Points: map[string]metroPoint{}}
 	track.Train.Lifecycle = &api.MetroJourneyLifecycle{State: "completed"}
-	if r.stageLifecycle(track, prior) || metroQualifiedDirection(track, now) || track.Train.Lifecycle.State != "active" || len(track.Train.Calls) != 1 {
+	if !r.stageLifecycle(track, prior) || metroQualifiedDirection(track, now) || track.Train.Lifecycle.State != "completed" || len(track.Train.Calls) != 1 {
 		t.Fatal("unavailable mandatory commit restored unsupported link or changed history", track.Train)
 	}
 }

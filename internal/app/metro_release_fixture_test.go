@@ -9,7 +9,9 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"sort"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -63,6 +65,8 @@ func TestMetroLiveReleaseFixture(t *testing.T) {
 	s.Cache.update("metro", d, nil, s.Cache.operator("metro"))
 	controls := newMetroReplayControls()
 	started := time.Now()
+	var latencyMu sync.Mutex
+	estimatorLatencies := []float64{}
 	publish := func() {
 		now := time.Now().UTC()
 		mode, forget, moving := controls.settings(now)
@@ -104,8 +108,15 @@ func TestMetroLiveReleaseFixture(t *testing.T) {
 			}
 		}
 
+		processing := time.Now()
 		s.Cache.metroRuntime.observe(&data, d, archive, now)
 		s.Cache.updateMetro(&data, s.Cache.operator("metro"))
+		latencyMu.Lock()
+		estimatorLatencies = append(estimatorLatencies, float64(time.Since(processing).Microseconds())/1000)
+		if len(estimatorLatencies) > 512 {
+			estimatorLatencies = estimatorLatencies[len(estimatorLatencies)-512:]
+		}
+		latencyMu.Unlock()
 		op := s.Cache.operator("metro")
 		op.Status = "ok"
 		op.LiveUpdatedAt = &now
@@ -151,7 +162,15 @@ func TestMetroLiveReleaseFixture(t *testing.T) {
 		s.metroStreams.mu.Lock()
 		streams := s.metroStreams.total
 		s.metroStreams.mu.Unlock()
-		json.NewEncoder(w).Encode(map[string]any{"heap_bytes": mem.HeapAlloc, "sys_bytes": mem.Sys, "goroutines": runtime.NumGoroutine(), "streams": streams})
+		latencyMu.Lock()
+		durations := append([]float64{}, estimatorLatencies...)
+		latencyMu.Unlock()
+		sort.Float64s(durations)
+		p95 := 0.0
+		if len(durations) > 0 {
+			p95 = durations[min(len(durations)-1, len(durations)*95/100)]
+		}
+		json.NewEncoder(w).Encode(map[string]any{"estimator_p95_ms": p95, "estimator_samples": len(durations), "heap_bytes": mem.HeapAlloc, "sys_bytes": mem.Sys, "goroutines": runtime.NumGoroutine(), "streams": streams})
 	})
 	listener, err := net.Listen("tcp", "127.0.0.1:18082")
 	if err != nil {

@@ -114,7 +114,7 @@ func validArchiveOperator(b block) bool {
 
 func validArchiveKind(kind string) bool {
 	switch kind {
-	case "detail", "aggregate", "state", "correction", "observations", "popup-events", "popup-checkpoint":
+	case "detail", "aggregate", "state", "correction", "observations", "popup-events", "popup-checkpoint", "metro-inputs":
 		return true
 	default:
 		return false

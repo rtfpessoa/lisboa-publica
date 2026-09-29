@@ -27,6 +27,8 @@ type MetroStation struct {
 	Lat   string `json:"stop_lat"`
 	Lon   string `json:"stop_lon"`
 	Lines string `json:"linha"`
+	URLs  string `json:"stop_url"`
+	Zone  string `json:"zone_id"`
 }
 
 // MetroWait retains the provider’s platform prediction fields without inventing positions.
@@ -45,12 +47,13 @@ type MetroWait struct {
 
 // MetroData combines direct service status, station metadata and waiting-time predictions.
 type MetroData struct {
-	InventoryOverflow bool              `json:"-"`
-	Trains            []api.MetroTrain  `json:"-"`
-	Topology          patterns.Topology `json:"-"`
-	Status            api.MetroStatus   `json:"status"`
-	Waits             []MetroWait       `json:"waits"`
-	Stations          []MetroStation    `json:"stations"`
+	Destinations      []MetroDestination `json:"destinations,omitempty"`
+	InventoryOverflow bool               `json:"-"`
+	Trains            []api.MetroTrain   `json:"-"`
+	Topology          patterns.Topology  `json:"-"`
+	Status            api.MetroStatus    `json:"status"`
+	Waits             []MetroWait        `json:"waits"`
+	Stations          []MetroStation     `json:"stations"`
 	// Original wait JSON preserves fields whose meaning is not yet known.
 	RawWaits json.RawMessage `json:"raw_waits,omitempty"`
 }
@@ -115,31 +118,51 @@ func (m *MetroClient) refreshConfigured(ctx context.Context, now time.Time) *Met
 func (m *MetroClient) publish(ctx context.Context, data *MetroData, now time.Time) {
 	state, _ := m.Cache.state("")
 	m.Cache.metroRuntime.observe(data, state.Static["metro"], m.History, now)
-	if m.History != nil {
-		state, _ := m.Cache.state("")
-		if state != nil {
-			m.recordPatterns(data, state.Static["metro"], now)
-			m.Cache.metroRuntime.projectOwn(data, m.History, now)
-		}
-	}
+	m.publishMetroHistory(data, now)
 	m.Store.PublishMu.Lock()
 	defer m.Store.PublishMu.Unlock()
-	op := m.Cache.operator("metro")
-	op.DirectStatus = ptr(api.OperatorDirectStatus(data.Status.Status))
-	op.DirectUpdatedAt = ptr(now)
-	op.DirectError = nil
-	if data.Status.Status == "error" {
-		op.DirectError = ptr(data.Status.Message)
-	}
+	op := m.metroPublicationOperator(data, now)
 	if now.Sub(m.lastPersist) >= livePersistenceInterval {
 		m.lastPersist = now
 		_ = m.Store.SaveMetro(ctx, data, op)
 	}
 	m.Cache.updateMetro(data, op)
 }
+func (m *MetroClient) publishMetroHistory(data *MetroData, now time.Time) {
+	if m.History != nil {
+		state, _ := m.Cache.state("")
+		if state != nil {
+			m.enqueuePatterns(data, state.Static["metro"], now)
+		}
+	}
+	m.historyMu.Lock()
+	queued := m.historyQueue != nil
+	m.historyMu.Unlock()
+	if !queued {
+		m.Cache.metroRuntime.projectOwn(data, m.History, now)
+	}
+}
+func (m *MetroClient) metroPublicationOperator(data *MetroData, now time.Time) api.Operator {
+	op := m.Cache.operator("metro")
+	op.DirectStatus, op.DirectUpdatedAt, op.DirectError = ptr(api.OperatorDirectStatus(data.Status.Status)), ptr(now), nil
+	if data.Status.Status == "error" {
+		op.DirectError = ptr(data.Status.Message)
+	}
+	return op
+}
 
 // Run refreshes provider data until its context is cancelled.
 func (m *MetroClient) Run(ctx context.Context) {
+	m.metadataMu.Lock()
+	m.metadataStarted = true
+	m.metadataMu.Unlock()
+	if m.History != nil {
+		m.historyMu.Lock()
+		m.historyQueue = make(chan metroHistoryTask, 64)
+		m.historyMu.Unlock()
+		go m.historyLoop(ctx)
+	}
+	go m.metadataLoop(ctx)
 	go m.Cache.metroRuntime.runJournal(ctx, m.History)
 	m.Refresh(ctx)
 	for {
@@ -378,29 +401,42 @@ func abs(v float64) float64 {
 }
 
 func (m *MetroClient) fetchData(ctx context.Context, previous *MetroData, now time.Time) *MetroData {
+	m.metadataMu.RLock()
+	started := m.metadataStarted
+	m.metadataMu.RUnlock()
+	if started {
+		return m.fetchWaitLane(ctx, previous, now)
+	}
+	return m.fetchInitialMetroData(ctx, previous, now)
+}
+func (m *MetroClient) fetchInitialMetroData(ctx context.Context, previous *MetroData, now time.Time) *MetroData {
 	stations := []MetroStation{}
 	if previous != nil {
 		stations = previous.Stations
 	}
 	var states map[string]string
-	var waits []MetroWait
-	var rawWaits json.RawMessage
 	err := m.get(ctx, "/estadoLinha/todos", &states)
+	var waits []MetroWait
+	var raw json.RawMessage
 	if err == nil {
-		err = m.get(ctx, "/tempoEspera/Estacao/todos", &rawWaits)
-		if err == nil {
-			err = json.Unmarshal(rawWaits, &waits)
-		}
+		raw, err = m.readWaits(ctx)
+	}
+	if err == nil {
+		err = json.Unmarshal(raw, &waits)
 	}
 	if err == nil && len(stations) == 0 {
 		err = m.get(ctx, "/infoEstacao/todos", &stations)
 	}
-	data := &MetroData{Status: api.MetroStatus{Status: api.MetroStatusStatusOk, CheckedAt: &now, SourceUrl: metroBase, Message: "Tempos de espera e estado do serviço verificados na API oficial do Metro.", Lines: []api.MetroLine{}}, Waits: waits, Stations: stations}
+	data := initialMetroData(stations, waits, now)
 	if err == nil {
-		data.RawWaits = rawWaits
+		data.RawWaits = raw
 	}
 	completeMetroFetch(data, previous, states, err)
 	return data
+}
+func initialMetroData(stations []MetroStation, waits []MetroWait, now time.Time) *MetroData {
+	status := api.MetroStatus{Status: api.MetroStatusStatusOk, CheckedAt: &now, SourceUrl: metroBase, Message: "Tempos de espera e estado do serviço verificados na API oficial do Metro.", Lines: []api.MetroLine{}}
+	return &MetroData{Status: status, Waits: waits, Stations: stations}
 }
 
 func metroLines(states map[string]string) ([]api.MetroLine, error) {
@@ -441,6 +477,8 @@ func completeMetroFetch(data, previous *MetroData, states map[string]string, err
 
 // metroRefreshState serializes token reuse and direct snapshot publication.
 type metroRefreshState struct {
+	metroMetadataState
+	metroHistoryDelivery
 	// Interval is independent of the shared cadence for other providers.
 	Interval    time.Duration
 	mu          sync.Mutex

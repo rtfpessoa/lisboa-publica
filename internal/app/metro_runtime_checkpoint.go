@@ -14,14 +14,15 @@ import (
 // The checkpoint retains topology interpretation and all event proofs, but its
 // point samples are history only. They are never installed into live continuity.
 type metroCheckpointPayload struct {
-	Model             *metroCheckpointModel      `json:"model,omitempty"`
-	Version           int                        `json:"version"`
-	Train             api.MetroTrain             `json:"train"`
-	Profile           string                     `json:"profile"`
-	ProviderDirection string                     `json:"provider_direction"`
-	Codes             []string                   `json:"codes"`
-	Points            map[string]metroPoint      `json:"points"`
-	Proofs            map[string]metroEventProof `json:"proofs"`
+	ModelDepartureSupport map[string]map[int64]metroModelPublication `json:"model_departure_support,omitempty"`
+	Model                 *metroCheckpointModel                      `json:"model,omitempty"`
+	Version               int                                        `json:"version"`
+	Train                 api.MetroTrain                             `json:"train"`
+	Profile               string                                     `json:"profile"`
+	ProviderDirection     string                                     `json:"provider_direction"`
+	Codes                 []string                                   `json:"codes"`
+	Points                map[string]metroPoint                      `json:"points"`
+	Proofs                map[string]metroEventProof                 `json:"proofs"`
 }
 
 // Reserve encoded identity/clock/generation overhead as part of the pending
@@ -36,12 +37,15 @@ func pendingMetroCheckpointBytes(v patterns.MetroJourneyCheckpoint) int {
 }
 
 func (r *metroRuntime) queueCurrentCheckpoints() {
+	for group := range r.lifecycleGroups {
+		r.admitLifecycleGroup(group)
+	}
 	for _, t := range r.tracks {
 		r.queueCheckpoint(t)
 	}
 }
 func (r *metroRuntime) queueCheckpoint(t *metroTrack) {
-	if t.HistoricalOnly || t.BarrierRevision != 0 {
+	if t.HistoricalOnly && !t.HistoricalCorrection || t.BarrierRevision != 0 || t.LifecycleGroup != "" {
 		return
 	}
 	if !r.checkpointEligible(t) {
@@ -54,7 +58,11 @@ func (r *metroRuntime) checkpointEligible(t *metroTrack) bool {
 		r.pauseCheckpoint(t)
 		return false
 	}
-	return r.archiveAvailable && !t.Train.SourceUpdatedAt.IsZero()
+	if !r.archiveAvailable {
+		t.CheckpointUnavailable = true
+		return false
+	}
+	return !t.Train.SourceUpdatedAt.IsZero()
 }
 func (r *metroRuntime) queueEligibleCheckpoint(t *metroTrack) {
 
@@ -83,7 +91,7 @@ func (r *metroRuntime) queueEligibleCheckpoint(t *metroTrack) {
 func (r *metroRuntime) encodeCheckpoint(t *metroTrack) ([]byte, string, bool) {
 	copy := cloneMetroTrain(t.Train)
 	copy.Persistence, copy.VehicleId = nil, nil
-	raw, err := json.Marshal(metroCheckpointPayload{Version: 1, Train: copy, Profile: t.Profile, ProviderDirection: t.ProviderDirection, Codes: t.Codes, Points: t.Points, Proofs: t.Proofs, Model: r.checkpointModel(t)})
+	raw, err := json.Marshal(metroCheckpointPayload{Version: 1, Train: copy, Profile: t.Profile, ProviderDirection: t.ProviderDirection, Codes: t.Codes, Points: t.Points, Proofs: t.Proofs, ModelDepartureSupport: t.ModelDepartureSupport, Model: r.checkpointModel(t)})
 	if err != nil || len(raw) > (256<<10)-metroCheckpointMetadataReserve {
 		return nil, "", false
 	}
@@ -120,10 +128,11 @@ func (r *metroRuntime) flushCheckpoints(ctx context.Context, history *patterns.S
 		r.historyStatus = "paused"
 		return
 	}
-	r.historyStatus = "collecting"
+	r.historyCollecting(now)
 	r.commitCheckpointBatch(batch, generation, now)
 }
 func (r *metroRuntime) checkpointBatch(now time.Time) []patterns.MetroJourneyCheckpoint {
+	r.expireLifecycleGroups(now)
 	batch := make([]patterns.MetroJourneyCheckpoint, 0, len(r.dirty))
 	for _, v := range r.dirty {
 		if !v.SourceAt.Before(now.AddDate(0, 0, -7)) {
@@ -139,12 +148,13 @@ func (r *metroRuntime) commitCheckpointBatch(batch []patterns.MetroJourneyCheckp
 			r.dirtyBytes -= pendingMetroCheckpointBytes(latest)
 			delete(r.dirty, v.Journey)
 		}
-		if t := r.tracks[v.Journey]; t != nil {
+		if t := r.tracks[v.Journey]; t != nil && v.Revision > t.CommittedRevision {
 			t.CommittedRevision, t.Generation, t.CommittedAt = v.Revision, generation, now.UTC()
 			r.commitLifecycle(t, v.Revision)
 			commitMetroDepartureEvidence(t, v.Payload)
 		}
 	}
+	r.acknowledgeLifecycleGroups(generation)
 }
 
 func metroTrainPersistence(t *metroTrack) *api.MetroJourneyPersistence {

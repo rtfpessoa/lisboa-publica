@@ -10,10 +10,11 @@ The direct integration supplies line status, station metadata and waiting-time p
 | `GET /estadoLinha/todos` | Four line states |
 | `GET /tempoEspera/Estacao/todos` | Platform waits/train references |
 | `GET /infoEstacao/todos` | Station names/codes/coordinates/line membership |
+| `GET /infoDestinos/todos` | Published destination-code/name catalogue |
 
 Data paths use `https://api.metrolisboa.pt:8243/estadoServicoML/1.0.1`. Configure server-only `METRO_CLIENT_ID` and `METRO_CLIENT_SECRET`; [the 1Password reference file](../../config/metro.op.env) supplies secret references, not values. [Deployment](../../deploy/README.md) documents operational TLS handling; verification remains enabled. No browser OAuth callback is used by the client-credentials grant.
 
-The Metro loop runs with both credentials even if general ingestion is disabled. Refresh is serialized with a dedicated 500-millisecond minimum start interval by default (`METRO_REFRESH_MILLISECONDS`, 500–60000), and has a 20-second context. Slow cycles do not overlap or catch up. Each refresh fetches states, then waits; station records are fetched only if no prior station list is available. Restored stations can therefore be reused. These are collection rules, not promises of source updates at that frequency.
+The Metro loop runs with both credentials even if general ingestion is disabled. Its waits lane has a dedicated 500 ms minimum start target (`METRO_REFRESH_MILLISECONDS`, 500–60000), a 20-second context and no overlapping/catch-up work. A separate metadata lane verifies line states every 30 seconds and refreshes station/destination catalogues daily, retrying missing/failed catalogues. Cached catalogues preserve their own receipt ages. Fresh waits remain available when status collection fails; status age/error is exposed separately. These are acquisition policies, not source-update promises.
 
 The shared provider budget includes token calls and permitted redirects. An HTTP 401 clears the cached token for a later attempt; the code does not immediately busy-retry. Missing credentials produce unconfigured direct status while Hub schedules/estimates remain independent.
 
@@ -50,6 +51,7 @@ A line is displayed as normal only when its state equals `ok` case-insensitively
 | `stop_name` | String | Destination display and fallback name matching |
 | `stop_lat`, `stop_lon` | Numeric strings parsed for fallback | Coordinate-tolerance association to GTFS |
 | `linha` | Published string listing line membership | Single-line inference when destination does not establish line |
+| `stop_url`, `zone_id` | Bracketed URL string / zone string | Retained in the direct cache and input interpretation; no invented array or physical platform mapping |
 
 The direct station records are held in the Metro cache, not substituted wholesale for the public GTFS stop catalogue. [Station/line matching](../data/associations.md#metro-station-and-line-matching) first uses exact codes, then the unique normalized-name-prefix or exact compact-name/coordinate fallback. Multiple official station candidates are rejected; the tolerance is not a metric-distance threshold. Live popup calls map back to the unique GTFS station family, collapsing published platforms through a complete, acyclic Metro parent chain with a matching root. Distinct roots or invalid parent relationships retain the official-code fallback.
 
@@ -79,8 +81,7 @@ Prediction IDs combine station, train and destination, qualified under `metro`. 
 Metro publishes direct health/state in memory regardless of successful durable writes; persistence is attempted at most every 30 seconds. Restart restores direct state with its original source clocks, but a restored wait is not automatically a usable fresh prediction. [Arrival reads](../../internal/app/metro.go) require successful/recent direct status and original fresh wait time.
 
 On fetch failure, prior waits/stations may remain cached with error status, and predicted-arrival reads withhold unusable direct predictions. Planned GTFS schedules remain distinct. Explicit JSON null and omitted waits remain unavailable; neither can manufacture a zero-second forecast or inferred arrival. Unknown route or station associations are not fabricated. For a stop/reference/destination forecast, the
-latest original publication wins. Different ETAs under the same latest source clock are withheld until a
-strictly newer unambiguous publication arrives; provider row order cannot resolve that conflict.
+latest original publication wins. The generic arrivals selector withholds different ETAs under the same latest clock until a newer unambiguous publication arrives. Live forecast contexts retain usable conflicting named rows with a disclosed limitation; they cannot supply coherent event/path support. Provider row order cannot resolve the conflict.
 
 ## Examples and evidence
 
@@ -117,45 +118,16 @@ The local completion follow-up adds route-specific conditions, versioned Lisbon 
 
 The patterns read can expose fresh direct-cache official points independently of experimental history. It applies the strict future-slot/source-clock eligibility, rejects conflicting simultaneous platform/destination rows and never inserts this response-only fallback into training or evaluation. Existing arrivals parsing described above remains a separate surface.
 
-## Coherent live popup projection
+## Coherent operational service projection
 
-The current Metro live UI consumes [combined snapshots and SSE](../metro-live-popups.md), rather than the
-compatibility published-route-only journey projection. [Per-original-update processing](../../internal/app/metro_runtime.go)
-retains a supported reference episode, ordered visits, separately inferred arrival evidence and official/own
-forecasts. Slots 1–3 across all admitted platforms contribute the identified inventory, including missing waits.
-Station forecasts without supported topology/association remain separate and have no fabricated map link.
-Particular route/destination contexts and unknown short-turn direction stay explicit.
+[The current live map and popups](../metro-live-popups.md) use one classifier and current estimated episode. Direction can be operationally estimated from a unique direct context or a validated three-position modeled chain; physical allocation/accuracy remains unknown. Coexisting opposing forecasts remain independently visible. Current estimates no longer require the legacy reviewed model allowlist or a committed baseline.
 
-The frame transports original wait clocks, supported identity/progress, retained event summaries and validity;
-static stops/geometry stay in their catalogues. See the [API contract](../../api/openapi.yaml),
-[stream/snapshot implementation](../../internal/app/metro_live.go),
-[transition/transport tests](../../internal/app/metro_live_test.go) and
-[separate inferred-event journal](../../internal/patterns/metro_event_journal.go).
-The live departure movement profile is unqualified; the guarded detector cannot be enabled from opaque Hub points. The separate offline model-consistency path does not require independent physical references or claim physical accuracy.
+`infoDestinos` supplies string `id_destino` / `nome_destino` pairs. Unique normalized destination names join GTFS headsigns; older caches retain the verified legacy mapping fallback. Unsupported codes remain unresolved. The 2026-09-29 authenticated audit found no physical `cais` crosswalk and no observed fleet-unit/live-reference join. Static interval catalogues are not polled as train inventory or independent timing evidence.
 
-Generic arrival selection happens before ETA-window filtering: a newer missing, invalid or already elapsed wait
-suppresses an older future forecast for the same station/reference/destination. Equal-clock valid and
-missing waits also conflict; filtering an unusable candidate cannot revive the older value.
+GTFS `id_antigo` is retained as an explicit legacy station-code crosswalk; `pattern_id` is retained for Metro trip/context checks. Source model fields, direct catalogues, original `hora`, full ordered visits and positive timetable dwell/run priors retain separate meanings. Arrival-to-arrival historical proxies do not identify dwell and run separately. [The timing evidence](../plans/20260929-metro-static-timing-evidence.json) records 29,292 positive scheduled dwell values, not measured stops.
 
-The collector records completed-response receipt for direct status and transition processing. Cycle start
-remains separate for the 500 ms scheduler; original platform clocks are never replaced by either.
+Official arrivals and experimental own arrival/departure forecasts remain separate. Schedule-based cold starts are labeled; elapsed dwell conditions compatible distributions, and supported departure evidence anchors later running time. A qualified modeled stop/movement transition can disclose an experimental departure occurrence, with distinct first-movement/confirmation clocks and no physical accuracy claim. Unsupported times stay unknown.
 
-The [offline departure calibration workflow](../metro-departure-calibration.md) prepares evidence and a
-reproducible candidate/holdout report without Metro API calls or live admission. Original movement samples
-and appropriately labeled stop/first-movement support windows must be supplied; the popup journal is insufficient. Independent references apply to physical-reference comparison; the separate model-consistency input uses frozen qualification provenance and model-support intervals without asserting physical accuracy.
-Later contradictory positive waits withdraw inferred arrival evidence before progress suspension, retaining
-the newer correction for durable restoration when that proof commits.
+Anonymous forecast tracks preserve source-row/slot provenance and unique revision/slot-shift continuity. Candidate owners use reachable same-direction paths, ETA overlap and comparable non-overtaking anchors; an unseen owner remains feasible. No ownership is asserted without heldout qualification. Candidates never create a map train or named anchor. Station aggregation preserves platform clocks, conflicts and unresolved directions.
 
-## Shared live association and checkpoint recovery
-
-The direct wait publications now feed one [scoped classifier](../../internal/app/metro_runtime_contexts.go) for journey admission, vehicle linking and forecast views. Coexisting destinations under a reference do not cause blanket rejection. Missing optional ETA does not create a competing journey. Qualified prior direction can continue through a supported stop; forecast-only prior context cannot establish a current vehicle link. Genuine ambiguity remains explicit. Valid local forecasts can survive absent unique whole-path topology without acquiring a vehicle link.
-
-New selectable journeys require a committed complete checkpoint in the existing archive. Recovery preserves original clocks and history, including event-free episodes, without resuming inference continuity. No qualifying production configuration is supplied for the reviewed adapter: departure times and 500 ms local modeled coordinates remain unavailable. The [captured regression fixtures](../../internal/app/testdata/metro-20260928/README.md) preserve actual 24C/5B publications; they do not prove physical allocation or timing accuracy.
-
-The optional `metro-wait-segment-v1` adapter consumes original waits and reviewed frozen station-axis geometry/segment durations; it uses no extra endpoint. Supported source station anchors can qualify a three-position direction chain; modeled interpolation and opaque Hub estimates cannot confirm their assumed sign. The reviewed startup allowlist requires original-input model-consistency train/whole-journey holdout and prohibited-input replay. No qualifying production profile is supplied. Supported final-visit positive-to-zero arrival closes by inference after durable checkpoint publication; reversal remains provisional until qualified confirmation. See [admission](../metro-departure-calibration.md) and [lifecycle](../metro-live-popups.md).
-
-### Shared-axis correction and anonymous live forecasts
-
-Compatible contiguous short-origin GTFS variants share downstream orientation only under unique embedding; differing origins remain explicitly unknown. Exact station predictions from multiple `cais` rows combine with all original platform clocks and instants. Movement/event conflicts are scoped separately from retained station predictions. The dedicated live frame can expose valid forecasts without a published train reference; the generic arrival endpoint still requires a reference for its trip identity. No physical `cais`/GTFS-child-platform crosswalk is inferred.
-
-Current vehicle linking requires fresh qualified confirmed direction evidence, independently of possible forecast destination. Both popups retain official and experimental own predictions wherever their existing support is admitted, including own-only rows. The order matcher requires a supported complete continuous cohort; the current top-three boards provide no such admission, so anonymous live forecasts are not assigned guessed references. See [current popup and lifecycle semantics](../metro-live-popups.md) and [retained Red-line regression inputs](../../internal/app/testdata/metro-20260928/README.md). Acquisition endpoints, cadence, budgets and model activation remain unchanged.
+Memory commits complete lifecycle transitions immediately. [Checkpoint/capture durability](../data/history.md) is separate, bounded and asynchronous; incomplete persistence does not hide current forecasts. Restart restores suspended committed history without live detector continuity. The [actual regression fixtures](../../internal/app/testdata/metro-20260928/README.md) and [dated plan](../plans/20260929-metro-first-principles.md) identify evidence and admission limits.

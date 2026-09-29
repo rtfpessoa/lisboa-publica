@@ -48,20 +48,24 @@ func (r *metroRuntime) closeAtTerminal(t *metroTrack, before api.MetroTrain) {
 	t.Train.CurrentIndex = nil
 	t.Train.ModelProjection = nil
 	r.stageLifecycle(t, before)
+	for key, id := range r.active {
+		if id == t.Train.JourneyId {
+			delete(r.active, key)
+		}
+	}
 }
 
 // Freeze mandatory revisions until their generation commits. Later source
 // progress cannot coalesce away a closure or one half of a handoff.
 func (r *metroRuntime) stageLifecycle(t *metroTrack, before api.MetroTrain) bool {
-	revision := t.Revision
-	r.queueCheckpoint(t)
-	if t.Revision == revision || t.CheckpointUnavailable {
-		t.Train = before
-		suspendMetroTrack(t, "Transição de viagem sem gravação disponível; associação atual suspensa")
-		return false
+	// Admission and lifecycle transitions are atomic in memory; disk is asynchronous.
+	if metroTrackClosed(t) {
+		t.Train.Association = "suspended"
+		t.Train.NextIndex = nil
+		t.Train.CurrentIndex = nil
+		t.Train.ModelProjection = nil
 	}
-	t.BarrierBefore = &before
-	t.BarrierRevision = t.Revision
+	r.queueCheckpoint(t)
 	return true
 }
 func (r *metroRuntime) commitLifecycle(t *metroTrack, revision uint64) {
@@ -89,21 +93,14 @@ func (r *metroRuntime) commitLifecycle(t *metroTrack, revision uint64) {
 	}
 }
 func (r *metroRuntime) stageSuccessor(old, next *metroTrack, at, first time.Time) bool {
-	if old.BarrierRevision != 0 || next.BarrierRevision != 0 {
-		return false
-	}
-	oldBefore, nextBefore := cloneMetroTrain(old.Train), cloneMetroTrain(next.Train)
 	setMetroSuccessorLifecycle(metroSuccessorLifecycle{old: old, next: next, at: at, first: first})
-
-	if !r.stageLifecycle(old, oldBefore) {
-		next.Train = nextBefore
-		return false
+	r.handoffOperational(old, next, at)
+	for key, id := range r.candidates {
+		if id == next.Train.JourneyId {
+			r.active[key] = id
+			delete(r.candidates, key)
+		}
 	}
-	if !r.stageLifecycle(next, nextBefore) {
-		r.cancelLifecycle(old, oldBefore)
-		return false
-	}
-	old.PendingSuccessor = next.Train.JourneyId
 	return true
 }
 
@@ -144,4 +141,24 @@ func (r *metroRuntime) cancelLifecycle(t *metroTrack, before api.MetroTrain) {
 	t.CheckpointHash = ""
 	suspendMetroTrack(t, "Transição atómica incompleta; associação atual suspensa")
 	r.queueCheckpoint(t)
+}
+
+// Called under the runtime owner lock: observers see one complete handoff.
+func (r *metroRuntime) handoffOperational(old, next *metroTrack, now time.Time) {
+	at := now
+	if !metroTrackClosed(old) {
+		old.Train.Lifecycle = &api.MetroJourneyLifecycle{State: "superseded", At: &at, Reason: "Novo episódio operacional estimado"}
+	}
+	old.Train.Lifecycle.SuccessorJourneyId = &next.Train.JourneyId
+	old.Train.Association = "suspended"
+	old.Train.NextIndex = nil
+	old.Train.CurrentIndex = nil
+	old.Train.ModelProjection = nil
+	next.Train.Lifecycle.PredecessorJourneyId = &old.Train.JourneyId
+	for key, id := range r.active {
+		if id == old.Train.JourneyId {
+			delete(r.active, key)
+		}
+	}
+	r.queueLifecycleGroup(old, next)
 }

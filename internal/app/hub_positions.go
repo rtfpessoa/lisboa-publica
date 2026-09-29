@@ -132,6 +132,12 @@ func (f *Fetcher) publishMetroPositions(ctx context.Context, batch hubObservatio
 			continue
 		}
 		if batch.err != nil {
+			r := f.Cache.metroRuntime
+			r.mu.Lock()
+			r.hubError = batch.err.Error()
+			r.markCaptureGap()
+			r.captureChanged(batch.collected)
+			r.mu.Unlock()
 			f.markError(ctx, p, false, batch.err)
 			return
 		}
@@ -141,6 +147,7 @@ func (f *Fetcher) publishMetroPositions(ctx context.Context, batch hubObservatio
 			return
 		}
 		f.saveLive(ctx, p, vehicles, batch.collected)
+		f.Cache.metroRuntime.observeHub(batch.positions, batch.collected)
 		return
 	}
 }

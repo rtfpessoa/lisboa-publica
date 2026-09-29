@@ -63,7 +63,7 @@ func metroPathOriginKnown(topology patterns.Topology, path patterns.Pattern) boo
 	return true
 }
 
-func (r *metroRuntime) contextOwnPrediction(key, code string, now time.Time) *api.CallTimeEvidence {
+func (r *metroRuntime) contextOwnPrediction(key, code string, now time.Time, departure bool) *api.CallTimeEvidence {
 	t := r.tracks[r.active[key]]
 	if t == nil || t.Train.Association != "supported" || t.BarrierRevision != 0 {
 		return nil
@@ -73,6 +73,9 @@ func (r *metroRuntime) contextOwnPrediction(key, code string, now time.Time) *ap
 			continue
 		}
 		p := t.Train.Calls[n].OwnPrediction
+		if departure {
+			p = t.Train.Calls[n].OwnDeparturePrediction
+		}
 		if p != nil && p.ValidUntil != nil && now.Before(*p.ValidUntil) && !p.At.Before(now) {
 			copy := *p
 			return &copy

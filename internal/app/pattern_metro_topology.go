@@ -41,7 +41,10 @@ func (b *metroPlanBuilder) addStations() {
 
 func (b *metroPlanBuilder) mapStaticPlan() {
 	for _, stop := range b.static.Stops {
-		id := metroStationID(b.static, b.data.Stations, b.stations, stop.Id)
+		id := b.static.Schedule.LegacyStops[stop.SourceId]
+		if id == "" {
+			id = metroStationID(b.static, b.data.Stations, b.stations, stop.Id)
+		}
 		if _, ok := b.stations[id]; ok {
 			b.mapping[stop.SourceId] = id
 		}
@@ -65,6 +68,17 @@ func (b *metroPlanBuilder) tripDestination(trip ScheduledTrip) (string, string) 
 		return "", ""
 	}
 	direction := ""
+	for _, d := range b.data.Destinations {
+		if normalizeName(d.Name) == normalizeName(trip.Headsign) {
+			if direction != "" && direction != d.ID {
+				return "", ""
+			}
+			direction = d.ID
+		}
+	}
+	if direction != "" {
+		return headsign, direction
+	}
 	for code, id := range destinations {
 		if id == headsign {
 			direction = code

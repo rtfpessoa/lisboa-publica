@@ -64,6 +64,7 @@ type ScheduledTrip struct {
 
 // Schedule combines planned trips, service calendars and station relationships.
 type Schedule struct {
+	LegacyStops      map[string]string `json:"legacy_stops,omitempty"`
 	popupIndex       journeyIndexCache
 	Trips            []ScheduledTrip
 	Calendars        map[string]Calendar
@@ -280,6 +281,7 @@ type scheduledTripSource struct {
 }
 
 type tripPopupMetadata struct {
+	Pattern     string               `json:"pattern_id,omitempty"`
 	Source      *scheduledTripSource `json:"source_instance,omitempty"`
 	PackedCount int                  `json:"packed_count,omitempty"`
 	PackedTimes []byte               `json:"packed_times,omitempty"`

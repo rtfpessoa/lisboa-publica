@@ -17,14 +17,14 @@ import (
 	"lisboapublica/internal/api"
 )
 
-func TestMetroBaselineBeforeSelectableIdentityAndEventFreeRestart(t *testing.T) {
+func TestMetroMemoryAdmissionBeforeDurabilityAndEventFreeRestart(t *testing.T) {
 	s, d, data, now := metroLiveFixture(t)
 	data.Waits = []MetroWait{metroTestRow(now, "RM", "7", "120")}
 	s.Cache.metroRuntime.observe(data, d, s.Patterns, now)
 	s.Cache.updateMetro(data, s.Cache.operator("metro"))
 	before, _, err := s.metroFrame(context.Background(), metroInterest{Stop: "metro:gtfs-rm"})
-	if err != nil || len(before.Trains) != 0 || len(before.UnassociatedForecasts) != 1 {
-		t.Fatal("baseline exposed before commit or forecasts hidden", before, err)
+	if err != nil || len(before.Trains) != 1 || before.Trains[0].Persistence == nil || before.Trains[0].Persistence.State != "pending" {
+		t.Fatal("memory admission incorrectly depends on disk", before, err)
 	}
 	s.Cache.metroRuntime.flushCheckpoints(context.Background(), s.Patterns, now)
 	// No provider publication follows the commit; frames read the coherent view.
@@ -136,6 +136,7 @@ func TestMetroCaptured24C5BClassifiedForecastsAndPermutations(t *testing.T) {
 		input.Waits = append([]MetroWait{}, data.Waits...)
 		rand.New(rand.NewSource(seed)).Shuffle(len(input.Waits), func(i, j int) { input.Waits[i], input.Waits[j] = input.Waits[j], input.Waits[i] })
 		r := newMetroRuntime()
+		r.session = "permutation-control" // Hold episode identity fixed while permuting source rows.
 		r.observe(&input, &static, nil, now)
 		_, _, contexts, _ := r.view(now)
 		if seed == 0 {
@@ -175,7 +176,7 @@ func TestMetroCheckpointCommitFailureKeepsForecasts(t *testing.T) {
 	s.Cache.metroRuntime.flushCheckpoints(context.Background(), s.Patterns, now)
 	s.Cache.updateMetro(data, s.Cache.operator("metro"))
 	f, _, err := s.metroFrame(context.Background(), metroInterest{Stop: "metro:gtfs-rm"})
-	if err != nil || len(f.Trains) != 0 || len(f.UnassociatedForecasts) != 1 || f.HistoryStatus != "paused" {
+	if err != nil || len(f.Trains) != 1 || f.Trains[0].Persistence.State != "pending" || f.Trains[0].Calls[0].Arrival.Prediction == nil || f.HistoryStatus != "paused" {
 		t.Fatal("failed admission hid source forecasts or selected identity", f, err)
 	}
 }

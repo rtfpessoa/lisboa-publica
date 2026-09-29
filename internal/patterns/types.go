@@ -85,6 +85,7 @@ type Topology struct {
 	Stations []Station
 }
 type Receipt struct {
+	DeliveryGap      bool              `json:"delivery_gap,omitempty"`
 	Topology         *Topology         `json:"topology,omitempty"`
 	ReceivedAt       time.Time         `json:"received_at"`
 	Operator         string            `json:"operator"`

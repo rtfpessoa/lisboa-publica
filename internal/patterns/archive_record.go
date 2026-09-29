@@ -17,12 +17,17 @@ func (s *Service) Record(receipt Receipt, topology Topology) error {
 		return fmt.Errorf("Metro receipt exceeds archive limits")
 	}
 	receipt.Operator = "metro"
+	receipt.DeliveryGap = receipt.DeliveryGap || s.pendingMetroDeliveryGap
 	topology.Profile = fmt.Sprintf("%s-s%d-b%d", topology.Profile, int(s.config.SampleInterval/time.Second), s.config.BinSeconds)
 	receipt.Profile, receipt.Topology = topology.Profile, &topology
-	if s.observeUnsampledMetro(receipt, topology) {
+	if !receipt.DeliveryGap && s.observeUnsampledMetro(receipt, topology) {
 		return nil
 	}
-	return s.recordMetroSample(receipt, topology)
+	err := s.recordMetroSample(receipt, topology)
+	if err == nil && receipt.DeliveryGap {
+		s.pendingMetroDeliveryGap = false
+	}
+	return err
 }
 
 func (s *Service) observeUnsampledMetro(receipt Receipt, topology Topology) bool {
@@ -111,8 +116,17 @@ func (s *Service) checkpointMetroSample(at time.Time) error {
 func (s *Service) pause(err error) error {
 	s.status, s.message = "paused", "Recolha histórica pausada; o tempo real mantém-se. Existem lacunas."
 	s.engine.resetContinuity()
-	s.engine.Gaps++
+	s.pendingMetroDeliveryGap = true
 	// Keep the buffer bounded even through prolonged disk failure.
 	s.detail, s.detailBytes = []Receipt{}, 0
 	return err
+}
+
+// InterruptMetroContinuity records an ordered delivery loss without changing
+// frozen forecasts, aggregate history or source clocks.
+func (s *Service) InterruptMetroContinuity() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.engine.resetContinuity()
+	s.pendingMetroDeliveryGap = true
 }

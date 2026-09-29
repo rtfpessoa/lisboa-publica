@@ -22,7 +22,7 @@ async function fixture(page:Page){
   if(url.pathname.endsWith('/metro/live'))json=await page.evaluate(()=>(window as unknown as {metroFrame:unknown}).metroFrame);
   await r.fulfill({json});
  });
- await page.goto('/');if((page.viewportSize()?.width??1280)<760)await page.getByRole('button',{name:'Abrir operadores'}).click();await page.getByLabel('Pesquisar carreira ou paragem').fill('Alameda');await page.getByRole('button',{name:'Alameda Metro de Lisboa'}).click();await expect(page.locator('.station-popup')).toContainText('Comboio 7');return {requests};
+ await page.goto('/');if((page.viewportSize()?.width??1280)<760)await page.getByRole('button',{name:'Abrir operadores'}).click();await expect(page.getByRole('button',{name:'Metro de Lisboa',exact:true})).toHaveAttribute('aria-pressed','true');await page.getByLabel('Pesquisar carreira ou paragem').fill('Alameda');await page.getByRole('button',{name:'Alameda Metro de Lisboa'}).press('Enter');await expect(page.locator('.station-popup')).toContainText('Comboio 7');return {requests};
 }
 for(const width of [1280,390])test(`Metro inventory, countdown and shared journey at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:850});const f=await fixture(page),panel=page.locator('.detail-panel');
@@ -33,8 +33,8 @@ for(const width of [1280,390])test(`Metro inventory, countdown and shared journe
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 test('Metro reconnect preserves direction and pinned run without fabricated events',async({page})=>{
- const f=await fixture(page),panel=page.locator('.detail-panel');await panel.getByRole('button',{name:'São Sebastião',exact:true}).click();await page.evaluate(()=>(window as unknown as {failMetro:()=>void}).failMetro());await expect.poll(()=>f.requests.filter(p=>p.endsWith('/metro/live')).length).toBe(1);await expect(panel.getByRole('button',{name:'São Sebastião',exact:true})).toHaveAttribute('aria-pressed','true');await page.waitForTimeout(1500);
- await panel.getByRole('button',{name:'Aeroporto',exact:true}).click();await panel.getByRole('button',{name:'Abrir comboio',exact:true}).click();await page.evaluate(()=>{const w=window as unknown as {metroFrame:{revision:string;trains:{association:string;reason:string}[]};emitMetro:(s:string)=>void};w.metroFrame.revision='suspended';w.metroFrame.trains[0].association='suspended';w.metroFrame.trains[0].reason='Última viagem selecionada';w.emitMetro('frame')});await expect(panel).toContainText('Última viagem selecionada');await expect(panel.getByRole('button',{name:'A seguir comboio'})).toBeDisabled();await expect(panel).not.toContainText('Chegada inferida');
+ const f=await fixture(page),panel=page.locator('.detail-panel');await panel.getByRole('tab',{name:'São Sebastião',exact:true}).click();await page.evaluate(()=>(window as unknown as {failMetro:()=>void}).failMetro());await expect.poll(()=>f.requests.filter(p=>p.endsWith('/metro/live')).length).toBe(1);await expect(panel.getByRole('tab',{name:'São Sebastião',exact:true})).toHaveAttribute('aria-pressed','true');await page.waitForTimeout(1500);
+ await panel.getByRole('tab',{name:'Aeroporto',exact:true}).click();await panel.getByRole('button',{name:'Abrir comboio',exact:true}).click();await page.evaluate(()=>{const w=window as unknown as {metroFrame:{revision:string;trains:{association:string;reason:string}[]};emitMetro:(s:string)=>void};w.metroFrame.revision='suspended';w.metroFrame.trains[0].association='suspended';w.metroFrame.trains[0].reason='Última viagem selecionada';w.emitMetro('frame')});await expect(panel).toContainText('Última viagem selecionada');await expect(panel.getByRole('button',{name:'A seguir comboio'})).toBeDisabled();await expect(panel).not.toContainText('Chegada inferida');
 });
 
 test('Metro missing pinned recovery retains history and accepts explicit unavailable reset',async({page})=>{
@@ -213,7 +213,7 @@ for(const width of [1280,390])test(`Metro native SSE preserves uncertain own-onl
   await expect(panel.locator('.vehicle-journey')).toBeVisible();
   await expect(panel).toContainText('Viagem por confirmar');
   const vehicleOwn=panel.locator('[data-call-id="own-only"]');
-  await expect(vehicleOwn).toContainText('Nossa previsão (experimental)');
+  await expect(vehicleOwn).toContainText('Nossa previsão histórica (experimental)');
   await expect(vehicleOwn).toContainText('Sem previsão atual');
   await expect(panel.locator('.vehicle-journey h4').first()).not.toContainText('→');
   const before=await vehicleOwn.locator('time').textContent();
@@ -223,10 +223,37 @@ for(const width of [1280,390])test(`Metro native SSE preserves uncertain own-onl
   await page.getByRole('button',{name:'Alameda Metro de Lisboa'}).press('Enter');
   await expect(panel.locator('.station-popup')).toBeVisible();
   await expect(panel.locator('[data-metro-revision]')).toHaveAttribute('data-metro-revision','native-own-only');
-  await expect(panel.locator('[data-call-id="own-only"]')).toContainText('Nossa previsão (experimental)');
+  await expect(panel.locator('[data-call-id="own-only"]')).toContainText('Nossa previsão histórica (experimental)');
   await expect(panel.getByRole('button',{name:'Abrir comboio',exact:true})).toHaveCount(0);
  }finally{
   for(const client of clients)client.destroy();
   await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));
  }
+});
+
+for(const width of [1280,390])test(`Metro estimated direction, own departures and keyboard tabs at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:850});await fixture(page);
+ await page.evaluate(()=>{
+  const w=window as any,f=w.metroFrame,t=f.trains[0],c=t.calls[0];
+  f.revision='estimated-departure';t.direction_evidence={state:'estimated',reason:'Synthetic original-clock modeled direction'};
+  c.own_departure_prediction={...c.arrival.prediction,at:new Date(Date.now()+85000).toISOString(),model_version:'metro-schedule-prior-v1:synthetic'};
+  w.emitMetro('frame');
+ });
+ const panel=page.locator('.detail-panel');await expect(panel).toContainText('Estimativa por horário (experimental)');
+ const forward=panel.getByRole('tab',{name:/Aeroporto/});await forward.focus();await forward.press('ArrowRight');
+ await expect(panel.getByRole('tab',{name:/São Sebastião/})).toHaveAttribute('aria-selected','true');
+ await panel.getByRole('tab',{name:/São Sebastião/}).press('Home');await expect(forward).toHaveAttribute('aria-selected','true');
+ await panel.getByRole('button',{name:'Abrir comboio',exact:true}).click();
+ await expect(panel).toContainText('sentido estimado');await expect(panel).toContainText('Estimativa por horário (experimental)');
+});
+
+test('Metro interpolation follows published vertices by arc length',async({page})=>{
+ await fixture(page);
+ const value=await page.evaluate(async()=>{
+  const {metroModelVehicles}=await import('/src/metroModelPosition.ts');const f=structuredClone((window as any).metroFrame),t=f.trains[0],now=Date.now();
+  t.direction_evidence.state='estimated';t.lifecycle={state:'active',reason:'Synthetic modeled lifecycle'};
+  t.model_projection={model_version:'synthetic',geometry_version:'synthetic',source_updated_at:new Date(now).toISOString(),valid_until:new Date(now+10000).toISOString(),from_at:new Date(now).toISOString(),to_at:new Date(now+10000).toISOString(),from_lat:0,from_lon:0,to_lat:1,to_lon:1,geometry:[[0,0],[1,0],[1,1]]};
+  return metroModelVehicles(f,now+2500)[0];
+ });
+ expect(value.lat).toBeCloseTo(0);expect(value.lon).toBeCloseTo(.5,2);
 });

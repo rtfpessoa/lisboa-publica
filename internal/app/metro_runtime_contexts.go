@@ -91,20 +91,38 @@ func (s metroContextSelection) supportedPrior(key string) bool {
 func (s metroContextSelection) choose(scope string) string {
 	valid, present := s.candidates(scope)
 	prior := s.prior(scope)
+	if key := s.motionChoice(scope, valid); key != "" {
+		return key
+	}
+	selected := ""
+	if !metroOrderingMotionFresh(s.runtime.operational[scope], s.now) {
+		selected = s.forecastChoice(scope, prior, valid, present)
+	}
+	if selected == "" {
+		s.suspend(scope, len(valid))
+	}
+	return selected
+}
+func (s metroContextSelection) forecastChoice(scope, prior string, valid, present []string) string {
 	if s.supportedPrior(prior) {
 		return prior
 	}
-	if len(valid) == 1 && (prior == "" || valid[0] == prior) && !s.rejectedAlternative(scope, valid[0]) {
+	if s.uniqueValidChoice(scope, prior, valid) {
 		return valid[0]
 	}
-	if prior == "" && len(valid) == 0 && len(present) == 1 && len(s.batch.references[scope]) == 1 {
-		return present[0]
+	selected := ""
+	if s.uniquePresentChoice(scope, prior, valid, present) {
+		selected = present[0]
 	}
-	s.suspend(scope, len(valid))
-	return ""
+	return selected
+}
+func (s metroContextSelection) uniqueValidChoice(scope, prior string, valid []string) bool {
+	return len(valid) == 1 && (prior == "" || valid[0] == prior) && !s.rejectedAlternative(scope, valid[0])
+}
+func (s metroContextSelection) uniquePresentChoice(scope, prior string, valid, present []string) bool {
+	return prior == "" && len(valid) == 0 && len(present) == 1 && len(s.batch.references[scope]) == 1
 }
 
-// Rejected path/event support is not proof that another direction is current.
 func (s metroContextSelection) rejectedAlternative(scope, selected string) bool {
 	for key := range s.batch.references[scope] {
 		if key == selected || !s.batch.rejected[key] {
@@ -136,6 +154,9 @@ func (s metroContextSelection) suspend(scope string, count int) {
 }
 
 func (r *metroRuntime) forecastContexts(now time.Time) []api.MetroForecastContext {
+	if now.Before(r.forecastCacheUntil) {
+		return cloneMetroForecastContexts(r.forecastCache)
+	}
 	out := []api.MetroForecastContext{}
 	if r.batch == nil || r.publication == nil || r.plan == nil || r.publication.Status.Status != "ok" {
 		return out
@@ -153,6 +174,10 @@ func (r *metroRuntime) forecastContexts(now time.Time) []api.MetroForecastContex
 		}
 	}
 
+	r.projectContextDepartures(out, now)
+	r.reconcileForecastTracks(out, now)
+	r.forecastCache = cloneMetroForecastContexts(out)
+	r.forecastCacheUntil = r.forecastSnapshotExpiry(out, now)
 	return out
 }
 
@@ -164,15 +189,15 @@ func (r *metroRuntime) pathForecastContext(key string, now time.Time) api.MetroF
 	if r.batch.rejected[key] {
 		context.Reason = "Suporte de percurso ou movimento indisponível; previsões locais preservadas"
 	}
-	context.OriginKnown = ptr(metroPathOriginKnown(r.topology, path))
+	context.OriginKnown = ptr(false)
 	calls := metroPathCalls(path, r.publication, r.plan, "metro:forecast:"+key)
 	points := metroLatestForecastPoints(r.batch.groups[key])
 	for n, code := range path.Stops {
 		call := calls[n]
 		call.JourneyId = nil
 		call.ServiceLabel, call.DirectionKey = ptr(context.Reference), &direction
-		own := r.contextOwnPrediction(key, code, now)
-		context.Calls = append(context.Calls, metroContextVisitCalls(metroForecastVisit{call: call, code: code, scope: key, own: own}, points, now)...)
+		own := r.contextOwnPrediction(key, code, now, false)
+		context.Calls = append(context.Calls, r.metroContextVisitCalls(metroForecastVisit{call: call, code: code, scope: key, own: own, departure: r.contextOwnPrediction(key, code, now, true)}, points, now)...)
 	}
 
 	context.Calls = canonicalMetroForecastCalls(context.Calls)
@@ -181,13 +206,14 @@ func (r *metroRuntime) pathForecastContext(key string, now time.Time) api.MetroF
 }
 
 type metroForecastVisit struct {
-	call  api.StopCall
-	code  string
-	scope string
-	own   *api.CallTimeEvidence
+	call      api.StopCall
+	code      string
+	scope     string
+	own       *api.CallTimeEvidence
+	departure *api.CallTimeEvidence
 }
 
-func metroContextVisitCalls(visit metroForecastVisit, points []metroPoint, now time.Time) []api.StopCall {
+func (r *metroRuntime) metroContextVisitCalls(visit metroForecastVisit, points []metroPoint, now time.Time) []api.StopCall {
 	base, own := visit.call, visit.own
 	calls := []api.StopCall{}
 	for _, p := range points {
@@ -195,14 +221,20 @@ func metroContextVisitCalls(visit metroForecastVisit, points []metroPoint, now t
 			continue
 		}
 		if c, ok := metroSourceForecast(base, p, now); ok {
-			c.Id = metroForecastCallID(visit.scope, p)
+			c.Id = metroForecastPointID(visit.scope, p)
 			c.MetroForecast = metroForecastEvidence(textValue(base.ServiceLabel), p)
+			if source, ok := r.batch.provenance[c.Id]; ok {
+				c.MetroForecast.SourceRevisionId = ptr(source.Revision)
+				c.MetroForecast.SourceSlot = ptr(source.Slot)
+			}
 			c.OwnPrediction = own
+			c.OwnDeparturePrediction = visit.departure
 			calls = append(calls, c)
 		}
 	}
 	if len(calls) == 0 && own != nil {
 		base.OwnPrediction = own
+		base.OwnDeparturePrediction = visit.departure
 		base.MetroForecast = &api.MetroForecastAssociation{SourceReference: base.ServiceLabel, Method: "published", Anchors: []string{}, Platforms: []api.MetroPlatformForecast{}, Limitations: []string{}}
 		calls = append(calls, base)
 	}
@@ -279,6 +311,8 @@ func metroLocalForecastCall(f metroLocalForecast, station MetroStation, arrival 
 	call.Arrival = api.CallTime{Kind: "prediction", At: &at, Prediction: &api.CallTimeEvidence{At: at, SourceUpdatedAt: &f.Clock, ValidUntil: &expiry, SourceUrl: arrival.SourceUrl}}
 	point := metroPoint{f.Row.Stop, f.Row.Platform, f.Clock, ptr(f.Seconds)}
 	call.MetroForecast = metroForecastEvidence(f.Reference, point)
+	call.MetroForecast.SourceRevisionId = ptr(metroWaitRevision(f.Row))
+	call.MetroForecast.SourceSlot = ptr(f.Slot + 1)
 	call.Id = metroForecastCallID(arrival.RouteId+"|"+f.Row.Destination+"|"+f.Reference, point)
 	if f.Reference == "" {
 		call.ServiceLabel = nil
@@ -328,7 +362,7 @@ func (l metroLocalContexts) sorted() []api.MetroForecastContext {
 }
 
 // view returns one coherent publication. Journal acknowledgements are visible
-// without another source request, while provisional identities remain private.
+// without another source request. Fresh identities disclose pending persistence.
 func (r *metroRuntime) view(now time.Time) (*MetroData, *StaticData, []api.MetroForecastContext, string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

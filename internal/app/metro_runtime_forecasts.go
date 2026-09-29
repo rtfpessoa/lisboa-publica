@@ -7,15 +7,49 @@ import (
 )
 
 func (r *metroRuntime) projectOwn(data *MetroData, history *patterns.Service, now time.Time) {
+	tracks := r.metroOwnForecastWork()
+	for n := range tracks {
+		projectMetroOwnTrack(&tracks[n], history, now)
+		projectMetroScheduled(&tracks[n], now)
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	for _, id := range r.active {
-		if t := r.tracks[id]; t != nil && t.BarrierRevision == 0 {
-			projectMetroOwnTrack(t, history, now)
-		}
+	for _, copy := range tracks {
+		r.applyOwnForecastWork(copy, now)
 	}
+	r.forecastCacheUntil = time.Time{}
 	data.Trains = r.current(now)
 }
+func (r *metroRuntime) metroOwnForecastWork() []metroTrack {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	tracks := []metroTrack{}
+	for _, id := range r.active {
+		if t := r.tracks[id]; t != nil {
+			copy := *t
+			copy.Train = cloneMetroTrain(t.Train)
+			tracks = append(tracks, copy)
+		}
+	}
+	return tracks
+}
+func (r *metroRuntime) applyOwnForecastWork(copy metroTrack, now time.Time) {
+	track := r.tracks[copy.Train.JourneyId]
+	if !metroOwnForecastWorkCurrent(track, copy, now) {
+		return
+	}
+	for n := range track.Train.Calls {
+		track.Train.Calls[n].OwnPrediction = copy.Train.Calls[n].OwnPrediction
+		track.Train.Calls[n].OwnDeparturePrediction = copy.Train.Calls[n].OwnDeparturePrediction
+	}
+}
+func metroOwnForecastWorkCurrent(t *metroTrack, copy metroTrack, now time.Time) bool {
+	if t == nil || t.Train.Association != "supported" {
+		return false
+	}
+	return t.Revision == copy.Revision && t.Profile == copy.Profile && t.Train.SourceUpdatedAt.Equal(copy.Train.SourceUpdatedAt) && now.Before(t.Train.ValidUntil)
+}
+
 func projectMetroOwnTrack(t *metroTrack, history *patterns.Service, now time.Time) {
 	for n := range t.Train.Calls {
 		t.Train.Calls[n].OwnPrediction = nil
@@ -28,6 +62,9 @@ func projectMetroOwnTrack(t *metroTrack, history *patterns.Service, now time.Tim
 		if c.Arrival.Inferred != nil {
 			signals = append(signals, patterns.MetroPopupSignal{Stop: t.Codes[n], Start: c.Arrival.Inferred.WindowStart, End: c.Arrival.Inferred.WindowEnd})
 		}
+	}
+	if history == nil {
+		return
 	}
 	forecasts := history.MetroPopupForecasts(patterns.MetroPopupForecastQuery{Train: t.Train.Reference, Route: t.Train.RouteId, Direction: t.ProviderDirection, Profile: t.Profile, Signals: signals, Now: now})
 	for n, code := range t.Codes {

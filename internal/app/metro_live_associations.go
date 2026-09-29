@@ -69,6 +69,9 @@ func (b *metroFrameBuilder) scopeCalls() {
 	}
 }
 func expireMetroCall(c *api.StopCall, association api.MetroTrainAssociation, now time.Time) {
+	if c.OwnDeparturePrediction != nil && !metroCallPredictionFresh(c.OwnDeparturePrediction, association, now) {
+		c.OwnDeparturePrediction = nil
+	}
 	if c.Arrival.Prediction != nil && !metroCallPredictionFresh(c.Arrival.Prediction, association, now) {
 		if c.Arrival.Kind == "prediction" {
 			c.Arrival = missingCallTime("Sem previsão atual")
@@ -92,7 +95,7 @@ func metroCallsAtStop(calls []api.StopCall, id string) []api.StopCall {
 }
 
 func metroCurrentDirection(t api.MetroTrain, now time.Time) bool {
-	return t.Association == "supported" && now.Before(t.ValidUntil) && t.DirectionEvidence != nil && t.DirectionEvidence.State == "confirmed"
+	return t.Association == "supported" && now.Before(t.ValidUntil) && t.DirectionEvidence != nil && (t.DirectionEvidence.State == "confirmed" || t.DirectionEvidence.State == "estimated")
 }
 func metroQualifiedDirection(t *metroTrack, now time.Time) bool {
 	return t != nil && metroCurrentDirection(t.Train, now)

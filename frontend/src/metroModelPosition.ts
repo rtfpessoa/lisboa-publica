@@ -13,7 +13,8 @@ export function metroModelVehicles(frame:MetroLiveFrame|undefined,now:number):Ve
   const source=Date.parse(p.source_updated_at),from=Date.parse(p.from_at),to=Date.parse(p.to_at),expiry=Date.parse(p.valid_until);
   if(!p.geometry_version||!p.model_version||![source,from,to,expiry,p.from_lat,p.from_lon,p.to_lat,p.to_lon].every(Number.isFinite)||source>now||expiry<=now||to<=from||now<from||now>=to)return vehicle;
   const progress=(now-from)/(to-from);
-  return {...vehicle,lat:p.from_lat+(p.to_lat-p.from_lat)*progress,lon:p.from_lon+(p.to_lon-p.from_lon)*progress,position_kind:'estimated'};
+  const point=metroSegmentPoint(p.geometry,progress)??[p.from_lon+(p.to_lon-p.from_lon)*progress,p.from_lat+(p.to_lat-p.from_lat)*progress];
+  return {...vehicle,lat:point[1],lon:point[0],position_kind:'estimated'};
  });
 }
 const emptyVehicles:Vehicle[]=[];
@@ -24,4 +25,13 @@ export function useMetroModelVehicles(frame:MetroLiveFrame|undefined){
  const modeled=!!stable?.trains.some(t=>t.model_projection&&metroCurrentDirection(t,Date.now()));
  useEffect(()=>{if(!modeled)return;const timer=setInterval(()=>{if(!document.hidden)setNow(Date.now())},500);const visible=()=>setNow(Date.now());visible();document.addEventListener('visibilitychange',visible);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',visible)}},[modeled]);
  return useMemo(()=>modeled?metroModelVehicles(stable,now):stable?.vehicles??emptyVehicles,[stable,modeled,now]);
+}
+
+// Arc-length interpolation follows published vertices and stays in the segment.
+export function metroSegmentPoint(geometry:number[][]|undefined,progress:number):[number,number]|undefined{
+ if(!geometry||geometry.length<2||geometry.some(p=>p.length!==2||p.some(v=>!Number.isFinite(v))))return;
+ const lengths=geometry.slice(1).map((p,i)=>Math.hypot((p[0]-geometry[i][0])*Math.cos(p[1]*Math.PI/180),p[1]-geometry[i][1]));
+ let remaining=lengths.reduce((a,b)=>a+b,0)*Math.max(0,Math.min(1,progress));
+ for(let i=0;i<lengths.length;i++){if(remaining<=lengths[i]&&lengths[i]>0){const f=remaining/lengths[i];return [geometry[i][0]+(geometry[i+1][0]-geometry[i][0])*f,geometry[i][1]+(geometry[i+1][1]-geometry[i][1])*f]};remaining-=lengths[i]}
+ const last=geometry[geometry.length-1];return [last[0],last[1]];
 }

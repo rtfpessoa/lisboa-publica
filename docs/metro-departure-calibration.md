@@ -1,9 +1,11 @@
+> The offline workflow below validates the legacy reviewed adapter and independent physical references. The current operational model separately exposes experimental model departure estimates after supported stops; these do not claim physical accuracy. See [current behavior](metro-live-popups.md).
+
 # Reproducible Metro departure calibration
 
 The offline `metro-calibrate` command prepares a candidate for the guarded model-movement detector.
 It does not collect observations, contact Metro, change server configuration or enable live departures.
 No qualified live movement profile or retained stop-to-movement qualification was supplied as of
-2026-09-28, so live departure times remain unavailable. The command has separate physical-reference
+2026-09-28, so independently validated physical departure accuracy remains unavailable. The command has separate physical-reference
 comparison and model-consistency paths. Independent physical timing references are required for a future
 physical accuracy claim; they are not required to assess consistency of an experimental model estimate.
 The included populated example is synthetic and establishes reproducibility, not production qualification.
@@ -105,7 +107,7 @@ considering an adapter change.
 The command does not impose unagreed physical accuracy thresholds or automatically approve a candidate.
 Changing geometry/transform or refitting against holdout labels requires a new version and a fresh holdout.
 
-Enabling experimental live departure projection still requires an admissible production movement transform,
+The legacy reviewed allowlist adapter requires an admissible production movement transform,
 at least one retained qualified actual-source stop-to-movement chain per enabled configuration, separately
 held-out whole journeys, prohibited-input checks, a reviewed versioned allowlist and startup admission through the live allowlist.
 The offline command remains nonactivating; the server implements the separate reviewed allowlist gate. Independent physical timing

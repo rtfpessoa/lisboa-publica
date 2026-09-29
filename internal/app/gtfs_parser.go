@@ -120,6 +120,12 @@ func (g *gtfsReader) addLocalStop(m map[string]string, lat, lon float64) error {
 		s.ParentId = ptr(qualify(g.provider.ID, parent))
 		g.data.Schedule.Parents[id] = parent
 	}
+	if g.provider.ID == "metro" && m["id_antigo"] != "" {
+		if g.data.Schedule.LegacyStops == nil {
+			g.data.Schedule.LegacyStops = map[string]string{}
+		}
+		g.data.Schedule.LegacyStops[id] = m["id_antigo"]
+	}
 	g.stops[id] = s
 	return nil
 }
@@ -161,7 +167,7 @@ func (g *gtfsReader) trip(m map[string]string) error {
 		}
 		g.directions[id] = ptr(direction)
 	}
-	g.trips[id] = &ScheduledTrip{ID: id, Route: strings.Clone(m["route_id"]), Service: strings.Clone(m["service_id"]), Headsign: strings.Clone(m["trip_headsign"]), Shape: strings.Clone(m["shape_id"]), Label: strings.Clone(m["trip_short_name"]), Direction: g.directions[id]}
+	g.trips[id] = &ScheduledTrip{ID: id, Route: strings.Clone(m["route_id"]), Service: strings.Clone(m["service_id"]), Headsign: strings.Clone(m["trip_headsign"]), Shape: strings.Clone(m["shape_id"]), tripPopupMetadata: tripPopupMetadata{Pattern: strings.Clone(m["pattern_id"])}, Label: strings.Clone(m["trip_short_name"]), Direction: g.directions[id]}
 	return nil
 }
 

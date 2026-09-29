@@ -367,6 +367,10 @@ export type MetroStatus = {
     message: string;
     source_url: string;
     lines: MetroLine[];
+    /** Application receipt of the latest successfully decoded line-state response. This is not an original provider publication clock and does not renew wait freshness. */
+    line_state_updated_at?: string | null;
+    /** Independent line-state collection error or expiry; fresh wait predictions remain separately available. */
+    line_state_error?: string | null;
 };
 export type RouteShape = {
     id: string;
@@ -517,6 +521,7 @@ export type MetroEventEvidence = {
     model_version: string;
     persistence: "pending" | "committed" | "unavailable";
     reason: string;
+    confirmed_at?: string | null;
 };
 export type CallTime = {
     kind: "actual" | "prediction" | "schedule" | "unavailable" | "inferred";
@@ -548,6 +553,13 @@ export type MetroForecastAssociation = {
     anchors: string[];
     platforms: MetroPlatformForecast[];
     limitations: string[];
+    /** Possible operational owners, never map links or named anchors. */
+    candidate_references?: string[];
+    /** An unseen or unmatched train remains feasible. */
+    unknown_candidate?: boolean;
+    /** Hash of the immutable normalized source row including original clock. */
+    source_revision_id?: string | null;
+    source_slot?: number | null;
 };
 export type StopCall = {
     id: string;
@@ -570,6 +582,8 @@ export type StopCall = {
     own_prediction?: (CallTimeEvidence) | null;
     departure_revisions?: MetroDepartureRevision[];
     metro_forecast?: MetroForecastAssociation;
+    /** Experimental own departure estimate; schedule priors remain labeled and independent of official arrival. */
+    own_departure_prediction?: CallTimeEvidence;
 };
 export type StopCallPage = {
     data: StopCall[];
@@ -739,11 +753,14 @@ export type MetroJourneyLifecycle = {
     predecessor_journey_id?: string | null;
 };
 export type MetroDirectionEvidence = {
-    state: "unknown" | "context" | "confirmed";
+    state: "unknown" | "context" | "estimated" | "confirmed";
     reason: string;
     confirmed_at?: string | null;
     first_movement_at?: string | null;
     geometry_version?: string | null;
+    model_published_at?: string | null;
+    received_at?: string | null;
+    underlying_input_at?: string | null;
 };
 export type MetroModelProjection = {
     model_version: string;
@@ -756,6 +773,10 @@ export type MetroModelProjection = {
     from_lon: number;
     to_lat: number;
     to_lon: number;
+    /** Oriented published [longitude, latitude] segment vertices; no extrapolation beyond this next visit. */
+    geometry?: number[][];
+    /** Experimental rendering bound; not a physically calibrated confidence interval. */
+    uncertainty_metres?: number;
 };
 export type MetroTrain = {
     journey_id: string;

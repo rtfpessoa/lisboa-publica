@@ -79,7 +79,7 @@ func (r *metroRuntime) flushEvents(history *patterns.Service, now time.Time) {
 		r.historyStatus = "paused"
 		return
 	}
-	r.historyStatus = "collecting"
+	r.historyCollecting(now)
 	for _, record := range batch {
 		r.commitEvent(record)
 	}
@@ -130,6 +130,7 @@ func (r *metroRuntime) runJournal(ctx context.Context, history *patterns.Service
 		case <-ctx.Done():
 			return
 		case now := <-ticker.C:
+			r.flushInputs(ctx, history, now)
 			r.flushEvents(history, now)
 			r.mu.Lock()
 			r.queueCurrentCheckpoints()

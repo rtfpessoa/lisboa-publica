@@ -18,6 +18,8 @@ type metroOAuthToken struct {
 }
 
 func (m *MetroClient) token(ctx context.Context) (string, error) {
+	m.tokenMu.Lock()
+	defer m.tokenMu.Unlock()
 	if m.tokenValue != "" && time.Now().Before(m.expires) {
 		return m.tokenValue, nil
 	}
@@ -82,8 +84,10 @@ func (m *MetroClient) readAPI(route *http.Request, dst any) error {
 	}
 	defer res.Body.Close()
 	if res.StatusCode == http.StatusUnauthorized {
+		m.tokenMu.Lock()
 		m.tokenValue = ""
 		m.expires = time.Time{}
+		m.tokenMu.Unlock()
 	}
 	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("Metro API HTTP%d", res.StatusCode)

@@ -20,3 +20,9 @@ The two `red-direction-*` files retain the exact direct/static cache bytes from 
 |---|---:|---|
 | `red-direction-direct.json.gz` | 73481 | `e6c30d6cc8fdb64a4af985e2d0f1222112c9bc6b5c783f5bde85e671d7f22e7d` |
 | `red-direction-static.json.gz` | 6128515 | `f67b7f044882dd1fea27bdac5837da81f3a7e3e61d0cd92b592f55921eeb6316` |
+
+## Original-clock Hub model replay, 2026-09-29
+
+`metro-model-positions-20260929.json.gz` retains 12 successful public Hub position responses collected at one-second request starts, 13:47:10.977511–13:47:22.017617 UTC. Each response contains 30 Metro references (360 rows total). Original decoded bytes: 224951; SHA-256: `0ae46cd09b89bf0ee058894644155ae4d106f61b5d959faa3ae91649e8e024cd`. Original millisecond publication clocks, string direction, trip/pattern/shape context and local receipt clocks are preserved. No Metro authenticated API calls were made for this capture.
+
+Changed-coordinate publication intervals in this short sample include 12.813 and 14.252 seconds; it does not establish a guaranteed cadence. Model replay admits 360 context rows and retains 30 references with six three-position directions. These are ETA-derived model positions, without independent physical timing/direction truth. Static evidence uses the retained artifact above; context compatibility is tested rather than assumed.

@@ -3710,6 +3710,17 @@
             "items": {
               "$ref": "#/components/schemas/MetroLine"
             }
+          },
+          "line_state_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Application receipt of the latest successfully decoded line-state response. This is not an original provider publication clock and does not renew wait freshness."
+          },
+          "line_state_error": {
+            "type": "string",
+            "nullable": true,
+            "description": "Independent line-state collection error or expiry; fresh wait predictions remain separately available."
           }
         }
       },
@@ -4497,6 +4508,11 @@
           },
           "metro_forecast": {
             "$ref": "#/components/schemas/MetroForecastAssociation"
+          },
+          "own_departure_prediction": {
+            "$ref": "#/components/schemas/CallTimeEvidence",
+            "nullable": true,
+            "description": "Experimental own departure estimate; schedule priors remain labeled and independent of official arrival."
           }
         },
         "required": [
@@ -5393,6 +5409,11 @@
           },
           "reason": {
             "type": "string"
+          },
+          "confirmed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "required": [
@@ -5742,6 +5763,7 @@
             "enum": [
               "unknown",
               "context",
+              "estimated",
               "confirmed"
             ]
           },
@@ -5761,8 +5783,24 @@
           "geometry_version": {
             "type": "string",
             "nullable": true
+          },
+          "model_published_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "received_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "underlying_input_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
-        }
+        },
+        "description": "Operational direction evidence. Estimated is useful model/context evidence, not independent physical movement confirmation."
       },
       "MetroDepartureRevision": {
         "type": "object",
@@ -5847,6 +5885,23 @@
           "to_lon": {
             "type": "number",
             "format": "double"
+          },
+          "geometry": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "description": "Oriented published [longitude, latitude] segment vertices; no extrapolation beyond this next visit."
+          },
+          "uncertainty_metres": {
+            "type": "number",
+            "description": "Experimental rendering bound; not a physically calibrated confidence interval."
           }
         }
       },
@@ -5928,6 +5983,28 @@
             "items": {
               "type": "string"
             }
+          },
+          "candidate_references": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Possible operational owners, never map links or named anchors."
+          },
+          "unknown_candidate": {
+            "type": "boolean",
+            "description": "An unseen or unmatched train remains feasible."
+          },
+          "source_revision_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Hash of the immutable normalized source row including original clock."
+          },
+          "source_slot": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3,
+            "nullable": true
           }
         },
         "description": "Forecast identity and provenance, separate from current vehicle/journey linkage. Order association requires a unique supported continuous cohort; anonymous forecasts never mint a source reference or physical train."

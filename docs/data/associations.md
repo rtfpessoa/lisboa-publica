@@ -187,43 +187,14 @@ cannot change the source/journey/normalized stop context. See [adapter rules](..
 
 Current official-cache values without a supported vehicle association remain separate response-only waiting rows. They do not replace the official member of an earlier emitted comparison pair or become calibration/evaluation cases. A direction-selected view displays unassociated published predictions separately. Original source clocks and validity still govern eligibility.
 
-## Metro live popup episodes
+## Metro operational episodes and forecasts
 
-[Metro live popup associations](../metro-live-popups.md#association-and-history) are distinct from physical units,
-Hub trip hints, sampled pattern-engine episodes and actual-event journeys. Unique admitted ordered topology,
-route/destination/reference context and original clocks determine support. Conflicts, gaps and plan/reuse
-boundaries suspend or start separate episodes; a selected run is never rebound automatically.
-A compatible short-turn path can share the unique containing ordered direction while retaining its own destination.
-Own forecasts require at least three matching supported transition windows and a compatible active existing
-forecast profile, not reference equality alone. Both popup projections share the same frame and origin-specific times.
+[Current Metro associations](../metro-live-popups.md) distinguish operational line/reference episodes, forecast tracks, shared Hub trip hints and physical units. Explicit legacy stop codes precede name/coordinate fallback. Active published topology and original clocks determine ordered path support. Different direction forecasts are alternatives rather than an automatic contradiction; three compatible original-clock model positions can choose direction on a fixed published geometry, and one unique compatible context can supply an estimated direction. Unsupported or incompatible evidence retains usable independent forecasts without manufacturing current linkage.
 
-Official Metro stop/reference/destination forecasts select the latest original source clock.
-Conflicting expected instants under that same latest clock are withheld, including in unassociated live
-popup forecasts. A strictly newer unambiguous source publication can recover them; receipt order alone cannot.
+Hub trip, direction, pattern and shape must agree with the same active static artifact. Geometry ambiguity, clock gaps, context changes and implausible displacement cut model continuity. Receipt-only repeats do not advance it. These model positions depend on ETA input and do not establish physical movement. There is at most one current line/reference episode. Closing and activating a successor are one in-memory transition and one reserved durable generation. Terminal arrival closes by inference; a newer return forecast alone cannot admit a stationary successor. Return movement must follow closure on the compatible fixed axis. Historical pins never silently rebind.
 
-Selection happens before ETA-window filtering: a newer missing, invalid or already elapsed wait
-suppresses an older future forecast for the same station/reference/destination. Equal-clock valid and
-missing waits also conflict; filtering an unusable candidate cannot revive the older value.
+Official selection occurs before ETA-window filtering. Newer missing/invalid/elapsed input suppresses older forecasts in the same station/reference/destination scope; the generic arrivals selector withholds equal-clock conflicting values. Metro live forecast contexts retain usable conflicting named predictions separately with a station-conflict limitation, while withholding event/current-path support from that conflict. Newer incompatible positive waits withdraw inferred arrival and associated stop support. Exact equivalent predictions retain platform provenance; unresolved platform differences remain separate limitations. Platform identifiers are not presumed physical directions.
 
-For Metro popup episodes, a later incompatible positive original wait withdraws an inferred arrival before
-backwards-progress suspension. Durable restoration uses the newer committed correction and cannot renew continuity. Uncommitted
-withdrawals can be absent after loss of runtime state; history/persistence warnings remain explicit.
-Departure parameters can be assessed through the [offline workflow](../metro-departure-calibration.md),
-which separates whole training/holdout journeys and requires independent physical references for observed
-inputs. This does not qualify the live Hub movement adapter or enable departure times.
+Anonymous forecasts have a separate continuity identity. Compatible partition, source-clock order and unique bounded ETA continuity preserve identity; ambiguous continuity splits it. Full normalized source-row hash and source slot identify ordering constraints. Candidate trains require compatible current line/direction and reachable visits. Named slots constrain relative order only when positions share a comparable fixed axis and publication time within one second; overlapping noise bounds supply no strict constraint. Unknown ownership remains possible even between named anchors. Candidate sets cannot become direction anchors or silently disappear because a map vehicle is missing.
 
-## Shared Metro live context classification
-
-The [Metro context classifier](../../internal/app/metro_runtime_contexts.go) partitions by line, trimmed reference and destination/compatible ordered path. It checks platform, clock and absolute forecast order within each context. Different direction forecasts alone are possible contexts, not a physical contradiction. One qualified prior direction may continue through a supported stop while its original evidence remains fresh; a forecast-only prior cannot establish current linkage. An initially ambiguous reference is not selected using minimum ETA, row order or approximate Hub trip. An absent optional wait does not compete with a usable context. There is at most one current admitted context per line/reference.
-
-Vehicle linking consumes that selected classification and requires fresh scoped line/reference evidence plus confirmed qualified direction. Unmapped or rejected raw destination names do not independently erase the selection. Station forecasts and ambiguous vehicle forecast groups use the same classified result; valid local forecasts with no unique whole path remain unlinked. A new journey identity is selectable only after checkpoint admission. Pinned history resolves separately and never restores current continuity. See [current popup semantics](../metro-live-popups.md) and [captured replay inputs](../../internal/app/testdata/metro-20260928/README.md).
-
-Station forecast deduplication includes line, reference, stop and destination; a linked context on another line cannot erase a valid unassociated forecast at an interchange. An entirely incompatible vehicle context has its scoped incompatibility reason rather than being reported as missing input.
-
-Supported positive-to-zero arrival at the admitted final visit stages completion; isolated zero, countdown expiry, proximity and intermediate stops do not. Closure ends current association after its mandatory checkpoint commits. Forecast reuse cannot reopen the episode. A compatible opposite candidate requires three advancing qualified source station-axis positions with two same-sign displacements above the frozen envelope. ETA interpolation assumes its path and cannot confirm that sign. Handoff stores old closure/new activation together before publishing one current association. Historical pins retain their ID; successor selection is explicit. Missing reviewed model admission leaves these movement-driven candidates unavailable.
-
-### Metro downstream axes and forecast identity
-
-The live classifier accepts uniquely embedded contiguous path variants on a shared axis while disclosing uncertain origin. It combines only exact equivalent station predictions, retaining all contributing platform clocks. Different original instants/platform clocks remain scoped forecasts; incompatible movement or event support cannot erase valid local predictions or establish an opposite direction. Current vehicle links additionally require confirmed qualified direction evidence.
-
-[Forecast evidence](../../internal/app/metro_forecast_evidence.go) keeps published and optional estimated references separate from journey/map identity. Anonymous station forecasts retain their original instants and stable source-row/slot identity. A unique order match requires a separately supported complete continuous cohort; current publications do not provide that admission. Synthetic matching tests establish the rule without asserting live ownership. Own forecasts continue using the existing episode/profile/transition support; either-source availability is preserved in both popup forecast views.
+Own forecasts preserve historical arrival estimates with compatible supported transitions and add positive schedule priors from the active day/path. Departure anchors and conditional remaining dwell govern onward propagation; zero/missing duration and unsupported tails stay unknown. Experimental inferred departure additionally requires a supported arrival, model stop anchor, previously three-position-supported direction, newer positive downstream publication and clear displacement. Future clocks, a missing row or countdown expiry alone cannot declare departure. No physical accuracy is asserted. See [offline physical validation](../metro-departure-calibration.md).

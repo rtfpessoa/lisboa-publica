@@ -25,7 +25,7 @@ func (r *metroRuntime) retainCheckpoint(p metroCheckpointPayload, record pattern
 	if len(r.tracks) >= 1024 {
 		return
 	}
-	r.tracks[p.Train.JourneyId] = &metroTrack{Train: cloneMetroTrain(p.Train), Profile: p.Profile, ProviderDirection: p.ProviderDirection, Codes: append([]string{}, p.Codes...), Points: map[string]metroPoint{}, Revision: record.Revision, CommittedRevision: record.Revision, Generation: record.Generation, CommittedAt: record.CommittedAt, HistoricalOnly: true}
+	r.tracks[p.Train.JourneyId] = &metroTrack{Train: cloneMetroTrain(p.Train), Profile: p.Profile, ProviderDirection: p.ProviderDirection, Codes: append([]string{}, p.Codes...), Points: map[string]metroPoint{}, Revision: record.Revision, CommittedRevision: record.Revision, Generation: record.Generation, CommittedAt: record.CommittedAt, HistoricalOnly: true, ModelDepartureSupport: p.ModelDepartureSupport}
 }
 
 // An unavailable legacy pin must not scan a week of event payloads on every

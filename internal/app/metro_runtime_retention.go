@@ -6,10 +6,11 @@ import (
 )
 
 func (r *metroRuntime) prune(now time.Time) {
+	r.expireLifecycleGroups(now)
 	pruneMetroContexts(r.active, r.tracks, now)
 	pruneMetroContexts(r.candidates, r.tracks, now)
 	for id, t := range r.tracks {
-		if now.Sub(t.Train.SourceUpdatedAt) > 7*24*time.Hour {
+		if now.Sub(t.Train.SourceUpdatedAt) > 7*24*time.Hour && t.LifecycleGroup == "" {
 			r.forgetTrack(id)
 		}
 	}
@@ -84,7 +85,7 @@ func (r *metroRuntime) evictRetired() {
 	}
 	var oldest *metroTrack
 	for _, t := range r.tracks {
-		if active[t.Train.JourneyId] {
+		if active[t.Train.JourneyId] || t.LifecycleGroup != "" {
 			continue
 		}
 		if oldest == nil || t.Train.SourceUpdatedAt.Before(oldest.Train.SourceUpdatedAt) {

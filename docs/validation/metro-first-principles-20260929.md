@@ -1,0 +1,46 @@
+# Metro first-principles implementation validation
+
+Date: 2026-09-29. Local implementation evidence; no deployment or independent physical calibration is claimed.
+
+## Design and independent review
+
+The [accepted plan](../plans/20260929-metro-first-principles.md) was reviewed by a read-only subagent requested as `quasar-alpha` with `xhigh` reasoning. The primary performed all implementation and fixes. The plan recheck accepted the binding amendments. Five implementation review/recheck rounds identified corrections before final acceptance: coherent model context/geometry, terminal re-entry, conditional dwell/departure anchors, atomic durable groups, lock separation, bounded capture and health transitions, catalogue retry, model corrections, ordered retained learning barriers, cohort reachability, origin/progress and own/official anchor separation. Each produced targeted regression coverage. The fifth review recheck accepted the implementation with no remaining actionable code issue. Reviews were read-only, and tests were run by the primary.
+
+## Real source evidence
+
+The [retained Hub capture](../../internal/app/testdata/metro-20260928/README.md) contains 12 successful one-second-start requests and 360 Metro rows (30 references), collected 13:47:10.977511–13:47:22.017617 UTC. No authenticated Metro calls were needed for that capture. Replay admitted 360 context-compatible rows, retained 30 model references and found six three-position modeled directions. Changed-position original-clock intervals include 12.813 and 14.252 seconds. Acquisition frequency does not guarantee coordinate freshness. Geometry covers the four full published lines; the retained short Yellow variant has no admitted axis in this sample. Physical direction/stop/departure accuracy was not measured.
+
+The [static timing evidence](../plans/20260929-metro-static-timing-evidence.json) supplies positive schedule priors rather than measured dwell: 29,292 positive dwell entries, 5,676 zero entries, positive dwell 15–55 seconds and adjacent run 43–156 seconds. Research applicability is recorded [separately](../plans/20260929-metro-model-research.md).
+
+## Performed checks
+
+- Full Go application/pattern tests passed during the implementation, with final post-review checks recorded below.
+- `make test` (Go race suite and vet) passed twice during implementation; the final full race suite and vet passed again, followed by targeted race checks for the final correction/cache regressions.
+- Frontend production build and generated-contract consistency passed; the final generated-contract consistency check also passed.
+- 27 Playwright Metro live/pattern cases passed: desktop/mobile, decreasing countdowns, estimated direction, own departure cells, keyboard tabs, published-geometry interpolation, native EventSource, loss/reconnect/reset, stale expiry, late fallback and independent own-only forecasts.
+- New regressions cover actual model replay, future/null clocks, three-position/gap resets, conditional dwell and mixed historical/official anchors, first modeled movement, scoped correction withdrawal/capture, complete lifecycle reservation/expiry/recovery, bounded queue acknowledgement, anonymous slot continuity, conflicting named IDs, current repeated zero, unknown earlier visits, reachable order anchors and retained delivery barriers.
+- Capture queue test reached 64 records inside 8 MiB with explicit overflow; record limit is 256 KiB. Archive reopen/dedup, seven-day original-age expiry, invalid size and learning-barrier replay tests passed.
+
+## Native delivery measurements
+
+The synthetic native Go/Caddy/Chromium fixture uses 50 stations, 96 references and 1,600 platform rows, with 500 ms source publication. Other API setup reads are mocked; no provider calls occur. Caddy encodes gzip/Zstd; CDP declares 100 ms request latency and 10 MB/s transfer throughput. The local machine concurrently runs unrelated work; this is not a production benchmark.
+
+The [final native checkpoint/recovery smoke](metro-first-principles-native-20260929.json) passed with two viewports: 59 changed DOM samples, P95 555 ms, no browser errors/fallback reads, complete pinned checkpoint recovery and suspended restored continuity. This direct-Go smoke has no proxy/network-delay profile and does not measure baseline-admission latency.
+
+An early [native recovery attempt](metro-first-principles-native-20260929.json.failure.json) timed out before the partitioned continuity optimization; it is retained failed evidence, not a passing recovery check.
+
+The initial eight-client [measurement](metro-first-principles-stream-20260929.json) and [post-cache measurement](metro-first-principles-stream-20260929-after-cache.json) missed the one-second delivery objective (P95 1,195/1,226 ms). Full-board forecast continuity was indexed by partition, computation reused for at most 500 ms with immediate source invalidation, and capture sorting now precomputes immutable row keys. These reports remain failed stress evidence rather than passing acceptance.
+
+The desktop/mobile two-client [measurement](metro-first-principles-stream-20260929-two-clients.json) passed: 243 visible changed revisions, P95 665 ms, no JavaScript errors/reorders, and no setup failures. The [final post-optimization delivery measurement](metro-first-principles-stream-20260929-final.json) also passed (240 changed revisions, P95 665 ms, no JavaScript errors/reorders). The separately retained [estimator observation](metro-first-principles-estimator-20260929.json) reports P95 81.94 ms over a bounded rolling 512-sample warm window with no active streams. A preceding observation during the two-client run reported P95 247.435 ms. This is processing latency, distinct from source cadence and delivery. The one-second objective applies to this declared profile, not all loads or upstream cadence.
+
+## Remaining uncertainty
+
+Source/model/receipt clocks are separate; the underlying Hub ETA clock is unknown. Experimental schedule/model estimates have no independent physical accuracy guarantee or calibrated total-horizon confidence interval. Anonymous ownership remains possible candidates plus an unseen-train hypothesis; no unsupported ownership score is exposed. The source fleet is not asserted complete. These limitations are part of the implemented contract, not unperformed checks reported as passing.
+
+## Structural commit gate and final review
+
+The first normal commit attempt was blocked by Maat: Go score 97 to 78, new/worsened structural complexity findings, zero suppressions. No commit was created. The primary then separated schedule projection, forecast continuity and ordering, model observation/evidence, lifecycle reservation, captured-input writes and history delivery into smaller responsibility functions. No suppression or guard bypass was introduced.
+
+The same requested `quasar-alpha` reviewer at `xhigh` reviewed the refactor read-only and returned **ACCEPT**, with no actionable semantic regressions against the accepted implementation. The reviewer checked prediction anchors, forecast identity/order constraints, correction barriers, frozen departure support, lifecycle admission, history/capture acknowledgements, metadata clocks and forecast fences; it edited no files and ran no tests. Focused operational/forecast tests and the full application/pattern tests passed after the refactor. The post-refactor [native recovery verification](metro-first-principles-native-20260929-post-refactor.json) also passed: 67 changed DOM samples, P95 632 ms, no browser errors or fallback reads, and complete pinned checkpoint recovery. This run overlapped the Go race suite; its separate estimator observation was 340.958 ms over 70 samples with two streams. Generated-contract checks and all 432 local Markdown references passed. The final post-refactor `make test` race suite and vet passed (application 231.996 s; patterns 15.060 s). A second normal commit attempt reduced the actionable structural findings to five (four parameter-count findings and one return-count finding), with Go score 79; it was also blocked before creating a commit. The primary grouped each operation’s arguments and consolidated the motion-order result. Targeted post-adjustment race regressions passed (4.797 s). The third normal attempt had no critical regressions but was still blocked by the negative score delta. A detailed same-bundle diagnostic isolated the remaining decline to architecture/cohesion (0.460 overall, 0.254 for the application; other dimensions 0.944–0.997). The primary grouped the added state into the existing publication, topology, journal and refresh owners, preserving promoted selectors, initialization and mutex ownership. The same read-only reviewer accepted both the argument grouping and state regrouping with no actionable issues. Targeted race regressions after state regrouping passed (5.560 s), and `go vet ./...` passed. Normal commit-gate results follow after completion.
+
+Commit/Maat/push results will be recorded after final checks. Deployment is outside this request.

@@ -20,7 +20,7 @@ func compactMetroName(name string) string {
 	}, normalizeName(name))
 }
 
-func (m *MetroClient) recordPatterns(data *MetroData, static *StaticData, now time.Time) {
+func (m *MetroClient) recordPatterns(data *MetroData, static *StaticData, now time.Time) error {
 	t := metroTopology(data, static)
 	raw, _ := json.Marshal(data.Waits)
 	var rows []patterns.Row
@@ -33,7 +33,7 @@ func (m *MetroClient) recordPatterns(data *MetroData, static *StaticData, now ti
 		receipt.Raw = nil
 	}
 	// Archive failure is visible in its status; it cannot suppress official live data.
-	_ = m.History.Record(receipt, t)
+	return m.History.Record(receipt, t)
 }
 
 func (s *Server) GetMetroPatterns(ctx context.Context, request api.GetMetroPatternsRequestObject) (api.GetMetroPatternsResponseObject, error) {
@@ -79,7 +79,7 @@ func metroPatternConditions(data *MetroData, static *StaticData) map[string]stri
 			continue
 		}
 		condition := "unknown"
-		if data.Status.Status == api.MetroStatusStatusOk {
+		if metroLineStateFresh(data.Status) {
 			if strings.EqualFold(strings.TrimSpace(line.State), "Normal") {
 				condition = "reported_normal"
 			} else if strings.TrimSpace(line.State) != "" {
@@ -109,4 +109,8 @@ func (s *Server) readMetroPatternView(ctx context.Context, view *patterns.View, 
 			s.patternReadFailure(view, err)
 		}
 	}
+}
+
+func metroLineStateFresh(status api.MetroStatus) bool {
+	return status.Status == api.MetroStatusStatusOk && status.CheckedAt != nil && status.LineStateUpdatedAt != nil && status.LineStateError == nil && !status.LineStateUpdatedAt.After(status.CheckedAt.Add(providerClockSkew)) && status.CheckedAt.Sub(*status.LineStateUpdatedAt) <= sourceFreshness
 }

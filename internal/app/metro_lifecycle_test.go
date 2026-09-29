@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestMetroTerminalClosureRequiresSupportedArrivalAndCommit(t *testing.T) {
+func TestMetroTerminalClosureIsImmediateAndDurable(t *testing.T) {
 	s, d, data, now := metroLiveFixture(t)
 	data.Waits = []MetroWait{metroTestRow(now, "CS", "7", "10")}
 	publishMetroTest(s, d, data, now)
@@ -16,43 +16,20 @@ func TestMetroTerminalClosureRequiresSupportedArrivalAndCommit(t *testing.T) {
 	next.Waits = []MetroWait{metroTestRow(now.Add(time.Second), "CS", "7", "0")}
 	r := s.Cache.metroRuntime
 	r.observe(&next, d, s.Patterns, now.Add(time.Second))
-	// Closure is frozen until its complete generation commits.
-	if len(next.Trains) != 1 || next.Trains[0].Lifecycle.State != "active" {
-		t.Fatal("provisional lifecycle exposed", next.Trains)
+	retained, ok := r.retained(id, now.Add(time.Second))
+	if !ok || retained.Lifecycle.State != "completed" || retained.Calls[1].Arrival.Inferred == nil || len(next.Trains) != 0 {
+		t.Fatal("memory closure depends on disk", retained, next.Trains)
 	}
-	r.mu.Lock()
-	track := r.tracks[id]
-	revision := track.BarrierRevision
-	r.mu.Unlock()
-	if revision == 0 {
-		t.Fatal("missing mandatory revision")
-	}
-	delayed := next
-	delayed.Waits = []MetroWait{metroTestRow(now.Add(2*time.Second), "CS", "7", "30")}
-	r.observe(&delayed, d, s.Patterns, now.Add(2*time.Second))
-	if track.BarrierRevision != revision {
-		t.Fatal("mandatory closure was coalesced")
+	// A repeated terminal publication cannot create another episode.
+	r.observe(&next, d, s.Patterns, now.Add(2*time.Second))
+	if len(next.Trains) != 0 {
+		t.Fatal("repeated terminal reopened episode")
 	}
 	r.flushCheckpoints(context.Background(), s.Patterns, now.Add(2*time.Second))
-	r.mu.Lock()
-	active := r.current(now.Add(2 * time.Second))
-	r.mu.Unlock()
-	if len(active) != 0 {
-		t.Fatal("completed journey active", active)
-	}
-	retained, ok := r.retained(id, now.Add(2*time.Second))
-	if !ok || retained.Lifecycle.State != "completed" || retained.Calls[1].Arrival.Inferred == nil {
-		t.Fatal("timeline lost", retained)
-	}
-	// Later reused-reference forecasts cannot reopen the completed episode.
-	publishMetroTest(s, d, &delayed, now.Add(2*time.Second))
-	if len(delayed.Trains) != 0 {
-		t.Fatal("completed episode reopened")
-	}
 	s.Cache.metroRuntime = newMetroRuntime()
 	f, _, err := s.metroFrame(context.Background(), metroInterest{Journey: id})
 	if err != nil || len(f.Trains) != 1 || f.Trains[0].Lifecycle.State != "completed" || f.Trains[0].CurrentIndex != nil {
-		t.Fatal("closure did not restore", f, err)
+		t.Fatal("durable history did not restore", f, err)
 	}
 }
 func TestMetroTerminalExcludesIsolatedZeroCountdownAndIntermediate(t *testing.T) {
@@ -102,8 +79,8 @@ func TestMetroSuccessorAtomicGenerationAndCrashRecovery(t *testing.T) {
 	if !r.stageSuccessor(old, next, now.Add(2*time.Second), now.Add(time.Second)) {
 		t.Fatal("handoff not staged")
 	}
-	if current := r.current(now); len(current) != 1 || current[0].JourneyId != old.Train.JourneyId {
-		t.Fatal("premature or double association", current)
+	if current := r.current(now); len(current) != 1 || current[0].JourneyId != next.Train.JourneyId {
+		t.Fatal("handoff was not atomic in memory", current)
 	}
 	r.flushCheckpoints(context.Background(), s.Patterns, now.Add(2*time.Second))
 	current := r.current(now.Add(2 * time.Second))
@@ -127,7 +104,7 @@ func TestMetroSuccessorAtomicGenerationAndCrashRecovery(t *testing.T) {
 	}
 }
 
-func TestMetroMandatoryClosureCommitFailureRetainsPriorState(t *testing.T) {
+func TestMetroClosureWriteFailureKeepsMemoryClosure(t *testing.T) {
 	s, d, data, now := metroLiveFixture(t)
 	data.Waits = []MetroWait{metroTestRow(now, "CS", "7", "10")}
 	publishMetroTest(s, d, data, now)
@@ -143,8 +120,8 @@ func TestMetroMandatoryClosureCommitFailureRetainsPriorState(t *testing.T) {
 	r.mu.Lock()
 	current := r.current(now.Add(time.Second))
 	r.mu.Unlock()
-	if len(current) != 1 || current[0].JourneyId != id || current[0].Lifecycle.State != "active" || r.tracks[id].BarrierRevision == 0 {
-		t.Fatal("failed commit exposed closure", current)
+	if len(current) != 0 || r.tracks[id].Train.Lifecycle.State != "completed" || r.tracks[id].BarrierRevision != 0 || r.historyStatus != "paused" {
+		t.Fatal("disk failure rolled back memory closure", current)
 	}
 }
 

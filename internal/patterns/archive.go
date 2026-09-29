@@ -61,6 +61,7 @@ type archiveResources struct {
 
 // metroArchiveState is the inference and publication cursor for Metro receipts.
 type metroArchiveState struct {
+	pendingMetroDeliveryGap    bool
 	engine                     *engine
 	topology                   Topology
 	hour                       time.Time
