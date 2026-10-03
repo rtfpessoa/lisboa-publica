@@ -57,6 +57,7 @@ func (r *metroRuntime) retractArrivals(t *metroTrack, current map[string]metroPo
 			withdrawMetroDeparture(t, n, p.Clock, "Chegada de suporte retirada por correção da mesma visita")
 			delete(t.ModelStops, c.Id)
 			c.Arrival = missingCallTime("Chegada inferida retirada: previsão posterior incompatível")
+			c.LastOfficialEstimate = nil
 			if old, ok := t.Points[p.Stop]; ok {
 				r.queueArrival(t, *c, old, p)
 			}

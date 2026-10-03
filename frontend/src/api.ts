@@ -72,6 +72,10 @@ export type Operator = {
     last_known_positions: number;
     /** Legacy cache truncation indicator; new publications retain all admitted identities until their ten-minute source-clock deadline. */
     last_known_truncated: boolean;
+    /** Metro-only state of the Hub model-position feed: publishing, unavailable after sustained healthy batches without Metro rows, or unknown after startup. Never changes operator status. */
+    model_position_state?: ("publishing" | "unavailable" | "unknown") | null;
+    /** Metro-only clock of the last Hub model position received by this process, when one was seen. */
+    last_model_position_at?: string | null;
 };
 export type Page = {
     limit: number;
@@ -580,6 +584,8 @@ export type StopCall = {
     stop_plan_id?: string;
     vehicle_ref?: VehicleReference;
     own_prediction?: (CallTimeEvidence) | null;
+    /** Last official arrival estimate recorded for a visit that is no longer ahead of the train. Historical evidence with its own source clock; never a current prediction and exempt from prediction expiry. */
+    last_official_estimate?: (CallTimeEvidence) | null;
     departure_revisions?: MetroDepartureRevision[];
     metro_forecast?: MetroForecastAssociation;
     /** Experimental own departure estimate; schedule priors remain labeled and independent of official arrival. */

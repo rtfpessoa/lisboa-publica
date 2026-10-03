@@ -25,6 +25,14 @@ const (
 	maxPredictionWaitSeconds  = 7200
 	metroRefreshTimeout       = 20 * time.Second
 	metroStationTolerance     = 0.005
+	metroAgencyID             = "IA2N9"
+
+	// Hub Metro model positions are ETA-derived and republished continuously; a
+	// sustained absence of Metro rows in otherwise healthy batches is an explicit
+	// unavailable state, never an operator error.
+	metroFeedFreshness        = 120 * time.Second
+	metroFeedZeroBatches      = 3
+	metroFeedUnavailableAfter = time.Minute
 
 	maxCachedVersions          = 64
 	maxConditionalBodies       = 20

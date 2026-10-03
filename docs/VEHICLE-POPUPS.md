@@ -53,7 +53,11 @@ Vehicle details show the backend-owned signal separately from the published phys
 The current Metro UI uses [a shared dynamic SSE/snapshot frame](metro-live-popups.md), including all supported
 identified references in the selected line/direction, independent missing ETA rows and separate old/ambiguous
 records. Vehicle selection pins an inferred journey, shows ordered previous/current/remaining visits, original
-inferred arrival evidence and separate official/experimental own forecasts. Countdown expiry does not create events.
+inferred arrival evidence and separate official/experimental own forecasts. Visits behind the train's marker show
+occurrence or retained last-official-estimate times instead of countdowns, and forecast/context lists follow the
+published stop order. The Metro operator row reports Hub model-position availability
+(`model_position_state`, `last_model_position_at`) without changing operator status. Countdown expiry does not
+create events.
 Departure remains unavailable without calibrated movement provenance. Follow starts with support, manual pan/zoom
 pauses it and explicit resume retains the selected run. Next-station navigation scrolls the list only.
 See [browser delivery](../frontend/src/useMetroLive.tsx), [Metro popup UI](../frontend/src/MetroPopups.tsx)

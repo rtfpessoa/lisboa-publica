@@ -2579,6 +2579,22 @@
           "last_known_truncated": {
             "type": "boolean",
             "description": "Legacy cache truncation indicator; new publications retain all admitted identities until their ten-minute source-clock deadline."
+          },
+          "model_position_state": {
+            "type": "string",
+            "enum": [
+              "publishing",
+              "unavailable",
+              "unknown"
+            ],
+            "nullable": true,
+            "description": "Metro-only state of the Hub model-position feed: publishing, unavailable after sustained healthy batches without Metro rows, or unknown after startup. Never changes operator status."
+          },
+          "last_model_position_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Metro-only clock of the last Hub model position received by this process, when one was seen."
           }
         },
         "required": [
@@ -4499,6 +4515,15 @@
               }
             ],
             "nullable": true
+          },
+          "last_official_estimate": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CallTimeEvidence"
+              }
+            ],
+            "nullable": true,
+            "description": "Last official arrival estimate recorded for a visit that is no longer ahead of the train. Historical evidence with its own source clock; never a current prediction and exempt from prediction expiry."
           },
           "departure_revisions": {
             "type": "array",

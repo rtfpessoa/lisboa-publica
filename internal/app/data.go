@@ -23,7 +23,7 @@ var providers = []provider{
 	{"cm", "Carris Metropolitana", "", "", "#f2c600", "bus", "API oficial v2. Campos de modelo e matrícula podem estar indisponíveis."},
 	{"tcb", "TCB", "A3H3M", "8", "#72b739", "bus", "Posições e horários publicados pelo operador através da TML."},
 	{"mobi", "MobiCascais", "HF16N", "21", "#46896e", "bus", "Metadados de veículos publicados pela TML; inventário completo não garantido."},
-	{"metro", "Metro de Lisboa", "IA2N9", "2", "#ec493a", "metro", "Posições estimadas a partir de tempos de espera e horários. Não são GPS; excluídas dos cálculos de velocidade e distância."},
+	{"metro", "Metro de Lisboa", metroAgencyID, "2", "#ec493a", "metro", "Posições estimadas a partir de tempos de espera e horários. Não são GPS; excluídas dos cálculos de velocidade e distância."},
 	{"cp", "CP", "N18KL", "3", "#278044", "train", "Serviços na área de Lisboa. Posições reportadas podem ter lacunas; horários são planeados."},
 	{"ttsl", "TTSL", "LTP61", "4", "#388aca", "ferry", "GTFS através da TML. O feed direto apresentou certificado TLS expirado; a verificação TLS mantém-se ativa."},
 	{"fertagus", "Fertagus", "7NTB1", "15", "#236caa", "train", "Posições reportadas e horários. Modelo e matrícula só quando existe correspondência verificada."},

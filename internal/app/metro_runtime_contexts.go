@@ -355,7 +355,6 @@ func (l metroLocalContexts) sorted() []api.MetroForecastContext {
 	for _, key := range keys {
 		c := l.contexts[key]
 		c.Calls = canonicalMetroForecastCalls(c.Calls)
-		sort.Slice(c.Calls, func(i, j int) bool { return c.Calls[i].Id < c.Calls[j].Id })
 		out = append(out, *c)
 	}
 	return out

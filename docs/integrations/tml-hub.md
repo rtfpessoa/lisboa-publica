@@ -7,6 +7,8 @@ The public Hub is the shared integration for seven operators' positions and stat
 | Method/resource | Input contract used by the app | Consumers |
 |---|---|---|
 | `GET /vehicles/positions` | JSON envelope with `data` array and nullable `error` | Seven operators' vehicle positions |
+
+The Metro row also carries Hub-specific availability evidence: `IA2N9` rows are ETA-derived model positions with a 90-second publish window on the Hub side. The application reports this feed separately from operator status: `model_position_state` and `last_model_position_at` on the Metro operator. Other Hub agencies staying fresh while Metro rows are absent is an upstream omission, not an application error; the state never changes `status` or clears official waits and forecasts (see [Metro live popups](../metro-live-popups.md)).
 | `GET /plans` | JSON envelope with plan records and nullable `error` | Active static plan selection, GTFS discovery |
 | `GET /vehicles/metadata` | Bare JSON array | MobiCascais and CM metadata enrichment |
 | `GET /realtime/eta/gtfs` | JSON wrapper containing GTFS-RT-style `data.header` and `data.entity`; nullable `error` | CP and requested-stop predictions |

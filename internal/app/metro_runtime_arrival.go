@@ -45,11 +45,28 @@ func (p *metroPointProjection) inferArrival(n int, point metroPoint) bool {
 		return false
 	}
 	if metroArrivalTransition(old, point, p.now) && c.Arrival.Inferred == nil {
+		if old.Seconds != nil {
+			retainMetroLastOfficialEstimate(c, old.Clock.Add(time.Duration(*old.Seconds)*time.Second), old.Clock)
+		}
 		evidence := &api.MetroEventEvidence{At: point.Clock, WindowStart: old.Clock, WindowEnd: point.Clock, Mode: "inferred_arrival", SourceUrl: metroBase + "/tempoEspera/Estacao/todos", ModelVersion: metroArrivalModel, Persistence: "pending", Reason: "Transição publicada de espera positiva para zero; hora física aproximada"}
 		c.Arrival = api.CallTime{Kind: "inferred", At: &evidence.At, Inferred: evidence}
 		p.runtime.queueArrival(p.track, *c, old, point)
 	}
 	return true
+}
+
+// The last official estimate survives inference and prediction expiry so a visit
+// already behind the train can show its last known time. It is kept monotonic by
+// source clock and is never exposed as a current prediction.
+func retainMetroLastOfficialEstimate(c *api.StopCall, at, source time.Time) {
+	if at.IsZero() || source.IsZero() {
+		return
+	}
+	if c.LastOfficialEstimate != nil && c.LastOfficialEstimate.SourceUpdatedAt != nil && !source.After(*c.LastOfficialEstimate.SourceUpdatedAt) {
+		return
+	}
+	expiry := source.Add(sourceFreshness)
+	c.LastOfficialEstimate = &api.CallTimeEvidence{At: at, SourceUrl: metroBase + "/tempoEspera/Estacao/todos", SourceUpdatedAt: &source, ValidUntil: &expiry}
 }
 func metroArrivalTransition(old, point metroPoint, now time.Time) bool {
 	transition := old.Seconds != nil && *old.Seconds > 0 && *point.Seconds == 0
@@ -60,6 +77,9 @@ func (p *metroPointProjection) predictArrival(n int, point metroPoint) {
 	c := &p.track.Train.Calls[n]
 	expected := point.Clock.Add(time.Duration(*point.Seconds) * time.Second)
 	expiry := point.Clock.Add(sourceFreshness)
+	if *point.Seconds > 0 {
+		retainMetroLastOfficialEstimate(c, expected, point.Clock)
+	}
 	if c.Arrival.Inferred == nil && !expected.Before(p.now) && expiry.After(p.now) {
 		c.Arrival = api.CallTime{Kind: "prediction", At: &expected, Prediction: &api.CallTimeEvidence{At: expected, SourceUrl: metroBase + "/tempoEspera/Estacao/todos", SourceUpdatedAt: &point.Clock, ValidUntil: &expiry}}
 	}

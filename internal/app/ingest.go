@@ -242,13 +242,18 @@ func (f *Fetcher) saveLive(ctx context.Context, p provider, vehicles []api.Vehic
 	defer f.Store.PublishMu.Unlock()
 	state, _ := f.Cache.state("")
 	live, dist := f.prepareVehiclePublication(ctx, p.ID, state, vehicles, now)
+	op := f.livePublicationOperator(state.Operators[p.ID], p, live, state.Static[p.ID], now)
+	f.publishProvider(ctx, p.ID, live, op, dist)
+}
 
-	latest := enrichLivePublication(live, state.Static[p.ID])
-	op := state.Operators[p.ID]
+// livePublicationOperator derives the operator row published with a live batch,
+// including the Metro-only Hub model-position availability fields.
+func (f *Fetcher) livePublicationOperator(op api.Operator, p provider, live *LiveData, static *StaticData, now time.Time) api.Operator {
+	latest := enrichLivePublication(live, static)
 	op.Status = api.OperatorStatusOk
 	op.Error = nil
 	op.LiveUpdatedAt = ptr(now)
-	_, op.ReportedPositions, op.EstimatedPositions, op.LastKnownPositions, op.LastKnownTruncated = projectLive(live, op, state.Static[p.ID], now)
+	_, op.ReportedPositions, op.EstimatedPositions, op.LastKnownPositions, op.LastKnownTruncated = projectLive(live, op, static, now)
 	op.ObservedAt = nil
 	if !latest.IsZero() {
 		op.ObservedAt = ptr(latest)
@@ -256,7 +261,20 @@ func (f *Fetcher) saveLive(ctx context.Context, p provider, vehicles []api.Vehic
 			op.Status = api.OperatorStatusStale
 		}
 	}
-	f.publishProvider(ctx, p.ID, live, op, dist)
+	return f.applyMetroPositionFeed(op, p.ID)
+}
+
+// applyMetroPositionFeed records Hub model-position availability on the Metro
+// operator without changing its status, so official waits and forecasts survive a
+// Hub omission.
+func (f *Fetcher) applyMetroPositionFeed(op api.Operator, id string) api.Operator {
+	if id != "metro" {
+		return op
+	}
+	state, at := f.metroPositionFeedState()
+	op.ModelPositionState = &state
+	op.LastModelPositionAt = at
+	return op
 }
 func (f *Fetcher) cmStatic(ctx context.Context, p provider) (*StaticData, error) {
 	var lines []cmStaticLine

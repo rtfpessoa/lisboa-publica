@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"sync"
 	"time"
+
+	"lisboapublica/internal/api"
 )
 
 // One acquisition owner and one immutable latest batch serve all consumers.
@@ -13,6 +15,17 @@ type hubPositionState struct {
 	positionsMu    sync.RWMutex
 	positionsOwned bool
 	positions      hubObservationBatch
+	metroFeedMu    sync.Mutex
+	metroFeed      metroPositionFeed
+}
+
+// metroPositionFeed records whether the public Hub is actually publishing Metro
+// model rows. It is process-local: after a restart it reports unknown until healthy
+// batches are evaluated.
+type metroPositionFeed struct {
+	state       api.OperatorModelPositionState
+	lastRowAt   time.Time
+	zeroBatches int
 }
 
 // positionsPacer measures minimum refresh starts. Slow work never overlaps or
@@ -47,6 +60,55 @@ func (p *positionsPacer) update(now time.Time, healthy bool) time.Duration {
 		p.healthySince = now
 	}
 	return p.interval
+}
+
+// updateMetroPositionFeed tracks Metro model-row presence in healthy Hub batches.
+// Deferred batches never reach this function. Errored, stale or partial batches
+// (no fresh rows from any agency) pause the counter rather than counting as zero.
+func (f *Fetcher) updateMetroPositionFeed(batch hubObservationBatch) {
+	if batch.err != nil || batch.collected.IsZero() {
+		return
+	}
+	rows, otherFresh := 0, false
+	for _, p := range batch.positions {
+		at := time.UnixMilli(p.At).UTC()
+		if p.Agency == metroAgencyID {
+			rows++
+			continue
+		}
+		if !at.IsZero() && batch.collected.Sub(at) <= metroFeedFreshness {
+			otherFresh = true
+		}
+	}
+	if rows == 0 && !otherFresh {
+		return
+	}
+	f.metroFeedMu.Lock()
+	defer f.metroFeedMu.Unlock()
+	if rows > 0 {
+		f.metroFeed.state, f.metroFeed.lastRowAt, f.metroFeed.zeroBatches = api.OperatorModelPositionStatePublishing, batch.collected, 0
+		return
+	}
+	f.metroFeed.zeroBatches++
+	if f.metroFeed.zeroBatches >= metroFeedZeroBatches && (f.metroFeed.lastRowAt.IsZero() || batch.collected.Sub(f.metroFeed.lastRowAt) >= metroFeedUnavailableAfter) {
+		f.metroFeed.state = api.OperatorModelPositionStateUnavailable
+	}
+}
+
+// metroPositionFeedState reports the Metro feed state and, when one was seen, the
+// clock of the last Metro model row received by this process.
+func (f *Fetcher) metroPositionFeedState() (api.OperatorModelPositionState, *time.Time) {
+	f.metroFeedMu.Lock()
+	defer f.metroFeedMu.Unlock()
+	state := f.metroFeed.state
+	if state == "" {
+		state = api.OperatorModelPositionStateUnknown
+	}
+	if f.metroFeed.lastRowAt.IsZero() {
+		return state, nil
+	}
+	at := f.metroFeed.lastRowAt
+	return state, &at
 }
 
 func (f *Fetcher) positionsLoop(ctx context.Context, ready chan<- struct{}) {
@@ -127,6 +189,7 @@ func (f *Fetcher) positionsCycle(ctx context.Context, host string) (bool, time.T
 }
 
 func (f *Fetcher) publishMetroPositions(ctx context.Context, batch hubObservationBatch) {
+	f.updateMetroPositionFeed(batch)
 	for _, p := range providers {
 		if p.ID != "metro" {
 			continue

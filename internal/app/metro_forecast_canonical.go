@@ -7,12 +7,55 @@ import (
 )
 
 func canonicalMetroForecastCalls(calls []api.StopCall) []api.StopCall {
-	// Source row identity and anonymous slot identity are deliberately distinct.
-	sort.Slice(calls, func(i, j int) bool { return calls[i].Id < calls[j].Id })
+	// Merge first so duplicate identity keeps the caller's (path) order, then a
+	// stable total order restores published line order. Merge, conflict marking and
+	// id distinguishing stay id-based and independent of this order.
 	out := mergeMetroForecastCalls(calls)
+	sortMetroForecastCalls(out)
 	markMetroForecastConflicts(out)
 	distinguishMetroForecastIDs(out)
 	return out
+}
+
+// sortMetroForecastCalls orders visits by their position in the published path.
+// Local-only calls carry no path sequence (zero) and fall back to the same total
+// order so repeated reads of one publication stay byte-identical.
+func sortMetroForecastCalls(calls []api.StopCall) {
+	sort.SliceStable(calls, func(i, j int) bool {
+		a, b := calls[i], calls[j]
+		if a.StopSequence != b.StopSequence {
+			return a.StopSequence < b.StopSequence
+		}
+		if a.StopName != b.StopName {
+			return a.StopName < b.StopName
+		}
+		at, bt := metroCallOrderTime(a), metroCallOrderTime(b)
+		if !at.Equal(bt) {
+			return at.Before(bt)
+		}
+		if ap, bp := metroCallPlatform(a), metroCallPlatform(b); ap != bp {
+			return ap < bp
+		}
+		return a.Id < b.Id
+	})
+}
+func metroCallOrderTime(c api.StopCall) time.Time {
+	if c.Arrival.At != nil {
+		return *c.Arrival.At
+	}
+	if c.Arrival.Prediction != nil {
+		return c.Arrival.Prediction.At
+	}
+	if c.Arrival.Inferred != nil {
+		return c.Arrival.Inferred.At
+	}
+	return time.Time{}
+}
+func metroCallPlatform(c api.StopCall) string {
+	if c.MetroForecast != nil && len(c.MetroForecast.Platforms) > 0 {
+		return c.MetroForecast.Platforms[0].Platform
+	}
+	return ""
 }
 
 func metroForecastMergeKey(c api.StopCall) (string, bool) {
