@@ -11,6 +11,10 @@ import (
 )
 
 const maxBlockBytes = 64 << 20
+
+// The checkpoint keeps a bounded aggregate window so the marshaled payload fits a
+// single block even after restoring several large days.
+const checkpointAggregateBudget = 40 << 20
 const maxDetailHourBytes = 16 << 20
 const manifestReserve = 1 << 20
 
