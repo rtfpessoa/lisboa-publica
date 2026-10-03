@@ -221,7 +221,12 @@ renewed. Per-identity intermediate cuts are retained separately from operator-wi
 collection gaps, preserving unrelated associations during replay. Later-stage
 recovery treats complete newest daily generations as authoritative, suppresses
 already published contributions and replays retained post-checkpoint inputs across
-closed hours. Degraded recovery also resets all live continuity. Maintenance can
+closed hours. Degraded recovery also resets all live continuity. A checkpoint whose
+marshaled payload would exceed the single-block archive limit trims the oldest
+aggregate days from the in-memory window (never the current day, a dirty day or a day
+with a live association), discloses the reduced window and, when no day can be
+trimmed, fails the flush explicitly instead of emptying the engine or pausing
+silently; published daily files are untouched. Maintenance can
 revise later-stage normalized observations with the same exclusive transaction
 and bounded replay/publication policy; original forecasts remain immutable.
 

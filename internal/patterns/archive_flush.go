@@ -117,8 +117,9 @@ func verifiedAggregateBlob(rows []Aggregate) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// Parquet does not promise row order on read-back; compare the multiset of
-// aggregate identities instead of the serialized sequence.
+// An empty day marshals as null while a decoded empty day marshals as [], so the
+// round trip compares the multiset of aggregate identities instead of the
+// serialized sequence.
 func sameAggregateMultiset(written, decoded []Aggregate) bool {
 	counts := map[string]int{}
 	for _, a := range written {
@@ -154,6 +155,9 @@ func (s *Service) checkpointPayload() ([]byte, error) {
 	if err == nil && len(raw) > maxBlockBytes {
 		s.trimCheckpointAggregates()
 		raw, err = s.marshalCheckpoint()
+		for err == nil && len(raw) > maxBlockBytes && s.dropOldestDroppableDay() {
+			raw, err = s.marshalCheckpoint()
+		}
 		if err == nil && len(raw) > maxBlockBytes {
 			err = fmt.Errorf("archive checkpoint limit")
 		}
@@ -166,9 +170,9 @@ func (s *Service) marshalCheckpoint() ([]byte, error) {
 	return json.Marshal(cp)
 }
 
-// trimCheckpointAggregates removes the oldest aggregate days from the in-memory
-// window until their marshaled total fits the aggregate budget. Published daily
-// files are untouched; the reduced window is disclosed as limited/cold days.
+// trimCheckpointAggregates removes the oldest droppable aggregate days from the
+// in-memory window until their marshaled total fits the aggregate budget. Published
+// daily files are untouched; the reduced window is disclosed as limited/cold days.
 func (s *Service) trimCheckpointAggregates() {
 	sizes, total := s.aggregateDaySizes()
 	days := make([]string, 0, len(sizes))
@@ -180,9 +184,38 @@ func (s *Service) trimCheckpointAggregates() {
 		if total <= checkpointAggregateBudget {
 			break
 		}
+		if !s.droppableAggregateDay(date) {
+			continue
+		}
 		total -= sizes[date]
 		s.dropAggregateDay(date)
 	}
+}
+
+// droppableAggregateDay never drops the current day, a dirty day that still owes a
+// publication, or a day with a live association.
+func (s *Service) droppableAggregateDay(date string) bool {
+	if date == "" || date >= time.Now().In(lisbon).Format("2006-01-02") {
+		return false
+	}
+	return !s.engine.DirtyDays[date] && !s.engine.dayHasLiveAssociation(date)
+}
+
+func (s *Service) dropOldestDroppableDay() bool {
+	oldest := ""
+	for _, a := range s.engine.Aggregates {
+		if !s.droppableAggregateDay(a.Date) {
+			continue
+		}
+		if oldest == "" || a.Date < oldest {
+			oldest = a.Date
+		}
+	}
+	if oldest == "" {
+		return false
+	}
+	s.dropAggregateDay(oldest)
+	return true
 }
 
 // aggregateDaySizes measures the marshaled size of every aggregate day.
@@ -210,6 +243,9 @@ func (s *Service) dropAggregateDay(date string) {
 			delete(s.engine.Aggregates, key)
 		}
 	}
+	// The day was already published before this trim; a later flush must not write
+	// an empty replacement for it.
+	delete(s.engine.DirtyDays, date)
 	s.engine.Limited = true
 	s.engine.markColdDay(date)
 }
