@@ -58,17 +58,22 @@ After deploy (21:10Z start):
 
 ## Open limitations
 
-- The patterns archive remains degraded/paused: `/api/v1/metro/patterns` returns
-  `status: degraded` with `as_of: 2026-09-29T23:59:30Z` and `collected_days: 0`, and a
-  pattern read logs `context deadline exceeded`. Historical own forecasts (archive
-  component model) therefore remain unavailable; the schedule-prior own estimate is
-  what production shows. This is tracked by the open wayfinder ticket
-  `restore-live-own-forecasts`.
+- The patterns archive was restored on 2026-10-03: the checkpoint-size failure that
+  paused it was fixed in `c314cd0`/`2aa51ce`, the manifest was compacted, and
+  production reports `collecting` with advancing `as_of` and fresh checkpoints. Own
+  schedule-prior arrivals and departures are visible again; historical
+  component-model issuance follows as signals accumulate.
 - Popup acceptance for behind visits and ordering is fixture/Playwright-based; the Hub
   still publishes no `IA2N9` rows, so map markers and vehicle-scoped popups cannot be
   exercised in production.
 - The Hub omission itself is upstream (no-timeout Hub fetcher and 90-second publish
   window); see the 2026-10-03 debug session.
+
+## Additional deployments
+
+- `c314cd0` (archive checkpoint/round-trip fix, reviewed) and `2aa51ce` (review fixes:
+  current-day protection, loud failure, corrected rationale/tests). Production image
+  `lisboa-publica:2aa51ce7ff921193fa3f69d2b48df0c41f6bc53d`, healthy, 0 restarts.
 
 ## Rollback artifacts
 
