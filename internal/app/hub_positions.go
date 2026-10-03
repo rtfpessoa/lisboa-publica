@@ -25,6 +25,7 @@ type hubPositionState struct {
 type metroPositionFeed struct {
 	state       api.OperatorModelPositionState
 	lastRowAt   time.Time
+	zeroSince   time.Time
 	zeroBatches int
 }
 
@@ -69,6 +70,20 @@ func (f *Fetcher) updateMetroPositionFeed(batch hubObservationBatch) {
 	if batch.err != nil || batch.collected.IsZero() {
 		return
 	}
+	rows, otherFresh := metroFeedBatchRows(batch)
+	if rows == 0 && (!otherFresh || !f.metroDirectLaneFresh(batch.collected)) {
+		// A silence in both Metro lanes, or a batch without fresh rows from any
+		// agency, must not be presented as a Hub-only omission.
+		return
+	}
+	f.metroFeedMu.Lock()
+	defer f.metroFeedMu.Unlock()
+	f.metroFeed.observe(rows, batch.collected)
+}
+
+// metroFeedBatchRows counts Metro model rows and whether any other agency row is
+// fresh enough for the batch to be evidence about the Metro feed.
+func metroFeedBatchRows(batch hubObservationBatch) (int, bool) {
 	rows, otherFresh := 0, false
 	for _, p := range batch.positions {
 		at := time.UnixMilli(p.At).UTC()
@@ -80,19 +95,29 @@ func (f *Fetcher) updateMetroPositionFeed(batch hubObservationBatch) {
 			otherFresh = true
 		}
 	}
-	if rows == 0 && !otherFresh {
-		return
-	}
-	f.metroFeedMu.Lock()
-	defer f.metroFeedMu.Unlock()
+	return rows, otherFresh
+}
+
+// observe advances the feed state from one evaluated batch.
+func (m *metroPositionFeed) observe(rows int, collected time.Time) {
 	if rows > 0 {
-		f.metroFeed.state, f.metroFeed.lastRowAt, f.metroFeed.zeroBatches = api.OperatorModelPositionStatePublishing, batch.collected, 0
+		m.state, m.lastRowAt, m.zeroBatches, m.zeroSince = api.OperatorModelPositionStatePublishing, collected, 0, time.Time{}
 		return
 	}
-	f.metroFeed.zeroBatches++
-	if f.metroFeed.zeroBatches >= metroFeedZeroBatches && (f.metroFeed.lastRowAt.IsZero() || batch.collected.Sub(f.metroFeed.lastRowAt) >= metroFeedUnavailableAfter) {
-		f.metroFeed.state = api.OperatorModelPositionStateUnavailable
+	if m.zeroSince.IsZero() {
+		m.zeroSince = collected
 	}
+	m.zeroBatches++
+	if m.zeroBatches >= metroFeedZeroBatches && collected.Sub(m.zeroSince) >= metroFeedUnavailableAfter {
+		m.state = api.OperatorModelPositionStateUnavailable
+	}
+}
+
+// metroDirectLaneFresh reports whether the separate direct Metro lane published
+// successfully recently enough to attribute an empty Hub inventory to the Hub.
+func (f *Fetcher) metroDirectLaneFresh(now time.Time) bool {
+	op := f.Cache.operator("metro")
+	return op.DirectStatus != nil && *op.DirectStatus == api.OperatorDirectStatusOk && op.DirectUpdatedAt != nil && now.Sub(*op.DirectUpdatedAt) <= metroFeedFreshness
 }
 
 // metroPositionFeedState reports the Metro feed state and, when one was seen, the

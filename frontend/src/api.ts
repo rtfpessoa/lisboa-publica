@@ -570,6 +570,7 @@ export type StopCall = {
     journey_id: string | null;
     stop_id: string;
     stop_name: string;
+    /** Position of this visit in the published path used for the call; a per-context path index, 0 when the position is unknown (local-only forecasts). */
     stop_sequence: number;
     line_key: string;
     direction_key: string | null;
@@ -584,7 +585,7 @@ export type StopCall = {
     stop_plan_id?: string;
     vehicle_ref?: VehicleReference;
     own_prediction?: (CallTimeEvidence) | null;
-    /** Last official arrival estimate recorded for a visit that is no longer ahead of the train. Historical evidence with its own source clock; never a current prediction and exempt from prediction expiry. */
+    /** Last positive official arrival estimate seen for this visit, kept with its own source clock and displayed only once the visit is behind the train. Never a current prediction and exempt from prediction expiry. */
     last_official_estimate?: (CallTimeEvidence) | null;
     departure_revisions?: MetroDepartureRevision[];
     metro_forecast?: MetroForecastAssociation;

@@ -273,10 +273,16 @@ test('Metro behind visits never count down and keep their last official estimate
   w.emitMetro('frame');
  });
  await expect(panel.locator('[data-call-id="metro:run:one"]')).toContainText('Já passou nesta estação');
+ const stationRow=panel.locator('[data-call-id="metro:run:one"]');
+ await expect(stationRow.locator(':scope > div').nth(1)).not.toContainText('min');
+ await expect(stationRow.locator(':scope > div').nth(2)).toContainText('Sem dados de partida');
+ await expect(stationRow.locator(':scope > div').nth(2)).not.toContainText('Última previsão oficial');
  await panel.getByRole('button',{name:'Abrir comboio',exact:true}).click();
  const behind=panel.locator('[data-call-id="behind-official"]');
  await expect(behind).toContainText('Última previsão oficial');
  await expect(behind).not.toContainText('min');
+ await expect(behind.locator('.transit-call > div').nth(2)).toContainText('Sem dados de partida');
+ await expect(behind.locator('.transit-call > div').nth(2)).not.toContainText('Última previsão oficial');
  const ownBehind=panel.locator('[data-call-id="behind-own"]');
  await expect(ownBehind).toContainText('Estimativa por horário (experimental)');
  await expect(ownBehind).not.toContainText('min');
@@ -304,5 +310,25 @@ test('Metro unavailable Hub positions are labelled explicitly',async({page})=>{
  await fixture(page,'unavailable');
  await expect(page.getByRole('button',{name:'Metro de Lisboa',exact:true})).toContainText('Sem posições estimadas do Hub');
  await page.getByRole('button',{name:'Fontes e disponibilidade'}).click();
- await expect(page.locator('.modal.sources')).toContainText('Sem posições do Hub');
+ await expect(page.locator('.modal.sources')).toContainText('Sem posições estimadas do Hub');
+});
+
+test('Metro ambiguous contexts never highlight a next visit',async({page})=>{
+ await fixture(page);
+ await page.getByRole('button',{name:'Abrir comboio',exact:true}).click();
+ await page.evaluate(()=>{
+  const w=window as any,f=w.metroFrame,train=f.trains[0],call=train.calls[0],now=Date.now();
+  const at=new Date(now+60000).toISOString();
+  const evidence={kind:'prediction',at,prediction:{at,source_url:'https://official.example',source_updated_at:new Date(now-5000).toISOString(),collected_at:null,valid_until:new Date(now+240000).toISOString()}};
+  train.association='suspended';train.reason='Várias viagens possíveis';train.next_index=0;f.revision='two-contexts';
+  f.forecast_contexts=[
+   {reference:'7',route_id:'metro:r',direction_code:'60',destination:'Aeroporto',status:'admissible',reason:'',calls:[{...call,id:'fwd',stop_name:'Forward station',arrival:evidence}]},
+   {reference:'7',route_id:'metro:r',direction_code:'38',destination:'São Sebastião',status:'admissible',reason:'',calls:[{...call,id:'rev',stop_name:'Reverse station',arrival:evidence}]}
+  ];
+  w.emitMetro('frame');
+ });
+ const panel=page.locator('.detail-panel');
+ await expect(panel).toContainText('Viagem por confirmar');
+ await expect(panel.locator('.visit-next')).toHaveCount(0);
+ await expect(panel).not.toContainText('Próxima estação estimada');
 });

@@ -72,7 +72,7 @@ Parsers validate identity, time, coordinates and bounded payloads. [Source refer
 
 The store's `PublishMu` coordinates collector publication; cache updates publish new states under a cache lock. Published display revisions do not carry pending history samples, and archived revisions do not retain the full continuity replay ledger.
 
-[Store initialization and restoration](../internal/app/store.go) restore static/live data and source health; direct Metro has its own restored cache. Restored positions are marked unverified and continuity is broken, preserving original clocks instead of inventing a movement pair. CP waits for recollection. Detailed retained facts and history failure semantics are in [History and derivation](data/history.md).
+[Store initialization and restoration](../internal/app/store.go) restore static/live data and source health; direct Metro has its own restored cache. Restored positions are marked unverified and continuity is broken, preserving original clocks instead of inventing a movement pair. CP waits for recollection. Metro Hub model-position availability is process-local state (`model_position_state`, `last_model_position_at`): a restored operator row is reset to `unknown` until the new process evaluates a healthy Hub batch, so a previous process's `publishing` or `unavailable` cannot be served after a restart. Detailed retained facts and history failure semantics are in [History and derivation](data/history.md).
 
 ## Read consistency and frontend queries
 

@@ -7,12 +7,12 @@ The public Hub is the shared integration for seven operators' positions and stat
 | Method/resource | Input contract used by the app | Consumers |
 |---|---|---|
 | `GET /vehicles/positions` | JSON envelope with `data` array and nullable `error` | Seven operators' vehicle positions |
-
-The Metro row also carries Hub-specific availability evidence: `IA2N9` rows are ETA-derived model positions with a 90-second publish window on the Hub side. The application reports this feed separately from operator status: `model_position_state` and `last_model_position_at` on the Metro operator. Other Hub agencies staying fresh while Metro rows are absent is an upstream omission, not an application error; the state never changes `status` or clears official waits and forecasts (see [Metro live popups](../metro-live-popups.md)).
 | `GET /plans` | JSON envelope with plan records and nullable `error` | Active static plan selection, GTFS discovery |
 | `GET /vehicles/metadata` | Bare JSON array | MobiCascais and CM metadata enrichment |
 | `GET /realtime/eta/gtfs` | JSON wrapper containing GTFS-RT-style `data.header` and `data.entity`; nullable `error` | CP and requested-stop predictions |
 | Discovered normalized GTFS ZIP | Plan `operation_gtfs_normalized_url` | Static network/schedule and optional fleet/shape parsing |
+
+Metro model rows are ETA-derived with a 90-second publish window on the Hub side (observed 2026-10-03 in the Hub publisher source; an upstream property, not a provider guarantee). The application reports this feed separately from operator status: `model_position_state` and `last_model_position_at` on the Metro operator. Other Hub agencies staying fresh while Metro rows are absent is an upstream omission, not an application error; the state never changes `status` or clears official waits and forecasts (see [Metro live popups](../metro-live-popups.md)).
 
 Public source calls do not use a source token. The shared local TML cap is 120 attempts/minute; see [collection policy](README.md#shared-collection-policy). Positions use a dedicated one-second minimum-start target; only Metro publishes at that cadence. Other operator publication and shared ETA remain on their existing five-second schedules, consuming the latest shared full positions response. Positions protect 20 Hub/100 global safety slots plus active bounded protected request chains, slow to two/five seconds under pressure and recover one step after a healthy rolling minute. Cooldowns/Retry-After take precedence. Static plans/metadata are checked on the five-minute loop, with reusable static cache up to six hours. Source timestamps retain their original meaning.
 

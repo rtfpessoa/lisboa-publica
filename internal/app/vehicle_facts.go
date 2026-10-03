@@ -568,6 +568,12 @@ func (s *Store) restoreProviderFacts(ctx context.Context, c *Cache, p provider, 
 	if e := s.restoreOperator(ctx, p.ID, &op); e != nil {
 		return e
 	}
+	if p.ID == "metro" {
+		// Feed availability is process-local: a restored row must not present the
+		// previous process's state before this process evaluates a Hub batch.
+		state := api.OperatorModelPositionStateUnknown
+		op.ModelPositionState, op.LastModelPositionAt = &state, nil
+	}
 	var err error
 	dl, err = s.recoverProviderFacts(ctx, p.ID, ds, dl)
 	if err != nil {
