@@ -231,3 +231,25 @@ func TestMetroPositionFeedAvailability(t *testing.T) {
 		t.Fatalf("Metro row did not clear the state: %s at %v", state, at)
 	}
 }
+// Station forecast rows must be ordered by their expected time within a direction.
+func TestMetroStationForecastsOrderedByTime(t *testing.T) {
+	clock := func(sec int64) *time.Time { return ptr(time.Unix(sec, 0).UTC()) }
+	call := func(id, direction, reference string, sec int64) api.StopCall {
+		return api.StopCall{Id: id, LineKey: "metro:1_0", DirectionKey: ptr(direction), ServiceLabel: ptr(reference),
+			Arrival: api.CallTime{Kind: "prediction", At: clock(sec), Prediction: &api.CallTimeEvidence{At: *clock(sec)}}}
+	}
+	calls := []api.StopCall{
+		call("c", "33", "003A", 300),
+		call("b", "33", "002A", 200),
+		call("a", "33", "001A", 100),
+		call("d", "42", "004A", 50),
+		{Id: "e", LineKey: "metro:1_0", DirectionKey: ptr("33"), ServiceLabel: ptr("000A"), Arrival: missingCallTime("Sem previsão atual")},
+	}
+	sortMetroStationForecasts(calls)
+	want := []string{"a", "b", "c", "e", "d"}
+	for n := range want {
+		if calls[n].Id != want[n] {
+			t.Fatalf("station forecast order %v, want %v", []string{calls[0].Id, calls[1].Id, calls[2].Id, calls[3].Id, calls[4].Id}, want)
+		}
+	}
+}

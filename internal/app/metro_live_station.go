@@ -3,6 +3,7 @@ package app
 import (
 	"lisboapublica/internal/api"
 	"lisboapublica/internal/patterns"
+	"sort"
 	"strings"
 	"time"
 )
@@ -24,6 +25,52 @@ func (b *metroFrameBuilder) stationForecasts() {
 	if b.interest.Vehicle != "" && b.frame.SelectedJourneyId == nil {
 		b.frame.AssociationReason = ptr(metroForecastAssociationReason(*b.frame.ForecastContexts))
 	}
+	if b.interest.Stop != "" {
+		sortMetroStationForecasts(b.frame.UnassociatedForecasts)
+	}
+}
+
+// Station forecasts list several trains for one direction; the soonest usable visit
+// must come first so the popup order matches time. Entries without a usable time keep
+// their relative order after dated rows.
+func sortMetroStationForecasts(calls []api.StopCall) {
+	sort.SliceStable(calls, func(i, j int) bool {
+		a, b := calls[i], calls[j]
+		if a.LineKey != b.LineKey {
+			return a.LineKey < b.LineKey
+		}
+		ad, bd := textValue(a.DirectionKey), textValue(b.DirectionKey)
+		if ad != bd {
+			return ad < bd
+		}
+		at, aok := forecastCallTime(a)
+		bt, bok := forecastCallTime(b)
+		if aok != bok {
+			return aok
+		}
+		if aok && !at.Equal(bt) {
+			return at.Before(bt)
+		}
+		ar, br := textValue(a.ServiceLabel), textValue(b.ServiceLabel)
+		if ar != br {
+			return ar < br
+		}
+		return a.Id < b.Id
+	})
+}
+
+// forecastCallTime is the time a station forecast row is about: the official
+// prediction, else our own estimate, else any recorded arrival instant.
+func forecastCallTime(c api.StopCall) (time.Time, bool) {
+	switch {
+	case c.Arrival.Prediction != nil:
+		return c.Arrival.Prediction.At, true
+	case c.OwnPrediction != nil:
+		return c.OwnPrediction.At, true
+	case c.Arrival.At != nil:
+		return *c.Arrival.At, true
+	}
+	return time.Time{}, false
 }
 func (b *metroFrameBuilder) includeForecastContext(c api.MetroForecastContext) bool {
 	if b.interest.Route != "" && !sameMetroRoute(b.static, b.interest.Route, c.RouteId) {
