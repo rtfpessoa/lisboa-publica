@@ -38,13 +38,16 @@ export function MetroJourneyPopup({vehicle}:{vehicle:Vehicle}){
  useLayoutEffect(reading.restore,[live.frame,now]);
  const train=live.frame?.trains.find(t=>t.journey_id===live.frame?.selected_journey_id)??live.retainedJourney;
  const supported=metroCurrentDirection(train,now);
+ const associationSupported=train?.association==='supported';
  const currentIndex=train?.current_index??null,nextIndex=train?.next_index??null;
- const boundary=supported?currentIndex??nextIndex:null;
+ // Suppression follows the association, not the direction label: a transient
+ // contextual direction must not bring countdowns back onto behind visits.
+ const boundary=associationSupported?currentIndex??nextIndex:null;
  // A visit at or behind the train's marker must never show a forward countdown; its
  // occurrence or last official estimate time is shown instead. The current visit keeps
  // its departure countdown (schedule/model departure).
- const arrivalBehind=(index:number)=>supported&&boundary!=null&&(currentIndex!=null?index<=currentIndex:index<boundary);
- const departureBehind=(index:number)=>supported&&boundary!=null&&(currentIndex!=null?index<currentIndex:index<boundary);
+ const arrivalBehind=(index:number)=>associationSupported&&boundary!=null&&(currentIndex!=null?index<=currentIndex:index<boundary);
+ const departureBehind=(index:number)=>associationSupported&&boundary!=null&&(currentIndex!=null?index<currentIndex:index<boundary);
  const currentJourney=live.frame?.trains.find(t=>t.vehicle_id===vehicle.id&&t.journey_id!==train?.journey_id&&metroCurrentDirection(t,now));
  const visitStop=(call:StopCall)=>{const stop=live.stops.find(s=>s.id===call.stop_id);if(stop&&call.stop_plan_id===live.frame?.plan_id&&live.stopsPlanId===live.frame?.plan_id)live.onStop?.(stop)};
  return <div ref={root} data-metro-revision={live.frame?.revision} data-metro-published-at={live.frame?.published_at} className="transit-popup vehicle-journey"><h4>Comboio {train?.reference??vehicle.source_id} {supported&&train?.destination&&<span>→ {train.destination} (sentido estimado)</span>}</h4><Status/>{train?.lifecycle&&train.lifecycle.state!=='active'&&<p role="status">{train.lifecycle.reason}</p>}{train?.model_projection&&supported&&<p className="notice">Posição local estimada (modelo); avaliação a cada 500 ms.</p>}

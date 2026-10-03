@@ -1,6 +1,6 @@
 import {test,expect,type Page} from '@playwright/test';
 import {createServer,type ServerResponse} from 'node:http';
-async function fixture(page:Page,metroState?:string){
+async function fixture(page:Page,metroState?:string,metroStatus='ok'){
  const now=Date.now(),iso=(n:number)=>new Date(now+n*1000).toISOString(),missing={kind:'unavailable',at:null,reason:'Sem previsão atual',actual:null,prediction:null,schedule:null};
  const stop={id:'metro:A',operator_id:'metro',source_id:'A',name:'Alameda',lat:38.731,lon:-9.145,route_ids:['metro:r']};
  const vehicle={id:'metro:7',source_id:'7',operator_id:'metro',route_id:'metro:r',route_name:'Linha Vermelha',position_kind:'estimated',lat:38.731,lon:-9.145,observed_at:iso(0),collected_at:iso(0),source_url:'https://official.example',stale:false,last_known:false,inactive_at:iso(300),last_known_expires_at:iso(600)};
@@ -17,7 +17,7 @@ async function fixture(page:Page,metroState?:string){
  await page.route('https://tiles.openfreemap.org/styles/positron',r=>r.fulfill({json:{version:8,sources:{},layers:[{id:'background',type:'background',paint:{'background-color':'#fff'}}]}}));
  await page.route('**/api/v1/**',async r=>{const url=new URL(r.request().url());requests.push(url.pathname);let json:unknown=envelope([]);
   if(url.pathname.endsWith('/config'))json={dev_auth:false,live_refresh_seconds:5,history_retention_days:30,history_resolution_seconds:30};
-  if(url.pathname.endsWith('/operators'))json=envelope([{id:'metro',name:'Metro de Lisboa',mode:'metro',color:'#e22',status:'ok',static_status:'ok',live_updated_at:iso(0),static_updated_at:iso(0),plan_id:'plan',estimated_positions:metroState==='unavailable'?0:1,model_position_state:metroState??null,last_model_position_at:metroState==='unavailable'?iso(-3600):iso(0)}]);
+  if(url.pathname.endsWith('/operators'))json=envelope([{id:'metro',name:'Metro de Lisboa',mode:'metro',color:'#e22',status:metroStatus,error:metroStatus==='error'?'Synthetic source failure':null,static_status:'ok',live_updated_at:iso(0),static_updated_at:iso(0),plan_id:'plan',estimated_positions:metroState==='unavailable'?0:1,model_position_state:metroState??null,last_model_position_at:metroState==='unavailable'?iso(-3600):iso(0)}]);
   if(url.pathname.endsWith('/stops'))json=envelope([stop]);if(url.pathname.endsWith('/metrics'))json={speed_kmh:null};if(url.pathname.endsWith('/route-shapes'))json={...envelope([]),coverage:[]};
   if(url.pathname.endsWith('/metro/live'))json=await page.evaluate(()=>(window as unknown as {metroFrame:unknown}).metroFrame);
   await r.fulfill({json});
@@ -331,4 +331,54 @@ test('Metro ambiguous contexts never highlight a next visit',async({page})=>{
  await expect(panel).toContainText('Viagem por confirmar');
  await expect(panel.locator('.visit-next')).toHaveCount(0);
  await expect(panel).not.toContainText('Próxima estação estimada');
+});
+
+test('Metro station row at the current visit shows no arrival countdown',async({page})=>{
+ await fixture(page);
+ await page.evaluate(()=>{
+  const w=window as any,f=w.metroFrame,train=f.trains[0],call=train.calls[0],now=Date.now();
+  const at=new Date(now+60000).toISOString();
+  train.current_index=0;train.next_index=1;f.revision='current-visit';
+  train.calls=[{...call,id:'current',stop_sequence:0,phase:'current',arrival:{kind:'prediction',at,prediction:{at,source_url:'https://official.example',source_updated_at:new Date(now-5000).toISOString(),collected_at:null,valid_until:new Date(now+240000).toISOString()}},last_official_estimate:null}];
+  w.emitMetro('frame');
+ });
+ const panel=page.locator('.detail-panel'),row=panel.locator('[data-call-id="metro:run:one"]');
+ await expect(panel.getByRole('heading',{name:'A chegar a esta estação'})).toBeVisible();
+ await expect(row.locator(':scope > div').nth(1)).toContainText('Sem hora registada');
+ await expect(row.locator(':scope > div').nth(1)).not.toContainText('min');
+});
+
+test('Metro behind visit keeps the withdrawn departure label',async({page})=>{
+ await fixture(page);
+ await page.getByRole('button',{name:'Abrir comboio',exact:true}).click();
+ await page.evaluate(()=>{
+  const w=window as any,f=w.metroFrame,train=f.trains[0],call=train.calls[0];
+  train.next_index=1;train.current_index=null;f.revision='withdrawn-behind';
+  train.calls=[{...call,id:'withdrawn',stop_sequence:0,phase:'unknown',departure:{kind:'unavailable',at:null,reason:'Estimativa retirada',actual:null,prediction:null,schedule:null}}];
+  w.emitMetro('frame');
+ });
+ const panel=page.locator('.detail-panel');
+ await expect(panel.locator('[data-call-id="withdrawn"] .transit-call > div').nth(2)).toContainText('Estimativa retirada');
+});
+
+test('Metro contextual direction still suppresses behind countdowns',async({page})=>{
+ await fixture(page);
+ await page.getByRole('button',{name:'Abrir comboio',exact:true}).click();
+ await page.evaluate(()=>{
+  const w=window as any,f=w.metroFrame,train=f.trains[0],call=train.calls[0],now=Date.now();
+  const at=new Date(now+60000).toISOString();
+  train.direction_evidence={state:'context',reason:'Synthetic contextual direction'};
+  train.association='supported';train.next_index=1;train.current_index=null;f.revision='contextual-behind';
+  train.calls=[{...call,id:'ctx-behind',stop_sequence:0,phase:'unknown',arrival:{kind:'prediction',at,prediction:{at,source_url:'https://official.example',source_updated_at:new Date(now-5000).toISOString(),collected_at:null,valid_until:new Date(now+240000).toISOString()}},last_official_estimate:null}];
+  w.emitMetro('frame');
+ });
+ const panel=page.locator('.detail-panel');
+ await expect(panel.locator('[data-call-id="ctx-behind"]')).toContainText('Sem hora registada');
+ await expect(panel.locator('[data-call-id="ctx-behind"]')).not.toContainText('min');
+});
+
+test('Metro unavailable state never masks a source error',async({page})=>{
+ await fixture(page,'unavailable','error');
+ await expect(page.getByRole('button',{name:'Metro de Lisboa',exact:true})).toContainText('Fonte indisponível');
+ await expect(page.getByRole('button',{name:'Metro de Lisboa',exact:true})).not.toContainText('Sem posições estimadas do Hub');
 });

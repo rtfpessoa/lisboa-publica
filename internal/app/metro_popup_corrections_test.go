@@ -31,7 +31,7 @@ func TestMetroLastOfficialEstimateRetainedAndWithdrawn(t *testing.T) {
 	if !projection.apply(0, metroPoint{Stop: "RM", Platform: "1", Clock: clock.Add(5 * time.Second), Seconds: &zero}) {
 		t.Fatal("zero wait projection failed")
 	}
-	call := track.Train.Calls[0]
+	call := &track.Train.Calls[0]
 	if call.Arrival.Inferred == nil {
 		t.Fatal("inferred arrival missing")
 	}
@@ -42,8 +42,7 @@ func TestMetroLastOfficialEstimateRetainedAndWithdrawn(t *testing.T) {
 	// Prediction expiry clears the current prediction but never the retained estimate.
 	expired := clock.Add(-time.Hour)
 	call.Arrival = api.CallTime{Kind: "prediction", Prediction: &api.CallTimeEvidence{At: expired, ValidUntil: ptr(clock.Add(-30 * time.Minute))}}
-	supported := api.MetroTrainAssociation("supported")
-	expireMetroCall(&call, supported, now)
+	expireMetroCall(call, "supported", now)
 	if call.Arrival.Kind != "unavailable" {
 		t.Fatal("expired prediction was kept as current")
 	}
@@ -53,7 +52,7 @@ func TestMetroLastOfficialEstimateRetainedAndWithdrawn(t *testing.T) {
 
 	// Suspension is historical evidence and keeps its own clock.
 	suspendMetroTrack(track, "test suspension")
-	if call.LastOfficialEstimate == nil {
+	if track.Train.Calls[0].LastOfficialEstimate == nil {
 		t.Fatal("suspension cleared the retained last official estimate")
 	}
 
@@ -103,8 +102,26 @@ func TestMetroLocalForecastCallsOrderedDeterministically(t *testing.T) {
 	}
 }
 
+// The local-context call site must keep the same order; the removed post-canonical id
+// sort would restore id order for these calls.
+func TestMetroLocalContextsSortedOrder(t *testing.T) {
+	contexts := metroLocalContexts{contexts: map[string]*api.MetroForecastContext{
+		"metro:1_0|33|001A": {Reference: "001A", RouteId: "metro:1_0", Status: "admissible", Calls: []api.StopCall{
+			{Id: "a", StopName: "Roma", Arrival: api.CallTime{Kind: "unavailable"}},
+			{Id: "b", StopName: "Alameda", Arrival: api.CallTime{Kind: "unavailable"}},
+		}},
+	}}
+	out := contexts.sorted()
+	if len(out) != 1 || len(out[0].Calls) != 2 {
+		t.Fatalf("unexpected local context shape: %+v", out)
+	}
+	if out[0].Calls[0].StopName != "Alameda" || out[0].Calls[1].StopName != "Roma" {
+		t.Fatalf("local context order %s, %s; the id sort would have restored Roma first", out[0].Calls[0].StopName, out[0].Calls[1].StopName)
+	}
+}
+
 // The retained real capture must produce contexts whose calls follow the published path,
-// and encoding the same view twice must keep the frame revision identical.
+// and two independent reads of one publication must encode to the same frame revision.
 func TestMetroRetainedCaptureContextsFollowPathOrder(t *testing.T) {
 	var captures []struct {
 		Data MetroData `json:"data"`
@@ -131,18 +148,27 @@ func TestMetroRetainedCaptureContextsFollowPathOrder(t *testing.T) {
 	if multi == 0 {
 		t.Fatal("retained capture produced no multi-stop context to check")
 	}
-	view, plan, viewContexts, _ := runtime.view(now)
-	if view == nil || plan == nil {
+
+	// Two independent reads of the same publication must encode identically, bypassing
+	// the short-lived forecast cache so the ordering is re-derived.
+	first, plan, firstContexts, _ := runtime.view(now)
+	if first == nil || plan == nil {
 		t.Fatal("runtime view missing for revision check")
 	}
-	frame := api.MetroLiveFrame{PublishedAt: now, PlanId: plan.PlanID, Trains: view.Trains, Vehicles: []api.Vehicle{}, Directions: []api.BoardDirection{}, UnassociatedForecasts: []api.StopCall{}, ForecastContexts: &viewContexts, HistoryStatus: "unavailable"}
-	first, _, err := encodeMetroFrame(frame, 1<<20)
+	runtime.forecastCache, runtime.forecastCacheUntil = nil, time.Time{}
+	second, _, secondContexts, _ := runtime.view(now)
+	if second == nil {
+		t.Fatal("second runtime view missing for revision check")
+	}
+	firstFrame := api.MetroLiveFrame{PublishedAt: now, PlanId: plan.PlanID, Trains: first.Trains, Vehicles: []api.Vehicle{}, Directions: []api.BoardDirection{}, UnassociatedForecasts: []api.StopCall{}, ForecastContexts: &firstContexts, HistoryStatus: "unavailable"}
+	secondFrame := api.MetroLiveFrame{PublishedAt: now, PlanId: plan.PlanID, Trains: second.Trains, Vehicles: []api.Vehicle{}, Directions: []api.BoardDirection{}, UnassociatedForecasts: []api.StopCall{}, ForecastContexts: &secondContexts, HistoryStatus: "unavailable"}
+	encodedFirst, _, err := encodeMetroFrame(firstFrame, 1<<20)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, _, err := encodeMetroFrame(frame, 1<<20)
-	if err != nil || first.Revision != second.Revision {
-		t.Fatalf("frame revision is not stable: %q vs %q (%v)", first.Revision, second.Revision, err)
+	encodedSecond, _, err := encodeMetroFrame(secondFrame, 1<<20)
+	if err != nil || encodedFirst.Revision != encodedSecond.Revision {
+		t.Fatalf("frame revision is not stable: %q vs %q (%v)", encodedFirst.Revision, encodedSecond.Revision, err)
 	}
 }
 
@@ -205,32 +231,55 @@ func TestMetroPositionFeedPausesWithoutEvidence(t *testing.T) {
 	}
 }
 
-// The state is unknown after startup, becomes unavailable only after three counted
-// batches and 60 seconds, and clears on the first Metro row.
-func TestMetroPositionFeedAvailability(t *testing.T) {
+// Three counted batches inside 60 seconds must not enter unavailable: the window is
+// measured from the first counted batch.
+func TestMetroPositionFeedWaitsForFullWindow(t *testing.T) {
 	base := time.Now().UTC().Truncate(time.Second)
 	f, direct := metroFeedTestFetcher(t, base)
-	if state, at := f.metroPositionFeedState(); state != api.OperatorModelPositionStateUnknown || at != nil {
-		t.Fatalf("startup state %s at %v", state, at)
+	for n := 0; n < 3; n++ {
+		at := base.Add(time.Duration(n) * time.Second)
+		direct(at)
+		f.updateMetroPositionFeed(metroFeedBatch("IA9T6", at.Add(-time.Second), at))
 	}
-	f.updateMetroPositionFeed(metroFeedBatch("IA9T6", base.Add(-time.Second), base))
-	direct(base.Add(30 * time.Second))
-	f.updateMetroPositionFeed(metroFeedBatch("IA9T6", base.Add(30*time.Second), base.Add(30*time.Second)))
-	if state, _ := f.metroPositionFeedState(); state != api.OperatorModelPositionStateUnknown {
-		t.Fatalf("premature unavailable state %s", state)
+	if state, _ := f.metroPositionFeedState(); state == api.OperatorModelPositionStateUnavailable {
+		t.Fatal("three fast batches entered unavailable before the 60 s window")
 	}
-	direct(base.Add(61 * time.Second))
-	f.updateMetroPositionFeed(metroFeedBatch("IA9T6", base.Add(61*time.Second), base.Add(61*time.Second)))
+	at := base.Add(61 * time.Second)
+	direct(at)
+	f.updateMetroPositionFeed(metroFeedBatch("IA9T6", at.Add(-time.Second), at))
 	if state, _ := f.metroPositionFeedState(); state != api.OperatorModelPositionStateUnavailable {
-		t.Fatalf("sustained zero-Metro batches did not mark unavailable: %s", state)
-	}
-	direct(base.Add(80 * time.Second))
-	f.updateMetroPositionFeed(metroFeedBatch(metroAgencyID, base.Add(80*time.Second), base.Add(80*time.Second)))
-	state, at := f.metroPositionFeedState()
-	if state != api.OperatorModelPositionStatePublishing || at == nil || !at.Equal(base.Add(80*time.Second)) {
-		t.Fatalf("Metro row did not clear the state: %s at %v", state, at)
+		t.Fatal("a counted batch after the window did not mark unavailable")
 	}
 }
+
+// A Metro row clears the state and restarts the absence window.
+func TestMetroPositionFeedWindowResetsOnMetroRow(t *testing.T) {
+	base := time.Now().UTC().Truncate(time.Second)
+	f, direct := metroFeedTestFetcher(t, base)
+	direct(base)
+	f.updateMetroPositionFeed(metroFeedBatch("IA9T6", base.Add(-time.Second), base))
+	rowAt := base.Add(61 * time.Second)
+	direct(rowAt)
+	f.updateMetroPositionFeed(metroFeedBatch(metroAgencyID, rowAt, rowAt))
+	if state, _ := f.metroPositionFeedState(); state != api.OperatorModelPositionStatePublishing {
+		t.Fatalf("Metro row did not set publishing: %s", state)
+	}
+	for n := 0; n < 3; n++ {
+		at := rowAt.Add(time.Duration(n+1) * time.Second)
+		direct(at)
+		f.updateMetroPositionFeed(metroFeedBatch("IA9T6", at.Add(-time.Second), at))
+	}
+	if state, _ := f.metroPositionFeedState(); state == api.OperatorModelPositionStateUnavailable {
+		t.Fatal("the absence window did not restart after a Metro row")
+	}
+	at := rowAt.Add(61 * time.Second)
+	direct(at)
+	f.updateMetroPositionFeed(metroFeedBatch("IA9T6", at.Add(-time.Second), at))
+	if state, _ := f.metroPositionFeedState(); state != api.OperatorModelPositionStateUnavailable {
+		t.Fatal("the restarted window did not mark unavailable")
+	}
+}
+
 // Station forecast rows must be ordered by their expected time within a direction.
 func TestMetroStationForecastsOrderedByTime(t *testing.T) {
 	clock := func(sec int64) *time.Time { return ptr(time.Unix(sec, 0).UTC()) }
@@ -247,9 +296,10 @@ func TestMetroStationForecastsOrderedByTime(t *testing.T) {
 	}
 	sortMetroStationForecasts(calls)
 	want := []string{"a", "b", "c", "e", "d"}
+	got := []string{calls[0].Id, calls[1].Id, calls[2].Id, calls[3].Id, calls[4].Id}
 	for n := range want {
-		if calls[n].Id != want[n] {
-			t.Fatalf("station forecast order %v, want %v", []string{calls[0].Id, calls[1].Id, calls[2].Id, calls[3].Id, calls[4].Id}, want)
+		if got[n] != want[n] {
+			t.Fatalf("station forecast order %v, want %v", got, want)
 		}
 	}
 }
