@@ -19,6 +19,7 @@ type metroSample struct {
 type MetroSampleStats struct {
 	SampledAt          time.Time
 	Gap                bool
+	Empty              bool
 	Rows               int
 	Contexts           int
 	Admitted           int
@@ -34,6 +35,8 @@ type MetroSampleStats struct {
 	GroupsCreated      int
 	GroupsDeleted      int
 	ActiveGroups       int
+	IntermediateCuts   int64
+	Gaps               int64
 }
 
 func (e *engine) step(receipt Receipt, topology Topology, config Config) {
@@ -42,6 +45,8 @@ func (e *engine) step(receipt Receipt, topology Topology, config Config) {
 	}
 	sample := e.prepareMetroStep(receipt, topology, config)
 	sample.stats.Gap = sample.gap
+	sample.stats.Empty = len(receipt.Rows) == 0 && receipt.Error == ""
+	sample.stats.IntermediateCuts, sample.stats.Gaps = e.IntermediateCuts, e.Gaps
 	if receipt.Error != "" {
 		sample.stats.SampledAt, sample.stats.ActiveGroups = sample.now, activeMetroGroups(e.Groups)
 		e.LastMetroStats = sample.stats

@@ -24,6 +24,7 @@ func (e *engine) observeIntermediate(r Receipt, t Topology, c Config) {
 	// A returning identifier cannot turn a known intermediate loss into a signal.
 	e.Previous = map[string]priorRow{}
 	e.Gaps++
+	e.IntermediateCuts++
 	e.Live = e.forecasts(r, t, c)
 }
 

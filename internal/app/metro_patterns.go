@@ -54,6 +54,7 @@ func (m *MetroClient) logMetroSample() {
 	m.Log.Debug("metro sample",
 		zap.Time("sampled_at", stats.SampledAt),
 		zap.Bool("gap", stats.Gap),
+		zap.Bool("empty", stats.Empty),
 		zap.Int("rows", stats.Rows),
 		zap.Int("contexts", stats.Contexts),
 		zap.Int("admitted", stats.Admitted),
@@ -68,7 +69,9 @@ func (m *MetroClient) logMetroSample() {
 		zap.Int("signals_applied", stats.SignalsApplied),
 		zap.Int("groups_created", stats.GroupsCreated),
 		zap.Int("groups_deleted_absent", stats.GroupsDeleted),
-		zap.Int("active_groups", stats.ActiveGroups))
+		zap.Int("active_groups", stats.ActiveGroups),
+		zap.Int64("intermediate_cuts", stats.IntermediateCuts),
+		zap.Int64("gaps", stats.Gaps))
 }
 
 func (s *Server) GetMetroPatterns(ctx context.Context, request api.GetMetroPatternsRequestObject) (api.GetMetroPatternsResponseObject, error) {
