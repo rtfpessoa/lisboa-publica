@@ -5,6 +5,11 @@ import (
 )
 
 func (e *engine) updateConditions(r Receipt, t Topology) {
+	if r.Error != "" {
+		// A failed fetch reports no line state. Keeping the last known conditions
+		// avoids cutting groups the source never contradicted.
+		return
+	}
 	if e.Conditions == nil {
 		e.Conditions = map[string]string{}
 	}

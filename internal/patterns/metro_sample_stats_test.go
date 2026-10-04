@@ -166,10 +166,12 @@ func TestErrorSampleKeepsContinuity(t *testing.T) {
 	config := DefaultConfig(t.TempDir())
 	topology := testTopology()
 	e := newEngine()
-	e.step(testReceipt(base, testRow("A", "x", base, 600)), topology, config)
+	healthy := testReceipt(base, testRow("A", "x", base, 600))
+	healthy.RouteConditions = map[string]string{"line": "reported_normal"}
+	e.step(healthy, topology, config)
 	at := base.Add(10 * time.Second)
 	failed := testReceipt(at)
-	failed.Error = "error"
+	failed.Error, failed.RouteConditions = "error", map[string]string{}
 	e.step(failed, topology, config)
 	if len(e.Previous) == 0 || e.Gaps != 0 || e.LastMetroStats.Gap {
 		t.Fatalf("error sample cut continuity: previous=%d gaps=%d stats=%+v", len(e.Previous), e.Gaps, e.LastMetroStats)
