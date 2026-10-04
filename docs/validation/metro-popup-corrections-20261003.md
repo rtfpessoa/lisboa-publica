@@ -69,6 +69,23 @@ After deploy (21:10Z start):
 - The Hub omission itself is upstream (no-timeout Hub fetcher and 90-second publish
   window); see the 2026-10-03 debug session.
 
+## 2026-10-04 platform-station mapping release
+
+The 2026-10-04 Metro GTFS revision references platform-level stops whose legacy codes
+(`SS3`, `AM1`, `MP2`, ...) are not published station ids, so full-line trips were
+dropped and only short patterns survived (one direction per line, missing station tabs,
+destination forecasts left without a direction). Commit `1c69411` removes the legacy
+`id_antigo`/`LegacyStops` crosswalk, resolves each static stop through its
+`parent_station` plus the existing unique name/coordinate matcher, and reports
+unresolved stops. Evaluation on the real GTFS and the retained catalogue, plus the full
+test suites, passed before the rollout.
+
+Deployed as `lisboa-publica:1c694111023fdfc82c7781047ee0a5aaedf40269` (healthy,
+0 restarts). Production after deploy: 9 trains across blue (33/42), red (60), yellow
+(43/48) and green (50); São Sebastião offers all four direction tabs; Alameda offers
+green and red tabs; no null-direction rows at the checked stations; no unmapped-stop
+warning; archive still `collecting` with own estimates present.
+
 ## Additional deployments
 
 - `c314cd0` (archive checkpoint/round-trip fix, reviewed) and `2aa51ce` (review fixes:
