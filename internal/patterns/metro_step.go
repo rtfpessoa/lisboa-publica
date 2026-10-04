@@ -89,7 +89,7 @@ func (e *engine) prepareMetroStep(receipt Receipt, topology Topology, config Con
 	e.updateConditions(receipt, topology)
 	e.Topology, e.Condition = topology, receipt.ServiceCondition
 	gap := receipt.DeliveryGap || !e.LastReceipt.IsZero() && now.Sub(e.LastReceipt) > 60*time.Second
-	if gap || receipt.Error != "" {
+	if gap {
 		e.Gaps++
 		e.resetContinuity()
 	}

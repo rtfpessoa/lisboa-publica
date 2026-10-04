@@ -158,3 +158,25 @@ func TestIntermediateErrorKeepsContinuity(t *testing.T) {
 		t.Fatalf("failed fetch cut the group: %d", len(e.Groups))
 	}
 }
+
+// A sample recorded from a failed upstream fetch reports no data: it must not cut the
+// learned groups nor count as a delivery gap.
+func TestErrorSampleKeepsContinuity(t *testing.T) {
+	base := time.Date(2026, 10, 4, 9, 0, 0, 0, time.UTC)
+	config := DefaultConfig(t.TempDir())
+	topology := testTopology()
+	e := newEngine()
+	e.step(testReceipt(base, testRow("A", "x", base, 600)), topology, config)
+	at := base.Add(10 * time.Second)
+	failed := testReceipt(at)
+	failed.Error = "error"
+	e.step(failed, topology, config)
+	if len(e.Previous) == 0 || e.Gaps != 0 || e.LastMetroStats.Gap {
+		t.Fatalf("error sample cut continuity: previous=%d gaps=%d stats=%+v", len(e.Previous), e.Gaps, e.LastMetroStats)
+	}
+	next := base.Add(30 * time.Second)
+	e.step(testReceipt(next, testRow("A", "x", next, 0)), topology, config)
+	if e.LastMetroStats.Signals != 1 {
+		t.Fatalf("signal lost after an error sample: %+v", e.LastMetroStats)
+	}
+}
