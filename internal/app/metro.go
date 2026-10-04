@@ -149,9 +149,15 @@ func (m *MetroClient) reportUnmappedStops() {
 			return
 		}
 	}
+	previous := len(m.lastUnmapped)
 	m.lastUnmapped = unmapped
-	if m.Log != nil && len(unmapped) > 0 {
+	if m.Log == nil {
+		return
+	}
+	if len(unmapped) > 0 {
 		m.Log.Warn("metro topology left static stops unmapped", zap.Int("count", len(unmapped)), zap.Strings("stops", unmapped))
+	} else if previous > 0 {
+		m.Log.Info("metro topology resolved every static stop")
 	}
 }
 

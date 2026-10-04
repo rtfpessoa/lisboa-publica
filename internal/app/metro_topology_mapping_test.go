@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 	"lisboapublica/internal/api"
 )
 
@@ -22,7 +24,7 @@ func metroPlatformFixture() (*MetroData, *StaticData) {
 			{Id: "metro:a", SourceId: "a", Name: "Reboleira", Lat: 38.75, Lon: -9.22},
 			{Id: "metro:bx", SourceId: "bx", Name: "Santa Apolónia", Lat: 38.71, Lon: -9.12},
 			{Id: "metro:p", SourceId: "p", Name: "São Sebastião", Lat: 38.71, Lon: -9.14},
-			{Id: "metro:p1", SourceId: "p1", Name: "São Sebastião", Lat: 38.7102, Lon: -9.1402, ParentId: ptr("metro:p")},
+			{Id: "metro:p1", SourceId: "p1", Name: "Cais SS1", Lat: 38.7102, Lon: -9.1402, ParentId: ptr("metro:p")},
 		},
 		Schedule: &Schedule{
 			Parents: map[string]string{"p1": "p"},
@@ -81,5 +83,59 @@ func TestMetroTopologyReportsUnmappedStops(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("unmapped stops %v do not include the platform", unmapped)
+	}
+}
+
+// A stop whose declared parent is absent from the static list must fall back to itself
+// instead of being reported as unmapped.
+func TestMetroTopologyFallsBackWhenParentMissing(t *testing.T) {
+	data, static := metroPlatformFixture()
+	static.Schedule.Parents["a"] = "gone"
+	topology, unmapped := metroTopologyReport(data, static)
+	for _, id := range unmapped {
+		if id == "a" {
+			t.Fatalf("stop with a missing parent was reported unmapped: %v", unmapped)
+		}
+	}
+	if len(topology.Patterns) == 0 {
+		t.Fatal("missing parent suppressed the topology")
+	}
+}
+
+// The unmapped report must log one warning per changed set and one recovery line.
+func TestMetroReportUnmappedStopsLogsChanges(t *testing.T) {
+	core, logs := observer.New(zap.InfoLevel)
+	cache := NewCache()
+	cache.metroRuntime.mu.Lock()
+	cache.metroRuntime.unmappedStations = []string{"p1"}
+	cache.metroRuntime.mu.Unlock()
+	client := &MetroClient{Cache: cache, Log: zap.New(core)}
+	client.reportUnmappedStops()
+	client.reportUnmappedStops()
+	if logs.Len() != 1 {
+		t.Fatalf("warnings %d, want 1 for a repeated set", logs.Len())
+	}
+	cache.metroRuntime.mu.Lock()
+	cache.metroRuntime.unmappedStations = []string{"p1", "p2"}
+	cache.metroRuntime.mu.Unlock()
+	client.reportUnmappedStops()
+	if logs.Len() != 2 {
+		t.Fatalf("warnings %d, want 2 for a changed set", logs.Len())
+	}
+	cache.metroRuntime.mu.Lock()
+	cache.metroRuntime.unmappedStations = nil
+	cache.metroRuntime.mu.Unlock()
+	client.reportUnmappedStops()
+	warns := 0
+	for _, entry := range logs.All() {
+		if entry.Level == zap.WarnLevel {
+			warns++
+		}
+	}
+	if warns != 2 {
+		t.Fatalf("warning count %d, want 2", warns)
+	}
+	if logs.Len() == 0 || logs.All()[logs.Len()-1].Message != "metro topology resolved every static stop" {
+		t.Fatal("recovery was not logged")
 	}
 }
