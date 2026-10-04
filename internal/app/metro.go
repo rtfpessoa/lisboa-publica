@@ -12,6 +12,7 @@ import (
 	"unicode"
 
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 	"golang.org/x/text/unicode/norm"
 	"lisboapublica/internal/api"
 	"lisboapublica/internal/patterns"
@@ -64,6 +65,8 @@ type MetroClient struct {
 	Store                            *Store
 	Cache                            *Cache
 	ClientID, Secret, Base, TokenURL string
+	Log                              *zap.Logger
+	lastUnmapped                     []string
 	metroRefreshState
 	History *patterns.Service
 }
@@ -118,6 +121,7 @@ func (m *MetroClient) refreshConfigured(ctx context.Context, now time.Time) *Met
 func (m *MetroClient) publish(ctx context.Context, data *MetroData, now time.Time) {
 	state, _ := m.Cache.state("")
 	m.Cache.metroRuntime.observe(data, state.Static["metro"], m.History, now)
+	m.reportUnmappedStops()
 	m.publishMetroHistory(data, now)
 	m.Store.PublishMu.Lock()
 	defer m.Store.PublishMu.Unlock()
@@ -128,6 +132,29 @@ func (m *MetroClient) publish(ctx context.Context, data *MetroData, now time.Tim
 	}
 	m.Cache.updateMetro(data, op)
 }
+
+// reportUnmappedStops logs a changed set of static stops that no longer resolve to a
+// published station. A GTFS revision change must not shrink the network silently.
+func (m *MetroClient) reportUnmappedStops() {
+	unmapped := m.Cache.metroRuntime.unmappedStaticStops()
+	if len(unmapped) == len(m.lastUnmapped) {
+		equal := true
+		for n := range unmapped {
+			if unmapped[n] != m.lastUnmapped[n] {
+				equal = false
+				break
+			}
+		}
+		if equal {
+			return
+		}
+	}
+	m.lastUnmapped = unmapped
+	if m.Log != nil && len(unmapped) > 0 {
+		m.Log.Warn("metro topology left static stops unmapped", zap.Int("count", len(unmapped)), zap.Strings("stops", unmapped))
+	}
+}
+
 func (m *MetroClient) publishMetroHistory(data *MetroData, now time.Time) {
 	if m.History != nil {
 		state, _ := m.Cache.state("")

@@ -120,12 +120,6 @@ func (g *gtfsReader) addLocalStop(m map[string]string, lat, lon float64) error {
 		s.ParentId = ptr(qualify(g.provider.ID, parent))
 		g.data.Schedule.Parents[id] = parent
 	}
-	if g.provider.ID == "metro" && m["id_antigo"] != "" {
-		if g.data.Schedule.LegacyStops == nil {
-			g.data.Schedule.LegacyStops = map[string]string{}
-		}
-		g.data.Schedule.LegacyStops[id] = m["id_antigo"]
-	}
 	g.stops[id] = s
 	return nil
 }

@@ -79,6 +79,7 @@ func (services backgroundServices) start(ctx context.Context) {
 	go services.store.RunReporting(ctx, services.cache, services.log)
 	outgoing := &http.Client{Timeout: upstreamRequestTimeout, Transport: app.NewBudgetTransport(upstreamRequestBudget), CheckRedirect: app.CheckUpstreamRedirect}
 	services.server.Metro = app.NewMetroClient(outgoing, services.store, services.cache, os.Getenv("METRO_CLIENT_ID"), os.Getenv("METRO_CLIENT_SECRET"))
+	services.server.Metro.Log = services.log
 	services.server.Metro.History = services.server.Patterns
 	if err := services.cache.ConfigureMetroModels(os.Getenv("METRO_MODEL_ALLOWLIST")); err != nil {
 		services.log.Fatal("Invalid Metro model allowlist", zap.Error(err))

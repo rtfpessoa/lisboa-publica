@@ -87,6 +87,7 @@ type metroRuntimeTopology struct {
 	priorCache        map[string][]metroVisitPrior
 	plan              *StaticData
 	topology          patterns.Topology
+	unmappedStations  []string
 	stationsSignature string
 }
 type metroRuntimeTracks struct {
@@ -177,9 +178,18 @@ func (r *metroRuntime) updateTopology(data *MetroData, static *StaticData) {
 		r.operational = map[string]*metroOperationalMotion{}
 		r.operationalAxes = map[string]metroOperationalAxisData{}
 		r.stationsSignature = signature
-		r.topology = metroTopology(data, static)
+		topology, unmapped := metroTopologyReport(data, static)
+		r.topology, r.unmappedStations = topology, unmapped
 	}
 	data.Topology = r.topology
+}
+
+// unmappedStaticStops reports static stops that could not be resolved to a published
+// station in the current topology, so a GTFS revision change stays visible.
+func (r *metroRuntime) unmappedStaticStops() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]string{}, r.unmappedStations...)
 }
 
 // A shared axis may support downstream ordering without proving the origin.

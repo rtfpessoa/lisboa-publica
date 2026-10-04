@@ -16,20 +16,28 @@ type metroPlanBuilder struct {
 	stations        map[string]MetroStation
 	mapping, routes map[string]string
 	seen            map[string]bool
+	unmapped        []string
 }
 
 func metroTopology(data *MetroData, static *StaticData) patterns.Topology {
+	topology, _ := metroTopologyReport(data, static)
+	return topology
+}
+
+// metroTopologyReport also returns the static stops that could not be resolved to a
+// published station, so a changed GTFS revision cannot silently shrink the network.
+func metroTopologyReport(data *MetroData, static *StaticData) (patterns.Topology, []string) {
 	b := metroPlanBuilder{topology: patterns.Topology{Patterns: []patterns.Pattern{}, Segments: map[string]string{}, Stations: []patterns.Station{}}, data: data, static: static, stations: map[string]MetroStation{}, mapping: map[string]string{}, routes: map[string]string{}, seen: map[string]bool{}}
 	b.addStations()
 	if static == nil || static.Schedule == nil {
-		return b.topology
+		return b.topology, b.unmapped
 	}
 	b.mapStaticPlan()
 	for _, trip := range static.Schedule.Trips {
 		b.addTrip(trip)
 	}
 	b.finish()
-	return b.topology
+	return b.topology, b.unmapped
 }
 
 func (b *metroPlanBuilder) addStations() {
@@ -40,14 +48,26 @@ func (b *metroPlanBuilder) addStations() {
 }
 
 func (b *metroPlanBuilder) mapStaticPlan() {
+	index := map[string]int{}
+	for n, stop := range b.static.Stops {
+		index[stop.SourceId] = n
+	}
 	for _, stop := range b.static.Stops {
-		id := b.static.Schedule.LegacyStops[stop.SourceId]
-		if id == "" {
-			id = metroStationID(b.static, b.data.Stations, b.stations, stop.Id)
+		// Platforms resolve through their GTFS station family: the parent stop
+		// carries the station name and coordinates matched against the published
+		// station catalogue.
+		candidate := stop
+		if parent := b.static.Schedule.Parents[stop.SourceId]; parent != "" {
+			if n, ok := index[parent]; ok {
+				candidate = b.static.Stops[n]
+			}
 		}
+		id := metroStationID(b.static, b.data.Stations, b.stations, candidate.Id)
 		if _, ok := b.stations[id]; ok {
 			b.mapping[stop.SourceId] = id
+			continue
 		}
+		b.unmapped = append(b.unmapped, stop.SourceId)
 	}
 	routeIDs := metroRouteIDs(b.static)
 	lines := map[string]string{"Az": "azul", "Am": "amarela", "Vd": "verde", "Vm": "vermelha"}
