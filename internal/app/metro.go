@@ -67,6 +67,8 @@ type MetroClient struct {
 	ClientID, Secret, Base, TokenURL string
 	Log                              *zap.Logger
 	lastUnmapped                     []string
+	lastSampleLogged                 time.Time
+	ownLoggedAt                      time.Time
 	metroRefreshState
 	History *patterns.Service
 }
@@ -135,6 +137,21 @@ func (m *MetroClient) publish(ctx context.Context, data *MetroData, now time.Tim
 
 // reportUnmappedStops logs a changed set of static stops that no longer resolve to a
 // published station. A GTFS revision change must not shrink the network silently.
+// logOwnForecastStats emits a bounded per-minute summary of own-forecast work at
+// debug level: tracks queried and call values produced by each source.
+func (m *MetroClient) logOwnForecastStats() {
+	if m.Log == nil {
+		return
+	}
+	now := time.Now().UTC()
+	if !m.ownLoggedAt.IsZero() && now.Sub(m.ownLoggedAt) < time.Minute {
+		return
+	}
+	m.ownLoggedAt = now
+	queries, historical, schedule := m.Cache.metroRuntime.ownForecastStats()
+	m.Log.Debug("metro own forecasts", zap.Int64("queries", queries), zap.Int64("historical", historical), zap.Int64("schedule_prior", schedule))
+}
+
 func (m *MetroClient) reportUnmappedStops() {
 	unmapped := m.Cache.metroRuntime.unmappedStaticStops()
 	if len(unmapped) == len(m.lastUnmapped) {
@@ -173,6 +190,7 @@ func (m *MetroClient) publishMetroHistory(data *MetroData, now time.Time) {
 	m.historyMu.Unlock()
 	if !queued {
 		m.Cache.metroRuntime.projectOwn(data, m.History, now)
+		m.logOwnForecastStats()
 	}
 }
 func (m *MetroClient) metroPublicationOperator(data *MetroData, now time.Time) api.Operator {

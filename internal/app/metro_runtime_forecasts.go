@@ -1,9 +1,12 @@
 package app
 
 import (
+	"strings"
+	"sync/atomic"
+	"time"
+
 	"lisboapublica/internal/api"
 	"lisboapublica/internal/patterns"
-	"time"
 )
 
 func (r *metroRuntime) projectOwn(data *MetroData, history *patterns.Service, now time.Time) {
@@ -11,6 +14,7 @@ func (r *metroRuntime) projectOwn(data *MetroData, history *patterns.Service, no
 	for n := range tracks {
 		projectMetroOwnTrack(&tracks[n], history, now)
 		projectMetroScheduled(&tracks[n], now)
+		r.countOwnForecasts(tracks[n])
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -90,4 +94,20 @@ func uniqueMetroOwnForecast(forecasts []patterns.Forecast, code string) *pattern
 		return nil
 	}
 	return candidate
+}
+
+// countOwnForecasts records how many call values the own-forecast work produced.
+func (r *metroRuntime) countOwnForecasts(track metroTrack) {
+	atomic.AddInt64(&r.ownQueries, 1)
+	for n := range track.Train.Calls {
+		own := track.Train.Calls[n].OwnPrediction
+		if own == nil || own.ModelVersion == nil {
+			continue
+		}
+		if strings.HasPrefix(*own.ModelVersion, "metro-schedule-prior-v1:") {
+			atomic.AddInt64(&r.ownSchedule, 1)
+			continue
+		}
+		atomic.AddInt64(&r.ownHistorical, 1)
+	}
 }

@@ -11,6 +11,23 @@ type metroSample struct {
 	presence intermediatePresence
 	current  map[string]priorRow
 	signals  map[string][]signal
+	stats    MetroSampleStats
+}
+
+// MetroSampleStats is a read-only summary of one processed Metro sample. It is
+// diagnostic only and never feeds inference or persistence.
+type MetroSampleStats struct {
+	SampledAt         time.Time
+	Rows              int
+	Contexts          int
+	Admitted          int
+	RejectedRoute     int
+	RejectedDuplicate int
+	RejectedClock     int
+	Signals           int
+	GroupsCreated     int
+	GroupsDeleted     int
+	ActiveGroups      int
 }
 
 func (e *engine) step(receipt Receipt, topology Topology, config Config) {
@@ -22,12 +39,24 @@ func (e *engine) step(receipt Receipt, topology Topology, config Config) {
 		return
 	}
 	e.collectMetroRows(&sample)
-	e.applyMetroPresence(sample)
+	e.applyMetroPresence(&sample)
 	e.supportMetroGroups(sample)
 	e.Previous = sample.current
 	e.pruneMetroCases(sample)
 	e.Live = e.forecasts(receipt, topology, config)
 	e.issueMetroCases(sample)
+	sample.stats.ActiveGroups, sample.stats.SampledAt = activeMetroGroups(e.Groups), sample.now
+	e.LastMetroStats = sample.stats
+}
+
+func activeMetroGroups(groups map[string]*group) int {
+	active := 0
+	for _, g := range groups {
+		if g.Active {
+			active++
+		}
+	}
+	return active
 }
 
 func (e *engine) prepareMetroStep(receipt Receipt, topology Topology, config Config) metroSample {
@@ -52,7 +81,7 @@ func (e *engine) prepareMetroStep(receipt Receipt, topology Topology, config Con
 	}
 	e.LastReceipt = now
 	e.trim(now, config)
-	return metroSample{receipt: receipt, topology: topology, config: config, now: now, gap: gap, presence: intermediatePresence{map[string]bool{}, map[string]bool{}}, current: map[string]priorRow{}, signals: map[string][]signal{}}
+	return metroSample{receipt: receipt, topology: topology, config: config, now: now, gap: gap, presence: intermediatePresence{map[string]bool{}, map[string]bool{}}, current: map[string]priorRow{}, signals: map[string][]signal{}, stats: MetroSampleStats{Rows: len(receipt.Rows)}}
 }
 
 func (e *engine) recordMetroCoverage(sample metroSample, row Row, route string) {

@@ -136,6 +136,7 @@ These defaults come from [main.go](../cmd/server/main.go), [config.go](../cmd/se
 | `FRONTEND_DIR` | `frontend/dist` | Built frontend location |
 | `INGEST_ENABLED` | `true` | General static/position/CP collection |
 | `PUBLIC_READS` | `true` | Anonymous access to marked reads |
+| `LOG_LEVEL` | `info` | Zap level; `debug` enables the bounded Metro sample/own-forecast counters |
 | `DEV_AUTH` | `false` | Restricted local development login |
 | `GOOGLE_CLIENT_ID` | Unconfigured | Optional Google sign-in |
 | `METRO_CLIENT_ID`, `METRO_CLIENT_SECRET` | Unconfigured | Separate direct Metro collection |

@@ -7,13 +7,14 @@ import (
 	"time"
 )
 
-func (e *engine) applyMetroPresence(sample metroSample) {
+func (e *engine) applyMetroPresence(sample *metroSample) {
 	for key := range sample.presence.conflict {
 		delete(sample.presence.present, key)
 	}
 	for key := range e.Groups {
 		if !sample.presence.present[key] {
 			delete(e.Groups, key)
+			sample.stats.GroupsDeleted++
 		}
 	}
 	for key, signals := range sample.signals {
@@ -24,6 +25,7 @@ func (e *engine) applyMetroPresence(sample metroSample) {
 		if g == nil {
 			g = newMetroGroup(key, sample.now)
 			e.Groups[key] = g
+			sample.stats.GroupsCreated++
 		}
 		g.Signals = append(g.Signals, signals...)
 	}

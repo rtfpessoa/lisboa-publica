@@ -42,16 +42,18 @@ type engine struct {
 	ReportSeen                  map[string]int64
 	Condition                   string
 	LastReceipt, LastEvaluation time.Time
-	Gaps                        int64
-	Aggregates                  map[string]Aggregate
-	Cases                       []Forecast
-	Groups                      map[string]*group
-	Previous                    map[string]priorRow
-	Live                        []Forecast
-	Selections                  map[string]selection
-	Outcomes                    []Forecast
-	DirtyDays                   map[string]bool
-	Limited                     bool
+	// LastMetroStats is diagnostic only and deliberately not persisted.
+	LastMetroStats MetroSampleStats `json:"-"`
+	Gaps           int64
+	Aggregates     map[string]Aggregate
+	Cases          []Forecast
+	Groups         map[string]*group
+	Previous       map[string]priorRow
+	Live           []Forecast
+	Selections     map[string]selection
+	Outcomes       []Forecast
+	DirtyDays      map[string]bool
+	Limited        bool
 }
 
 func newEngine() *engine {

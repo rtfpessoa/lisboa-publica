@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"lisboapublica/internal/api"
@@ -67,6 +68,9 @@ type metroRuntime struct {
 	recoveryMisses map[string]metroRecoveryMiss
 	models         map[string]patterns.MetroQualifiedModel
 	candidates     map[string]string
+	ownQueries     int64
+	ownHistorical  int64
+	ownSchedule    int64
 }
 
 // Publication and its classified point batch describe one coherent source update.
@@ -362,4 +366,10 @@ func canonicalMetroDirection(topology patterns.Topology, path patterns.Pattern) 
 		}
 	}
 	return path.Direction
+}
+
+// ownForecastStats reports diagnostic counters for own-forecast work: tracks queried
+// and calls that received a historical or schedule-prior value. Diagnostic only.
+func (r *metroRuntime) ownForecastStats() (int64, int64, int64) {
+	return atomic.LoadInt64(&r.ownQueries), atomic.LoadInt64(&r.ownHistorical), atomic.LoadInt64(&r.ownSchedule)
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -38,8 +39,18 @@ func env(name, fallback string) string {
 	return fallback
 }
 
+// newLogger builds the process logger; LOG_LEVEL selects the zap level (default info).
+func newLogger() *zap.Logger {
+	config := zap.NewProductionConfig()
+	if level := strings.TrimSpace(os.Getenv("LOG_LEVEL")); level != "" {
+		_ = config.Level.UnmarshalText([]byte(level))
+	}
+	log, _ := config.Build()
+	return log
+}
+
 func main() {
-	log, _ := zap.NewProduction()
+	log := newLogger()
 	defer log.Sync()
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()

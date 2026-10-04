@@ -7,6 +7,7 @@ import (
 	"time"
 	"unicode"
 
+	"go.uber.org/zap"
 	"lisboapublica/internal/api"
 	"lisboapublica/internal/patterns"
 )
@@ -33,7 +34,35 @@ func (m *MetroClient) recordPatterns(data *MetroData, static *StaticData, now ti
 		receipt.Raw = nil
 	}
 	// Archive failure is visible in its status; it cannot suppress official live data.
-	return m.History.Record(receipt, t)
+	if err := m.History.Record(receipt, t); err != nil {
+		return err
+	}
+	m.logMetroSample()
+	return nil
+}
+
+// logMetroSample emits the bounded per-sample diagnostic counters at debug level.
+func (m *MetroClient) logMetroSample() {
+	if m.Log == nil || m.History == nil {
+		return
+	}
+	stats := m.History.MetroSampleStats()
+	if stats.SampledAt.IsZero() || !stats.SampledAt.After(m.lastSampleLogged) {
+		return
+	}
+	m.lastSampleLogged = stats.SampledAt
+	m.Log.Debug("metro sample",
+		zap.Time("sampled_at", stats.SampledAt),
+		zap.Int("rows", stats.Rows),
+		zap.Int("contexts", stats.Contexts),
+		zap.Int("admitted", stats.Admitted),
+		zap.Int("rejected_route", stats.RejectedRoute),
+		zap.Int("rejected_duplicate", stats.RejectedDuplicate),
+		zap.Int("rejected_clock", stats.RejectedClock),
+		zap.Int("signals", stats.Signals),
+		zap.Int("groups_created", stats.GroupsCreated),
+		zap.Int("groups_deleted", stats.GroupsDeleted),
+		zap.Int("active_groups", stats.ActiveGroups))
 }
 
 func (s *Server) GetMetroPatterns(ctx context.Context, request api.GetMetroPatternsRequestObject) (api.GetMetroPatternsResponseObject, error) {

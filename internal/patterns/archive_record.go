@@ -40,6 +40,13 @@ func (s *Service) observeUnsampledMetro(receipt Receipt, topology Topology) bool
 	return true
 }
 
+// MetroSampleStats returns the diagnostic counters of the last processed sample.
+func (s *Service) MetroSampleStats() MetroSampleStats {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.engine.LastMetroStats
+}
+
 func (s *Service) recordMetroSample(receipt Receipt, topology Topology) error {
 	if err := s.prepareMetroSample(receipt); err != nil {
 		return err
