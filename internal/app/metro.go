@@ -67,8 +67,10 @@ type MetroClient struct {
 	ClientID, Secret, Base, TokenURL string
 	Log                              *zap.Logger
 	lastUnmapped                     []string
-	lastSampleLogged                 time.Time
-	ownLoggedAt                      time.Time
+	// lastSampleError deduplicates skipped-sample warnings until the source recovers.
+	lastSampleError  string
+	lastSampleLogged time.Time
+	ownLoggedAt      time.Time
 	metroRefreshState
 	History *patterns.Service
 }

@@ -21,6 +21,16 @@ func compactMetroName(name string) string {
 	}, normalizeName(name))
 }
 
+// reportMetroSampleError surfaces an upstream failure that suppresses a pattern sample.
+// It logs each distinct message once until the source recovers.
+func (m *MetroClient) reportMetroSampleError(message string) {
+	if m.Log == nil || message == "" || message == m.lastSampleError {
+		return
+	}
+	m.lastSampleError = message
+	m.Log.Warn("metro sample skipped", zap.String("message", message))
+}
+
 func (m *MetroClient) recordPatterns(data *MetroData, static *StaticData, now time.Time) error {
 	t := metroTopology(data, static)
 	raw, _ := json.Marshal(data.Waits)
@@ -32,6 +42,9 @@ func (m *MetroClient) recordPatterns(data *MetroData, static *StaticData, now ti
 		receipt.Error = string(data.Status.Status)
 		receipt.Rows = nil
 		receipt.Raw = nil
+		m.reportMetroSampleError(data.Status.Message)
+	} else {
+		m.lastSampleError = ""
 	}
 	// Archive failure is visible in its status; it cannot suppress official live data.
 	if err := m.History.Record(receipt, t); err != nil {
