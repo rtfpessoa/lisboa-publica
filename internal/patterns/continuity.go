@@ -8,10 +8,16 @@ import (
 
 // Intermediate observations revoke contradictory support without adding training.
 func (e *engine) observeIntermediate(r Receipt, t Topology, c Config) {
+	if r.Error != "" {
+		// A failed upstream fetch observes nothing about the network. Keeping the
+		// previous rows lets a single interrupted publication continue the learned
+		// sequence instead of wiping every pending arrival.
+		return
+	}
 	if len(e.Groups) == 0 {
 		return
 	}
-	if r.Error != "" || e.Profile != t.Profile {
+	if e.Profile != t.Profile {
 		e.resetContinuity()
 		e.Gaps++
 		return

@@ -131,3 +131,30 @@ func TestMetroSampleStatsNotPersisted(t *testing.T) {
 		t.Fatalf("restored counters %+v", restored.Engine.LastMetroStats)
 	}
 }
+
+// A failed upstream fetch must not wipe continuity or count as a gap: the interruption
+// tells us nothing about the vehicles, and the next sample must still learn its signal.
+func TestIntermediateErrorKeepsContinuity(t *testing.T) {
+	base := time.Date(2026, 10, 4, 9, 0, 0, 0, time.UTC)
+	config := DefaultConfig(t.TempDir())
+	topology := testTopology()
+	e := newEngine()
+	e.step(testReceipt(base, testRow("A", "x", base, 600)), topology, config)
+	gaps := e.Gaps
+	failed := testReceipt(base.Add(10 * time.Second))
+	failed.Error = "error"
+	e.observeIntermediate(failed, topology, config)
+	if len(e.Previous) == 0 || e.Gaps != gaps {
+		t.Fatalf("failed fetch wiped continuity: previous=%d gaps=%d", len(e.Previous), e.Gaps-gaps)
+	}
+	at := base.Add(30 * time.Second)
+	e.step(testReceipt(at, testRow("A", "x", at, 0)), topology, config)
+	if e.LastMetroStats.Signals != 1 || e.LastMetroStats.GroupsCreated != 1 {
+		t.Fatalf("signal lost after a failed fetch: %+v", e.LastMetroStats)
+	}
+	// The learned group survives a later failed observation as well.
+	e.observeIntermediate(failed, topology, config)
+	if len(e.Groups) != 1 {
+		t.Fatalf("failed fetch cut the group: %d", len(e.Groups))
+	}
+}
