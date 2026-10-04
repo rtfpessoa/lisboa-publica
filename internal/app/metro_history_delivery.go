@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"sync"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 type metroHistoryTask struct {
@@ -87,8 +89,12 @@ func (m *MetroClient) deliverPatternHistory(task metroHistoryTask, generation ui
 	err := m.recordPatterns(&task.Data, task.Static, task.At)
 	if err != nil {
 		m.History.InterruptMetroContinuity()
+		if m.Log != nil {
+			m.Log.Warn("metro pattern sample failed", zap.Error(err))
+		}
 	}
 	m.Cache.metroRuntime.projectOwn(&task.Data, m.History, time.Now().UTC())
+	m.logOwnForecastStats()
 	m.acknowledgePatternHistory(task, generation, err)
 	return generation
 }

@@ -17,17 +17,23 @@ type metroSample struct {
 // MetroSampleStats is a read-only summary of one processed Metro sample. It is
 // diagnostic only and never feeds inference or persistence.
 type MetroSampleStats struct {
-	SampledAt         time.Time
-	Rows              int
-	Contexts          int
-	Admitted          int
-	RejectedRoute     int
-	RejectedDuplicate int
-	RejectedClock     int
-	Signals           int
-	GroupsCreated     int
-	GroupsDeleted     int
-	ActiveGroups      int
+	SampledAt          time.Time
+	Gap                bool
+	Rows               int
+	Contexts           int
+	Admitted           int
+	FirstSlots         int
+	WithPrior          int
+	ZeroETA            int
+	RejectedRoute      int
+	RejectedDuplicate  int
+	RejectedClock      int
+	RejectedContinuity int
+	Signals            int
+	SignalsApplied     int
+	GroupsCreated      int
+	GroupsDeleted      int
+	ActiveGroups       int
 }
 
 func (e *engine) step(receipt Receipt, topology Topology, config Config) {
@@ -35,7 +41,10 @@ func (e *engine) step(receipt Receipt, topology Topology, config Config) {
 		return
 	}
 	sample := e.prepareMetroStep(receipt, topology, config)
+	sample.stats.Gap = sample.gap
 	if receipt.Error != "" {
+		sample.stats.SampledAt, sample.stats.ActiveGroups = sample.now, activeMetroGroups(e.Groups)
+		e.LastMetroStats = sample.stats
 		return
 	}
 	e.collectMetroRows(&sample)

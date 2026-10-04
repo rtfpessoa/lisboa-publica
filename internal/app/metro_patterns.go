@@ -53,15 +53,21 @@ func (m *MetroClient) logMetroSample() {
 	m.lastSampleLogged = stats.SampledAt
 	m.Log.Debug("metro sample",
 		zap.Time("sampled_at", stats.SampledAt),
+		zap.Bool("gap", stats.Gap),
 		zap.Int("rows", stats.Rows),
 		zap.Int("contexts", stats.Contexts),
 		zap.Int("admitted", stats.Admitted),
+		zap.Int("first_slots", stats.FirstSlots),
+		zap.Int("with_prior", stats.WithPrior),
+		zap.Int("zero_eta", stats.ZeroETA),
 		zap.Int("rejected_route", stats.RejectedRoute),
 		zap.Int("rejected_duplicate", stats.RejectedDuplicate),
 		zap.Int("rejected_clock", stats.RejectedClock),
+		zap.Int("rejected_continuity", stats.RejectedContinuity),
 		zap.Int("signals", stats.Signals),
+		zap.Int("signals_applied", stats.SignalsApplied),
 		zap.Int("groups_created", stats.GroupsCreated),
-		zap.Int("groups_deleted", stats.GroupsDeleted),
+		zap.Int("groups_deleted_absent", stats.GroupsDeleted),
 		zap.Int("active_groups", stats.ActiveGroups))
 }
 

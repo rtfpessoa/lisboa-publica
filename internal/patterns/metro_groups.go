@@ -28,6 +28,7 @@ func (e *engine) applyMetroPresence(sample *metroSample) {
 			sample.stats.GroupsCreated++
 		}
 		g.Signals = append(g.Signals, signals...)
+		sample.stats.SignalsApplied += len(signals)
 	}
 }
 

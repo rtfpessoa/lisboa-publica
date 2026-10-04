@@ -46,7 +46,7 @@ func (e *engine) collectMetroRow(sample *metroSample, row Row, count int) {
 	}
 	context := e.metroSampleRow(row, route, ids, clock)
 	if context.badClock {
-		sample.stats.RejectedClock++
+		sample.stats.RejectedContinuity++
 		sample.presence.reject(ids, row.Destination, route)
 	} else {
 		e.recordMetroCoverage(*sample, row, route)
@@ -76,6 +76,13 @@ func (r metroSampleRow) collectFirstSlot(sample *metroSample) {
 		return
 	}
 	sample.current[r.key] = priorRow{r.clock, r.signature, r.ids[0], first}
+	sample.stats.FirstSlots++
+	if !sample.gap && r.hasOld && r.old.Train == r.ids[0] && r.clock.After(r.old.Clock) && r.clock.Sub(r.old.Clock) <= 60*time.Second {
+		sample.stats.WithPrior++
+		if first == 0 {
+			sample.stats.ZeroETA++
+		}
+	}
 	if r.transitionSignal(first, sample.gap) {
 		key := groupKey(groupIdentity{Train: r.ids[0], Direction: r.row.Destination, Route: r.route})
 		sample.signals[key] = append(sample.signals[key], signal{Stop: r.row.Stop, Platform: r.row.Platform, L: r.old.Clock, U: r.clock})

@@ -1,6 +1,8 @@
 package patterns
 
 import (
+	"bytes"
+	"encoding/json"
 	"testing"
 	"time"
 )
@@ -14,20 +16,26 @@ func TestMetroSampleStatsCountTransitionsAndRejections(t *testing.T) {
 
 	e.step(testReceipt(base, testRow("A", "x", base, 600)), topology, config)
 	first := e.LastMetroStats
-	if first.Rows != 1 || first.Contexts != 1 || first.Admitted != 1 || first.Signals != 0 {
+	if first.Rows != 1 || first.Contexts != 1 || first.Admitted != 1 || first.FirstSlots != 1 ||
+		first.WithPrior != 0 || first.ZeroETA != 0 || first.Signals != 0 || first.GroupsCreated != 0 ||
+		first.GroupsDeleted != 0 || first.ActiveGroups != 0 || first.Gap {
 		t.Fatalf("first sample counters %+v", first)
+	}
+	if !first.SampledAt.Equal(base.Add(time.Second)) {
+		t.Fatalf("sampled_at %s", first.SampledAt)
 	}
 
 	at := base.Add(30 * time.Second)
 	e.step(testReceipt(at, testRow("A", "x", at, 0)), topology, config)
 	second := e.LastMetroStats
-	if second.Signals != 1 || second.GroupsCreated != 1 {
+	if second.Signals != 1 || second.SignalsApplied != 1 || second.GroupsCreated != 1 ||
+		second.WithPrior != 1 || second.ZeroETA != 1 || second.ActiveGroups != 0 {
 		t.Fatalf("transition counters %+v", second)
 	}
 
 	at = at.Add(30 * time.Second)
 	e.step(testReceipt(at, testRow("A", "x", at, 60), testRow("A", "x", at, 60)), topology, config)
-	if e.LastMetroStats.RejectedDuplicate != 2 {
+	if e.LastMetroStats.RejectedDuplicate != 2 || e.LastMetroStats.GroupsDeleted != 1 {
 		t.Fatalf("duplicate counters %+v", e.LastMetroStats)
 	}
 
@@ -43,8 +51,26 @@ func TestMetroSampleStatsCountTransitionsAndRejections(t *testing.T) {
 	}
 }
 
-// A supported triple must be visible through the diagnostic active-group counter.
-func TestMetroSampleStatsActiveGroups(t *testing.T) {
+// A context whose clock jumps beyond the continuity window is a continuity rejection,
+// not a source-clock rejection.
+func TestMetroSampleStatsContinuityRejection(t *testing.T) {
+	base := time.Date(2026, 10, 4, 9, 0, 0, 0, time.UTC)
+	config := DefaultConfig(t.TempDir())
+	topology := testTopology()
+	e := newEngine()
+	e.step(testReceipt(base, testRow("A", "x", base, 600)), topology, config)
+	at := base.Add(30 * time.Second)
+	// Same source clock, different content: a continuity conflict, not a clock error.
+	e.step(testReceipt(at, testRow("A", "x", base, 0)), topology, config)
+	stats := e.LastMetroStats
+	if stats.RejectedContinuity != 1 || stats.RejectedClock != 0 {
+		t.Fatalf("continuity counters %+v", stats)
+	}
+}
+
+// A group is deleted only when its train is absent from the sample, and only active
+// groups are counted.
+func TestMetroSampleStatsDeletionAndActive(t *testing.T) {
 	base := time.Date(2026, 10, 4, 9, 0, 0, 0, time.UTC)
 	config := DefaultConfig(t.TempDir())
 	topology := testTopology()
@@ -64,10 +90,44 @@ func TestMetroSampleStatsActiveGroups(t *testing.T) {
 		created += e.LastMetroStats.GroupsCreated
 		signals += e.LastMetroStats.Signals
 	}
-	if created == 0 || signals == 0 {
-		t.Fatalf("triple counters created=%d signals=%d", created, signals)
+	if created == 0 || signals == 0 || e.LastMetroStats.ActiveGroups == 0 {
+		t.Fatalf("triple counters created=%d signals=%d stats=%+v", created, signals, e.LastMetroStats)
 	}
-	if e.LastMetroStats.ActiveGroups == 0 {
-		t.Fatalf("no active group reported: %+v", e.LastMetroStats)
+	active := e.LastMetroStats.ActiveGroups
+	// A second, single-signal train creates an inactive group next to the active one.
+	at := base.Add(6 * 30 * time.Second)
+	e.step(testReceipt(at, testRow("F", "x", at, 600), testRow("A", "y", at, 600)), topology, config)
+	at = at.Add(30 * time.Second)
+	e.step(testReceipt(at, testRow("F", "x", at, 600), testRow("A", "y", at, 0)), topology, config)
+	stats := e.LastMetroStats
+	if stats.GroupsCreated != 1 || stats.ActiveGroups != active {
+		t.Fatalf("inactive group counted: %+v", stats)
+	}
+	// An absent-train sample deletes it again.
+	e.step(testReceipt(at.Add(30*time.Second)), topology, config)
+	if e.LastMetroStats.GroupsDeleted == 0 {
+		t.Fatalf("deletion not counted: %+v", e.LastMetroStats)
+	}
+}
+
+// The diagnostic counters must never be persisted with the checkpoint.
+func TestMetroSampleStatsNotPersisted(t *testing.T) {
+	base := time.Date(2026, 10, 4, 9, 0, 0, 0, time.UTC)
+	config := DefaultConfig(t.TempDir())
+	e := newEngine()
+	e.step(testReceipt(base, testRow("A", "x", base, 600)), testTopology(), config)
+	raw, err := json.Marshal(checkpoint{Engine: e})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(raw, []byte("LastMetroStats")) {
+		t.Fatal("diagnostic counters persisted")
+	}
+	var restored checkpoint
+	if err := json.Unmarshal(raw, &restored); err != nil {
+		t.Fatal(err)
+	}
+	if !restored.Engine.LastMetroStats.SampledAt.IsZero() || restored.Engine.LastMetroStats.Rows != 0 {
+		t.Fatalf("restored counters %+v", restored.Engine.LastMetroStats)
 	}
 }

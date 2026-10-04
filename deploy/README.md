@@ -139,8 +139,9 @@ The earlier local-only follow-up remains dated evidence in the validation log. T
 ## Metro live popup configuration
 
 `LOG_LEVEL` defaults to `info`; `debug` enables the bounded per-sample Metro counters (rows,
-presence, rejections, signals, groups) and the per-minute own-forecast counters. Keep `info` outside
-diagnosis.
+first slots, zero-ETA observations, presence, rejections, signals, groups), a cumulative
+own-forecast summary logged at most once per minute, and the existing per-request API path line.
+Keep `info` outside diagnosis.
 
 `METRO_REFRESH_MILLISECONDS` defaults to 500 and accepts 500–60000. It affects only serialized direct Metro
 collection; existing live JSON intervals and other providers are unchanged. Keep one subscribed collector and

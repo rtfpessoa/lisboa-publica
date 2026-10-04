@@ -42,10 +42,16 @@ func env(name, fallback string) string {
 // newLogger builds the process logger; LOG_LEVEL selects the zap level (default info).
 func newLogger() *zap.Logger {
 	config := zap.NewProductionConfig()
+	invalid := ""
 	if level := strings.TrimSpace(os.Getenv("LOG_LEVEL")); level != "" {
-		_ = config.Level.UnmarshalText([]byte(level))
+		if err := config.Level.UnmarshalText([]byte(level)); err != nil {
+			invalid = level
+		}
 	}
 	log, _ := config.Build()
+	if invalid != "" {
+		log.Warn("ignoring invalid LOG_LEVEL", zap.String("value", invalid))
+	}
 	return log
 }
 

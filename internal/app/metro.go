@@ -135,10 +135,8 @@ func (m *MetroClient) publish(ctx context.Context, data *MetroData, now time.Tim
 	m.Cache.updateMetro(data, op)
 }
 
-// reportUnmappedStops logs a changed set of static stops that no longer resolve to a
-// published station. A GTFS revision change must not shrink the network silently.
-// logOwnForecastStats emits a bounded per-minute summary of own-forecast work at
-// debug level: tracks queried and call values produced by each source.
+// logOwnForecastStats emits a cumulative own-forecast summary at most once per minute
+// at debug level: tracks queried and call values produced by each source since start.
 func (m *MetroClient) logOwnForecastStats() {
 	if m.Log == nil {
 		return
@@ -152,6 +150,8 @@ func (m *MetroClient) logOwnForecastStats() {
 	m.Log.Debug("metro own forecasts", zap.Int64("queries", queries), zap.Int64("historical", historical), zap.Int64("schedule_prior", schedule))
 }
 
+// reportUnmappedStops logs a changed set of static stops that no longer resolve to a
+// published station. A GTFS revision change must not shrink the network silently.
 func (m *MetroClient) reportUnmappedStops() {
 	unmapped := m.Cache.metroRuntime.unmappedStaticStops()
 	if len(unmapped) == len(m.lastUnmapped) {
