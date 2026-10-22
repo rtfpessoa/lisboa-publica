@@ -189,7 +189,7 @@ func TestVehicleReportingSupersededWriteRollsBack(t *testing.T) {
 	payload, _ := json.Marshal(record)
 	update := cacheUpdate{Health: []byte(`{"id":"carris","status":"error"}`), Reporting: []reportingWrite{{SourceID: v.SourceId, Record: record, Payload: payload}}}
 	before, _ := s.generation(ctx)
-	err := s.persistUpdate(ctx, p.ID, update, nil)
+	err := s.persistUpdate(ctx, p.ID, update, nil, false)
 	if err == nil || !strings.Contains(err.Error(), "superseded") {
 		t.Fatalf("stale write accepted: %v", err)
 	}

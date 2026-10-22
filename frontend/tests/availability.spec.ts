@@ -200,3 +200,36 @@ for(const width of [1440,390])test(`traffic pointer controls stay fixed across l
  await weekdays.check();await expect(weekdays).toBeChecked();await terminals.check();await expect(terminals).toBeChecked();
  await expect(panel.getByText('Identificação de terminais indisponível nestes feeds.')).toBeVisible();
 });
+
+test('history cutoff clamps traffic and refreshes again when it advances',async({page})=>{
+ await fixture(page);
+ await page.clock.install();
+ const now=Date.now();let cutoff=new Date(now-10*86400000).toISOString().replace('Z','123Z');let configs=0;
+ await page.route('**/api/v1/config',r=>{configs++;return r.fulfill({json:{dev_auth:false,history_retention_days:30,history_available_from:cutoff,history_resolution_seconds:300,history_collection_status:'collecting',live_refresh_seconds:5}})});
+ const starts:number[]=[];
+ await page.route('**/api/v1/traffic?**',r=>{const start=Date.parse(new URL(r.request().url()).searchParams.get('from')!);starts.push(start);return start<=Date.parse(cutoff)?r.fulfill({status:410,json:{code:'history_expired',message:'Intervalo expirado'}}):r.fulfill({json:{data:[],page:{limit:500,offset:0,total:0,has_more:false,revision:'test'}}})});
+ await page.goto('/');await page.getByRole('button',{name:'Trânsito',exact:true}).click();await page.getByRole('button',{name:'Últimos 30 dias'}).click();
+ await expect.poll(()=>starts.at(-1)).toBeGreaterThan(Date.parse(cutoff));await expect(page.locator('.traffic-panel')).toContainText('O intervalo foi reduzido');
+ for(const days of [9,8]){cutoff=new Date(now-days*86400000).toISOString().replace('Z','456Z');await page.clock.fastForward(31000);await expect.poll(()=>starts.at(-1)).toBeGreaterThan(Date.parse(cutoff));}
+ expect(configs).toBeGreaterThanOrEqual(3);
+});
+
+test('an entirely expired history day shows guidance without requesting that day',async({page})=>{
+ await fixture(page);const now=Date.now();const cutoff=new Date(now-8*86400000).toISOString();
+ await page.route('**/api/v1/config',r=>r.fulfill({json:{dev_auth:false,history_retention_days:30,history_available_from:cutoff,history_resolution_seconds:300,history_collection_status:'collecting',live_refresh_seconds:5}}));
+ const starts:string[]=[];page.on('request',r=>{if(r.url().includes('/api/v1/history?'))starts.push(new URL(r.url()).searchParams.get('from')??'')});
+ await page.goto('/');await page.getByRole('button',{name:'Histórico',exact:true}).click();const day=new Date(now-20*86400000).toISOString().slice(0,10);await page.getByLabel('Dia do histórico').fill(day);
+ await expect(page.getByRole('main')).toContainText('Histórico indisponível para esta data');expect(starts.every(s=>Date.parse(s)>Date.parse(cutoff))).toBeTruthy();
+});
+
+test('an expired history revision restarts pagination for an available window',async({page})=>{
+ await fixture(page);const offsets:number[]=[];let expired=false;
+ await page.route('**/api/v1/history?**',r=>{
+  const offset=Number(new URL(r.request().url()).searchParams.get('offset')??0);offsets.push(offset);
+  if(offset===500&&!expired){expired=true;return r.fulfill({status:410,json:{code:'revision_expired',message:'Revision expired'}})}
+  return r.fulfill({json:{data:[{bucket:new Date().toISOString(),reported_vehicles:1,estimated_vehicles:0,speed_kmh:10}],page:{limit:500,offset,total:2,has_more:offset===0,revision:expired?'new':'old'}}});
+ });
+ await page.goto('/');await page.getByRole('button',{name:'Histórico',exact:true}).click();
+ await expect.poll(()=>offsets.slice(0,4)).toEqual([0,500,0,500]);
+ await expect(page.getByRole('main')).not.toContainText('Revision expired');
+});

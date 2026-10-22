@@ -2349,6 +2349,12 @@
           "history_retention_days": {
             "type": "integer"
           },
+          "history_available_from": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Inclusive earliest snapshot query time after storage-pressure cleanup; null until cleanup advances it. This does not guarantee observations exist."
+          },
           "history_resolution_seconds": {
             "type": "integer",
             "minimum": 1
@@ -2377,6 +2383,7 @@
           "dev_auth",
           "login_nonce",
           "history_retention_days",
+          "history_available_from",
           "history_resolution_seconds",
           "history_storage_limit_bytes",
           "history_collection_status",

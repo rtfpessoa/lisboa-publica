@@ -10,6 +10,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -21,6 +22,8 @@ import (
 const schema = `
 CREATE TABLE IF NOT EXISTS app_state (id INT PRIMARY KEY, generation BIGINT NOT NULL);
 INSERT INTO app_state (id,generation) VALUES (1,0) ON CONFLICT (id) DO NOTHING;
+CREATE TABLE IF NOT EXISTS history_pressure (id INT PRIMARY KEY, enabled BOOLEAN NOT NULL, delete_credit BIGINT NOT NULL, insert_credit BIGINT NOT NULL, epoch BIGINT NOT NULL, cutoff TIMESTAMPTZ, vacuum_pending BOOLEAN NOT NULL DEFAULT FALSE);
+INSERT INTO history_pressure (id,enabled,delete_credit,insert_credit,epoch) VALUES (1,FALSE,300000,0,0) ON CONFLICT (id) DO NOTHING;
 CREATE TABLE IF NOT EXISTS cache_parts (operator_id TEXT NOT NULL, kind TEXT NOT NULL, part INT NOT NULL, data BYTEA NOT NULL, PRIMARY KEY(operator_id,kind,part));
 CREATE TABLE IF NOT EXISTS vehicle_facts (operator_id TEXT NOT NULL, source_id TEXT NOT NULL, payload JSONB NOT NULL, PRIMARY KEY(operator_id,source_id));
 CREATE TABLE IF NOT EXISTS vehicle_reporting (operator_id TEXT NOT NULL, source_id TEXT NOT NULL, updated_at TIMESTAMPTZ NOT NULL, payload JSONB NOT NULL, PRIMARY KEY(operator_id,source_id));
@@ -53,6 +56,9 @@ type Store struct {
 	RetentionDays   int
 	HistoryInterval time.Duration
 	writeMu         sync.Mutex
+	historyReadMu   sync.RWMutex
+	pressureVacuum  atomic.Bool
+	pressureError   atomic.Pointer[string]
 	historyMu       sync.Mutex
 	collector       *historyCollector
 	archiveCursor   *snapshotArchiveKey
@@ -279,11 +285,11 @@ func (s *Store) savePreparedUpdate(ctx context.Context, id string, publication p
 		return err
 	}
 	records, next := s.prepareHistory(id, publication.Live, publication.Distances)
-	records, err = s.guardUpdate(ctx, update, records)
+	records, replacement, _, err := s.guardUpdate(ctx, update, records)
 	if err != nil {
 		return err
 	}
-	err = s.persistUpdate(ctx, id, update, records)
+	err = s.persistUpdate(ctx, id, update, records, replacement)
 	if err == nil {
 		s.acknowledgeUpdate(id, update, next)
 	}
@@ -303,7 +309,7 @@ func (s *Store) prune(ctx context.Context) error {
 	if err := s.reserveStorage(ctx, cleanupReservation, maximumDatabaseBytes); err != nil {
 		return err
 	}
-	return s.transaction(ctx, func(tx pgx.Tx) error {
+	err := s.transaction(ctx, func(tx pgx.Tx) error {
 		for _, q := range []string{"DELETE FROM stop_events WHERE (journey_id,stop_sequence,event_kind,generation) IN (SELECT journey_id,stop_sequence,event_kind,generation FROM stop_events WHERE event_at < $1 ORDER BY event_at LIMIT 10000)", "DELETE FROM snapshots WHERE (operator_id,vehicle_id,observed_at) IN (SELECT operator_id,vehicle_id,observed_at FROM snapshots WHERE observed_at < $1 ORDER BY observed_at LIMIT 10000)", "DELETE FROM sessions WHERE token_hash IN (SELECT token_hash FROM sessions WHERE expires_at < $1 LIMIT 10000)", "DELETE FROM api_keys WHERE id IN (SELECT id FROM api_keys WHERE expires_at < $1 LIMIT 10000)"} {
 			cutoff := time.Now()
 			if strings.HasPrefix(q, "DELETE FROM stop_events") {
@@ -318,6 +324,10 @@ func (s *Store) prune(ctx context.Context) error {
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	return s.pressurePrune(ctx)
 }
 func (s *Store) generation(ctx context.Context) (int64, error) {
 	var n int64

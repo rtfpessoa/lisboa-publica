@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -49,20 +50,75 @@ func recordBytes(records []historicalRecord) int64 {
 	return bytes
 }
 
-func insertHistory(ctx context.Context, tx pgx.Tx, operator string, generation int64, records []historicalRecord) error {
-	if len(records) == 0 {
+type historyWrite struct {
+	operator    string
+	generation  int64
+	records     []historicalRecord
+	replacement bool
+}
+
+func insertHistory(ctx context.Context, tx pgx.Tx, write historyWrite) error {
+	if len(write.records) == 0 {
 		return nil
 	}
+	var retainedAfter *time.Time
+	if err := tx.QueryRow(ctx, `SELECT cutoff FROM history_pressure WHERE id=1`).Scan(&retainedAfter); err != nil {
+		return err
+	}
+	batch, queued, err := prepareHistoryBatch(write, retainedAfter)
+	if err != nil || len(queued) == 0 {
+		return err
+	}
+	inserted, recent, err := executeHistoryBatch(ctx, tx, batch, queued)
+	if err != nil {
+		return err
+	}
+	if write.replacement && inserted != recent {
+		return fmt.Errorf("replacement history aged beyond the recent window")
+	}
+	if inserted > 0 {
+		_, err := tx.Exec(ctx, `UPDATE history_pressure SET delete_credit=delete_credit+$1,
+			insert_credit=GREATEST(insert_credit-$1,0) WHERE id=1 AND enabled`, recent)
+		return err
+	}
+	return nil
+}
+
+func prepareHistoryBatch(write historyWrite, retainedAfter *time.Time) (*pgx.Batch, []historicalRecord, error) {
 	batch := &pgx.Batch{}
-	for _, record := range records {
+	queued := make([]historicalRecord, 0, len(write.records))
+	for _, record := range write.records {
 		vehicle := record.Vehicle
+		if retainedAfter != nil && vehicle.ObservedAt.Before(*retainedAfter) {
+			continue
+		}
 		blob, err := json.Marshal(snapshotMetadata{SourceID: vehicle.SourceId, Model: vehicle.Model, Plate: vehicle.LicensePlate, Typology: vehicle.Typology, Propulsion: vehicle.Propulsion, SeatedCapacity: vehicle.SeatedCapacity, TotalCapacity: vehicle.TotalCapacity, WheelchairAccessible: vehicle.WheelchairAccessible, Contactless: vehicle.Contactless})
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
-		batch.Queue("INSERT INTO snapshots(operator_id,vehicle_id,observed_at,generation,route_id,trip_id,position_kind,lat,lon,speed_kmh,distance_km,payload,first_observed_at,speed_sample_count) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT(operator_id,vehicle_id,observed_at) DO NOTHING", operator, vehicle.Id, vehicle.ObservedAt, generation, vehicle.RouteId, vehicle.TripId, string(vehicle.PositionKind), vehicle.Lat, vehicle.Lon, vehicle.SpeedKmh, record.Distance, blob, record.First, record.SpeedSamples)
+		batch.Queue("INSERT INTO snapshots(operator_id,vehicle_id,observed_at,generation,route_id,trip_id,position_kind,lat,lon,speed_kmh,distance_km,payload,first_observed_at,speed_sample_count) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT(operator_id,vehicle_id,observed_at) DO NOTHING", write.operator, vehicle.Id, vehicle.ObservedAt, write.generation, vehicle.RouteId, vehicle.TripId, string(vehicle.PositionKind), vehicle.Lat, vehicle.Lon, vehicle.SpeedKmh, record.Distance, blob, record.First, record.SpeedSamples)
+		queued = append(queued, record)
 	}
-	return tx.SendBatch(ctx, batch).Close()
+	return batch, queued, nil
+}
+
+func executeHistoryBatch(ctx context.Context, tx pgx.Tx, batch *pgx.Batch, queued []historicalRecord) (int64, int64, error) {
+	results := tx.SendBatch(ctx, batch)
+	var inserted, recent int64
+	now := time.Now().UTC()
+	cutoff := now.Add(-pressureRecentWindow)
+	for _, record := range queued {
+		tag, err := results.Exec()
+		if err != nil {
+			_ = results.Close()
+			return 0, 0, err
+		}
+		inserted += tag.RowsAffected()
+		if !record.Vehicle.ObservedAt.Before(cutoff) && !record.Vehicle.ObservedAt.After(now.Add(providerClockSkew)) {
+			recent += tag.RowsAffected()
+		}
+	}
+	return inserted, recent, results.Close()
 }
 
 func (s *Store) historyResolution() int {
@@ -101,7 +157,7 @@ func prepareCacheUpdate(static *StaticData, live *LiveData, op api.Operator) (ca
 	return update, err
 }
 
-func (s *Store) persistUpdate(ctx context.Context, id string, update cacheUpdate, records []historicalRecord) error {
+func (s *Store) persistUpdate(ctx context.Context, id string, update cacheUpdate, records []historicalRecord, replacement bool) error {
 	return s.transaction(ctx, func(tx pgx.Tx) error {
 		var generation int64
 		if err := tx.QueryRow(ctx, "UPDATE app_state SET generation=generation+1 WHERE id=1 RETURNING generation").Scan(&generation); err != nil {
@@ -125,7 +181,7 @@ func (s *Store) persistUpdate(ctx context.Context, id string, update cacheUpdate
 		if err := insertVehicleFacts(ctx, tx, id, update.Facts); err != nil {
 			return err
 		}
-		if err := insertHistory(ctx, tx, id, generation, records); err != nil {
+		if err := insertHistory(ctx, tx, historyWrite{operator: id, generation: generation, records: records, replacement: replacement}); err != nil {
 			return err
 		}
 		_, err := tx.Exec(ctx, "INSERT INTO source_health(operator_id,payload) VALUES($1,$2) ON CONFLICT(operator_id) DO UPDATE SET payload=excluded.payload", id, update.Health)

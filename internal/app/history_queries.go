@@ -40,7 +40,7 @@ func (s *Store) readMetrics(ctx context.Context, f Filter, generation int64) (ap
 	if err = tx.QueryRow(ctx, `SELECT sum(speed_kmh*speed_sample_count::DOUBLE PRECISION)/NULLIF(sum(speed_sample_count::DOUBLE PRECISION) FILTER(WHERE speed_kmh IS NOT NULL),0),sum(distance_km),NULLIF(count(DISTINCT trip_id) FILTER (WHERE position_kind='reported' AND trip_id IS NOT NULL),0)`+snapshotWhere, args(f, generation)...).Scan(&metrics.SpeedKmh, &metrics.DistanceKm, &metrics.DetectedTrips); err != nil {
 		return metrics, err
 	}
-	err = tx.QueryRow(ctx, `SELECT min(observed_at) FROM snapshots WHERE ($1::TEXT[] IS NULL OR operator_id=ANY($1)) AND generation <= $2`, f.Operators, generation).Scan(&metrics.FirstSnapshot)
+	err = tx.QueryRow(ctx, `SELECT min(observed_at) FROM snapshots WHERE ($1::TEXT[] IS NULL OR operator_id=ANY($1)) AND generation <= $2 AND ((SELECT cutoff FROM history_pressure WHERE id=1) IS NULL OR observed_at >= (SELECT cutoff FROM history_pressure WHERE id=1))`, f.Operators, generation).Scan(&metrics.FirstSnapshot)
 	return metrics, err
 }
 

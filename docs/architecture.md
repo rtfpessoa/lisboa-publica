@@ -51,7 +51,7 @@ SIGINT/SIGTERM cancels the shared context and initiates HTTP shutdown with a ten
 | Shared ETA | Nominal five-second loop when CP static data or additional-stop demand exists; serialized five-second attempt | CP predictions plus demanded TML stop arrivals from one decode |
 | CM arrivals | Separate nominal five-second loop; bounded requested-stop demand | Ephemeral direct arrivals independent of CP latency |
 | Direct Metro | Initial collection, then dedicated 500 ms minimum start interval with credentials; serialized with no overlap/catch-up | OAuth token reuse, line status, waits and station metadata |
-| Cleanup/archival | Five-minute ticker in the position loop | Bounded retention cleanup and optional PostgreSQL payload archival |
+| Cleanup/archival | Five-minute ticker in the position loop | Bounded retention cleanup, PostgreSQL snapshot pressure cleanup and optional PostgreSQL payload archival |
 
 These are local schedules, not guarantees of exact completion intervals or new source observations. Filters in the UI affect enabled queries and returned entities, not which operators the position/static collectors ingest. Stop arrival reads additionally register bounded30-second demand; they never perform an upstream fetch in the HTTP reader.
 
@@ -119,9 +119,11 @@ Metro secrets stay in the server environment. `PUBLIC_ORIGIN` establishes the al
 | Missing Metro credentials | Direct status is unconfigured; estimated Hub positions and planned GTFS remain distinct paths |
 | Static/geometry failure | Preserve eligible prior data; geometry availability may differ from schedule availability; fallback is source-specific |
 | Database write failure/storage pause | Live memory can continue while durability/history lags or has gaps; collection status explains the interruption |
-| Expired revision | HTTP 410; callers restart pagination |
+| Expired revision | HTTP 410; callers restart pagination. Snapshot pressure cleanup also advances the persisted history cutoff and invalidates earlier revisions |
 | Clean database cutover | Initialize an empty schema and recollect static/live feeds; previous database history, sessions and API keys are absent; separate filesystem archives remain independent |
 | Restart/shutdown | Restore durable state with original clocks; CP is transient; unfinished history and changes since successful writes may be lost |
+
+PostgreSQL pressure cleanup persists its deletion and replacement credits, cutoff, revision epoch and pending vacuum state. A pending vacuum is retried after restart before pressure replacement resumes. Queries and cleanup share the history read lock within the single collector, so a batch cannot remove rows during a historical response. The cutoff can make retained history shorter than its configured target; it is not proof of complete coverage. Older executables that do not enforce the cutoff and epoch can serve incomplete historical revisions after pressure deletion, so rolling back to them requires a compatible recovery plan. See [history retention and limits](data/history.md#retention-and-storage-guards).
 
 ## Runtime configuration
 

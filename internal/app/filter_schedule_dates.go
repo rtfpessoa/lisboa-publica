@@ -55,7 +55,7 @@ func restoreFilterDates(filter *Filter, historical bool) error {
 		revision = parts[1]
 	}
 	parts := strings.Split(revision, ":")
-	if len(parts) != 4 || !frozenDateRevision(parts[0], historical) {
+	if (len(parts) != 4 && !(historical && len(parts) == 5 && parts[0] == "s")) || !frozenDateRevision(parts[0], historical) {
 		return nil
 	}
 	left, ea := strconv.ParseInt(parts[2], 10, numericBitSize)

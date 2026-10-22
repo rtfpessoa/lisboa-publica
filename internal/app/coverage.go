@@ -9,6 +9,8 @@ import (
 
 // ListOperatorCoverage reports committed observations by operator for the requested window.
 func (s *Server) ListOperatorCoverage(ctx context.Context, _ api.ListOperatorCoverageRequestObject) (api.ListOperatorCoverageResponseObject, error) {
+	s.Store.historyReadMu.RLock()
+	defer s.Store.historyReadMu.RUnlock()
 	filter, generation, revision, err := s.coverageWindow(ctx)
 	if err != nil {
 		return nil, err

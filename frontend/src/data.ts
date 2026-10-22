@@ -25,10 +25,18 @@ export function observationAge(value:string,now:number){
 export function observationTime(value:string,now:number){return Number.isFinite(Date.parse(value))?`${time(value)} · ${observationAge(value,now)}`:'Hora não confirmada'}
 export function sameVehicleService(a:Vehicle,b:Vehicle){return a.id===b.id&&a.operator_id===b.operator_id&&a.plan_id===b.plan_id&&a.trip_id===b.trip_id&&a.operational_date===b.operational_date&&(a.pattern_id??null)===(b.pattern_id??null)}
 export const errorText=(e:unknown)=>{const v=e as {data?:{message?:string},message?:string};return v?.data?.message||v?.message||'Não foi possível carregar os dados.'};
+export const historyExpired=(e:unknown)=>{const v=e as {status?:number,data?:{code?:string}};return v?.status===410&&v.data?.code==='history_expired'};
+// JavaScript dates have millisecond precision; round forward past a sub-millisecond cutoff.
+export function clampHistoryRange(range:{$from:string,to:string},cutoff:string|null|undefined){
+ const parsed=cutoff?Date.parse(cutoff):NaN;
+ if(!Number.isFinite(parsed)||Date.parse(range.$from)>parsed)return {range,shortened:false,expired:false};
+ const start=parsed+1;
+ return {range:{$from:new Date(start).toISOString(),to:range.to},shortened:true,expired:start>=Date.parse(range.to)};
+}
 export function today(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Lisbon',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
 export function nextDay(date:string,delta=1){const d=new Date(date+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+delta);return d.toISOString().slice(0,10)}
 export function lisbonMidnight(date:string){const desired=Date.parse(date+'T00:00:00Z');let guess=desired;for(let i=0;i<3;i++){const parts=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Lisbon',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date(guess));const p=Object.fromEntries(parts.map(v=>[v.type,v.value]));const shown=Date.parse(`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}Z`);guess+=desired-shown}return new Date(guess).toISOString()}
-export async function allPages<T>(get:(args:{limit:number,offset:number,revision?:string})=>Promise<{data:T[],page:Page}>):Promise<T[]>{for(let attempt=0;attempt<3;attempt++){try{let offset=0,revision:string|undefined;const out:T[]=[];while(true){const page=await get({limit:500,offset,revision});out.push(...page.data);if(!page.page.has_more)return out;if(page.data.length===0||out.length>100000)throw new Error('Limite de coleção excedido.');revision=page.page.revision??undefined;offset+=page.page.limit}}catch(e){if((e as {status?:number}).status!==410||attempt===2)throw e}}return []}
+export async function allPages<T>(get:(args:{limit:number,offset:number,revision?:string})=>Promise<{data:T[],page:Page}>):Promise<T[]>{for(let attempt=0;attempt<3;attempt++){try{let offset=0,revision:string|undefined;const out:T[]=[];while(true){const page=await get({limit:500,offset,revision});out.push(...page.data);if(!page.page.has_more)return out;if(page.data.length===0||out.length>100000)throw new Error('Limite de coleção excedido.');revision=page.page.revision??undefined;offset+=page.page.limit}}catch(e){if(historyExpired(e)||(e as {status?:number}).status!==410||attempt===2)throw e}}return []}
 
 export function plate(value:string|null|undefined,mode:string){
  if(!value?.trim())return 'Indisponível';

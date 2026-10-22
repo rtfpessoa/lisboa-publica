@@ -27,6 +27,8 @@ export type Config = {
     dev_auth: boolean;
     login_nonce: string;
     history_retention_days: number;
+    /** Inclusive earliest snapshot query time after storage-pressure cleanup; null until cleanup advances it. This does not guarantee observations exist. */
+    history_available_from: string | null;
     history_resolution_seconds: number;
     history_storage_limit_bytes: number | null;
     history_collection_status: "collecting" | "paused" | "unavailable";

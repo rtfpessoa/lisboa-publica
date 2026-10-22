@@ -15,7 +15,7 @@ async function continuityFixture(page:Page){
  await page.route('**/api/v1/**',async r=>{
   const u=new URL(r.request().url());let data:unknown=paged([]);
   if(u.pathname.endsWith('/health'))data={status:'ok',database:'ok'} satisfies Health;
-  if(u.pathname.endsWith('/config'))data={google_client_id:null,dev_auth:false,login_nonce:'',history_collection_status:'collecting',history_storage_limit_bytes:5000000000,live_refresh_seconds:5,history_retention_days:30,history_resolution_seconds:300} satisfies Config;
+  if(u.pathname.endsWith('/config'))data={google_client_id:null,dev_auth:false,login_nonce:'',history_collection_status:'collecting',history_storage_limit_bytes:5000000000,live_refresh_seconds:5,history_retention_days:30,history_available_from:null,history_resolution_seconds:300} satisfies Config;
   if(u.pathname.endsWith('/operators'))data=paged(['metro','cp'].map(operator));
   if(u.pathname.endsWith('/metro/status'))data={status:'unconfigured',checked_at:null,message:'Feed direto não configurado',source_url:'https://api.metrolisboa.pt/',lines:[]} satisfies MetroStatus;
   if(u.pathname.endsWith('/route-shapes'))data={...paged([]),coverage:[]};

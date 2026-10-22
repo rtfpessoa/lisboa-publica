@@ -13,6 +13,7 @@ import (
 const (
 	maximumDatabaseBytes     int64 = 5_000_000_000
 	historyDatabaseBytes     int64 = 4_000_000_000
+	pressureDatabaseBytes    int64 = 4_200_000_000
 	operationalDatabaseBytes int64 = 4_500_000_000
 	maximumWriteBytes        int64 = 128 << 20
 	storageCheckInterval           = time.Minute
@@ -72,6 +73,20 @@ func (b *storageBudget) refresh(ctx context.Context) error {
 	if bytes >= historyDatabaseBytes {
 		b.state = "paused"
 	}
+	return nil
+}
+
+// measureFresh keeps outstanding reservations while checking the current
+// physical database size for a replacement-history admission.
+func (b *storageBudget) measureFresh(ctx context.Context) error {
+	check, cancel := context.WithTimeout(ctx, storageCheckTimeout)
+	defer cancel()
+	bytes, err := b.measure(check)
+	if err != nil || bytes < 0 {
+		b.state = "unavailable"
+		return fmt.Errorf("storage measurement unavailable")
+	}
+	b.bytes = bytes
 	return nil
 }
 
@@ -186,10 +201,19 @@ func (s *Store) reserveMigrations(ctx context.Context) error {
 
 // reserveUpdate shares one measurement across the cache and history portions of a transaction.
 func (b *storageBudget) reserveUpdate(ctx context.Context, operations, history int64) (bool, error) {
+	return b.reserveUpdatePressure(ctx, operations, history, false)
+}
+
+func (b *storageBudget) reserveUpdatePressure(ctx context.Context, operations, history int64, replacement bool) (bool, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if err := b.refresh(ctx); err != nil {
 		return false, err
+	}
+	if replacement {
+		if err := b.measureFresh(ctx); err != nil {
+			return false, err
+		}
 	}
 	if err := b.claim(operations, operationalDatabaseBytes); err != nil {
 		return false, err
@@ -198,10 +222,50 @@ func (b *storageBudget) reserveUpdate(ctx context.Context, operations, history i
 		b.state = "paused"
 		return false, nil
 	}
-	return b.claim(history, historyDatabaseBytes) == nil, nil
+	ceiling := historyDatabaseBytes
+	if replacement && b.bytes+b.reserved+history > historyDatabaseBytes {
+		ceiling = pressureDatabaseBytes
+	}
+	err := b.claim(history, ceiling)
+	if err == nil && ceiling == pressureDatabaseBytes {
+		b.state = "collecting"
+	}
+	return err == nil, nil
 }
 
-func (s *Store) guardUpdate(ctx context.Context, update cacheUpdate, records []historicalRecord) ([]historicalRecord, error) {
+func (s *Store) guardUpdate(ctx context.Context, update cacheUpdate, records []historicalRecord) ([]historicalRecord, bool, bool, error) {
+	operations := cacheUpdateBytes(update)
+	historyBytes := recordBytes(records)
+	if s.budget == nil {
+		if operations+historyBytes > maximumWriteBytes {
+			records = nil
+		}
+		return records, false, false, nil
+	}
+	records, replacement, partial, err := s.selectUpdateHistory(ctx, records, operations, historyBytes)
+	if err != nil {
+		return nil, false, false, err
+	}
+	if replacement {
+		historyBytes = recordBytes(records)
+	}
+	keep, err := s.budget.reserveUpdatePressure(ctx, operations, historyBytes, replacement)
+	if err != nil {
+		return nil, false, false, err
+	}
+	if !keep {
+		records = nil
+		replacement = false
+	}
+	if partial {
+		s.budget.mu.Lock()
+		s.budget.state = "paused"
+		s.budget.mu.Unlock()
+	}
+	return records, replacement, partial, nil
+}
+
+func cacheUpdateBytes(update cacheUpdate) int64 {
 	operations := int64(len(update.Static)+len(update.Live)+len(update.Health))*storageWriteOverhead + historyRecordOverhead
 	for _, fact := range update.Facts {
 		operations += int64(len(fact.SourceID)+len(fact.Payload))*storageWriteOverhead + historyRecordOverhead
@@ -209,19 +273,26 @@ func (s *Store) guardUpdate(ctx context.Context, update cacheUpdate, records []h
 	for _, row := range update.Reporting {
 		operations += int64(len(row.SourceID)+len(row.Payload))*storageWriteOverhead + historyRecordOverhead
 	}
-	historyBytes := recordBytes(records)
-	if s.budget == nil {
-		if operations+historyBytes > maximumWriteBytes {
-			records = nil
-		}
-		return records, nil
-	}
-	keep, err := s.budget.reserveUpdate(ctx, operations, historyBytes)
+	return operations
+}
+
+func (s *Store) selectUpdateHistory(ctx context.Context, records []historicalRecord, operations, historyBytes int64) ([]historicalRecord, bool, bool, error) {
+	s.budget.mu.Lock()
+	err := s.budget.refresh(ctx)
+	needReplacement := err == nil && s.budget.bytes+s.budget.reserved+operations+historyBytes > historyDatabaseBytes
+	s.budget.mu.Unlock()
 	if err != nil {
-		return nil, err
+		return nil, false, false, err
 	}
-	if !keep {
-		records = nil
+	if !needReplacement || len(records) == 0 {
+		return records, false, false, nil
 	}
-	return records, nil
+	selected, err := s.replacementRecords(ctx, records)
+	if err != nil {
+		return nil, false, false, err
+	}
+	if len(selected) == 0 {
+		return records, false, false, nil
+	}
+	return selected, true, len(selected) < len(records), nil
 }

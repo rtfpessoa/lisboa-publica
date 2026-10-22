@@ -14,34 +14,78 @@ import (
 
 const snapshotWhere = ` FROM snapshots WHERE observed_at >= $1 AND observed_at < $2 AND ($3::TEXT[] IS NULL OR operator_id=ANY($3)) AND ($4='' OR route_id=$4) AND generation <= $5`
 
+type snapshotRevisionState struct {
+	latest, epoch int64
+	cutoff        *time.Time
+}
+
 func (s *Server) snapshotRevision(ctx context.Context, f *Filter) (int64, string, error) {
-	latest, err := s.Store.generation(ctx)
+	var state snapshotRevisionState
+	err := s.Store.DB.QueryRow(ctx, `SELECT app_state.generation,history_pressure.epoch,history_pressure.cutoff FROM app_state CROSS JOIN history_pressure WHERE app_state.id=1 AND history_pressure.id=1`).Scan(&state.latest, &state.epoch, &state.cutoff)
 	if err != nil {
 		return 0, "", err
 	}
-	generation := latest
+	generation := state.latest
 	if f.Revision != "" {
-		parts := strings.Split(f.Revision, ":")
-		if len(parts) != 4 || parts[0] != "s" {
-			return 0, "", fail(http.StatusBadRequest, "revision", "Revisão histórica inválida.")
-		}
-		generation, err = strconv.ParseInt(parts[1], 10, numericBitSize)
-		from, ef := strconv.ParseInt(parts[2], 10, numericBitSize)
-		to, et := strconv.ParseInt(parts[3], 10, numericBitSize)
-		if err != nil || ef != nil || et != nil || generation < 0 || generation > latest {
-			return 0, "", fail(http.StatusBadRequest, "revision", "Revisão histórica inválida.")
-		}
-		start, end := time.Unix(0, from).UTC(), time.Unix(0, to).UTC()
-		query := request(ctx).URL.Query()
-		if (query.Get("from") != "" && !f.From.Equal(start)) || (query.Get("to") != "" && !f.To.Equal(end)) {
-			return 0, "", fail(http.StatusBadRequest, "revision", "O intervalo mudou entre páginas.")
-		}
-		f.From, f.To = start, end
-		if !end.After(start) || start.Before(time.Now().AddDate(0, 0, -s.Store.retentionDays())) || end.After(time.Now().Add(time.Minute)) {
-			return 0, "", fail(http.StatusGone, "history_expired", "Intervalo histórico expirado.")
+		generation, err = s.parseSnapshotRevision(ctx, f, state)
+		if err != nil {
+			return 0, "", err
 		}
 	}
-	return generation, fmt.Sprintf("s:%d:%d:%d", generation, f.From.UnixNano(), f.To.UnixNano()), nil
+	if state.cutoff != nil && f.From.Before(*state.cutoff) {
+		return 0, "", fail(http.StatusGone, "history_expired", fmt.Sprintf("Histórico disponível a partir de %s.", state.cutoff.UTC().Format(time.RFC3339Nano)))
+	}
+	return generation, fmt.Sprintf("s:%d:%d:%d:%d", generation, f.From.UnixNano(), f.To.UnixNano(), state.epoch), nil
+}
+func (s *Server) parseSnapshotRevision(ctx context.Context, f *Filter, state snapshotRevisionState) (int64, error) {
+	generation, start, end, err := decodeSnapshotRevision(f.Revision, state)
+	if err != nil {
+		return 0, err
+	}
+	query := request(ctx).URL.Query()
+	if (query.Get("from") != "" && !f.From.Equal(start)) || (query.Get("to") != "" && !f.To.Equal(end)) {
+		return 0, fail(http.StatusBadRequest, "revision", "O intervalo mudou entre páginas.")
+	}
+	f.From, f.To = start, end
+	if !end.After(start) || start.Before(time.Now().AddDate(0, 0, -s.Store.retentionDays())) || end.After(time.Now().Add(time.Minute)) {
+		return 0, fail(http.StatusGone, "history_expired", "Intervalo histórico expirado.")
+	}
+	return generation, nil
+}
+
+func decodeSnapshotRevision(revision string, state snapshotRevisionState) (int64, time.Time, time.Time, error) {
+	invalid := func() (int64, time.Time, time.Time, error) {
+		return 0, time.Time{}, time.Time{}, fail(http.StatusBadRequest, "revision", "Revisão histórica inválida.")
+	}
+	parts := strings.Split(revision, ":")
+	if (len(parts) != 4 && len(parts) != 5) || parts[0] != "s" {
+		return invalid()
+	}
+	previousEpoch, err := snapshotRevisionEpoch(parts)
+	if err != nil {
+		return invalid()
+	}
+	if previousEpoch != state.epoch {
+		return 0, time.Time{}, time.Time{}, fail(http.StatusGone, "revision_expired", "O histórico foi atualizado. Atualize a primeira página.")
+	}
+	generation, err := strconv.ParseInt(parts[1], 10, numericBitSize)
+	from, ef := strconv.ParseInt(parts[2], 10, numericBitSize)
+	to, et := strconv.ParseInt(parts[3], 10, numericBitSize)
+	if err != nil || ef != nil || et != nil || generation < 0 || generation > state.latest {
+		return invalid()
+	}
+	return generation, time.Unix(0, from).UTC(), time.Unix(0, to).UTC(), nil
+}
+
+func snapshotRevisionEpoch(parts []string) (int64, error) {
+	if len(parts) == 4 {
+		return 0, nil
+	}
+	epoch, err := strconv.ParseInt(parts[4], 10, numericBitSize)
+	if err != nil || epoch < 0 {
+		return 0, fmt.Errorf("invalid snapshot revision epoch")
+	}
+	return epoch, nil
 }
 func args(f Filter, n int64) []any { return []any{f.From, f.To, f.Operators, f.Route, n} }
 
@@ -57,6 +101,8 @@ func (s *Server) historicalFilter(ctx context.Context) (Filter, int64, string, e
 
 // GetMetrics aggregates retained reported observations with honest nullable metrics.
 func (s *Server) GetMetrics(ctx context.Context, _ api.GetMetricsRequestObject) (api.GetMetricsResponseObject, error) {
+	s.Store.historyReadMu.RLock()
+	defer s.Store.historyReadMu.RUnlock()
 	filter, generation, revision, err := s.historicalFilter(ctx)
 	if err != nil {
 		return nil, err
@@ -141,6 +187,8 @@ func countLiveVehicles(vehicles []api.Vehicle, route string) (int, int) {
 
 // ListHistory returns retained five-minute speed and volume samples.
 func (s *Server) ListHistory(ctx context.Context, _ api.ListHistoryRequestObject) (api.ListHistoryResponseObject, error) {
+	s.Store.historyReadMu.RLock()
+	defer s.Store.historyReadMu.RUnlock()
 	filter, generation, revision, err := s.historicalFilter(ctx)
 	if err != nil {
 		return nil, err
@@ -155,6 +203,8 @@ func (s *Server) ListHistory(ctx context.Context, _ api.ListHistoryRequestObject
 
 // ListFleet lists vehicles detected in the selected observation window.
 func (s *Server) ListFleet(ctx context.Context, _ api.ListFleetRequestObject) (api.ListFleetResponseObject, error) {
+	s.Store.historyReadMu.RLock()
+	defer s.Store.historyReadMu.RUnlock()
 	filter, generation, revision, err := s.historicalFilter(ctx)
 	if err != nil {
 		return nil, err
@@ -173,6 +223,8 @@ func (s *Server) ListFleet(ctx context.Context, _ api.ListFleetRequestObject) (a
 
 // ListTraffic aggregates observed transit speeds by spatial cell.
 func (s *Server) ListTraffic(ctx context.Context, _ api.ListTrafficRequestObject) (api.ListTrafficResponseObject, error) {
+	s.Store.historyReadMu.RLock()
+	defer s.Store.historyReadMu.RUnlock()
 	filter, generation, revision, err := s.historicalFilter(ctx)
 	if err != nil {
 		return nil, err
@@ -187,6 +239,8 @@ func (s *Server) ListTraffic(ctx context.Context, _ api.ListTrafficRequestObject
 
 // ListRankings ranks route observations without inferring completed trips.
 func (s *Server) ListRankings(ctx context.Context, _ api.ListRankingsRequestObject) (api.ListRankingsResponseObject, error) {
+	s.Store.historyReadMu.RLock()
+	defer s.Store.historyReadMu.RUnlock()
 	filter, generation, revision, err := s.historicalFilter(ctx)
 	if err != nil {
 		return nil, err
