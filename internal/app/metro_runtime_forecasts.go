@@ -1,6 +1,7 @@
 package app
 
 import (
+	"reflect"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -10,6 +11,10 @@ import (
 )
 
 func (r *metroRuntime) projectOwn(data *MetroData, history *patterns.Service, now time.Time) {
+	r.projectOwnWithClock(data, history, now, time.Now)
+}
+
+func (r *metroRuntime) projectOwnWithClock(data *MetroData, history *patterns.Service, now time.Time, clock func() time.Time) {
 	tracks := r.metroOwnForecastWork()
 	for n := range tracks {
 		projectMetroOwnTrack(&tracks[n], history, now)
@@ -18,6 +23,8 @@ func (r *metroRuntime) projectOwn(data *MetroData, history *patterns.Service, no
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	// History lookups and lock acquisition may outlive the input evidence.
+	now = clock().UTC()
 	for _, copy := range tracks {
 		r.applyOwnForecastWork(copy, now)
 	}
@@ -43,15 +50,37 @@ func (r *metroRuntime) applyOwnForecastWork(copy metroTrack, now time.Time) {
 		return
 	}
 	for n := range track.Train.Calls {
-		track.Train.Calls[n].OwnPrediction = copy.Train.Calls[n].OwnPrediction
-		track.Train.Calls[n].OwnDeparturePrediction = copy.Train.Calls[n].OwnDeparturePrediction
+		arrival := copy.Train.Calls[n].OwnPrediction
+		if arrival != nil && !metroCallPredictionFresh(arrival, track.Train.Association, now) {
+			arrival = nil
+		}
+		departure := copy.Train.Calls[n].OwnDeparturePrediction
+		if departure != nil && !metroCallPredictionFresh(departure, track.Train.Association, now) {
+			departure = nil
+		}
+		track.Train.Calls[n].OwnPrediction = arrival
+		track.Train.Calls[n].OwnDeparturePrediction = departure
 	}
 }
 func metroOwnForecastWorkCurrent(t *metroTrack, copy metroTrack, now time.Time) bool {
 	if t == nil || t.Train.Association != "supported" {
 		return false
 	}
-	return t.Revision == copy.Revision && t.Profile == copy.Profile && t.Train.SourceUpdatedAt.Equal(copy.Train.SourceUpdatedAt) && now.Before(t.Train.ValidUntil)
+	return t.Revision == copy.Revision && t.Profile == copy.Profile && t.Train.SourceUpdatedAt.Equal(copy.Train.SourceUpdatedAt) && t.Train.ValidUntil.Equal(copy.Train.ValidUntil) && now.Before(t.Train.ValidUntil) && reflect.DeepEqual(t.Points, copy.Points) && metroOwnForecastInputsMatch(t.Train.Calls, copy.Train.Calls)
+}
+
+// Checkpoint revisions can remain unchanged when archive writes are blocked.
+// Fence asynchronous results against the actual visit evidence as well.
+func metroOwnForecastInputsMatch(current, work []api.StopCall) bool {
+	if len(current) != len(work) {
+		return false
+	}
+	for n := range current {
+		if current[n].Id != work[n].Id || !reflect.DeepEqual(current[n].Arrival, work[n].Arrival) || !reflect.DeepEqual(current[n].Departure, work[n].Departure) {
+			return false
+		}
+	}
+	return true
 }
 
 func projectMetroOwnTrack(t *metroTrack, history *patterns.Service, now time.Time) {
