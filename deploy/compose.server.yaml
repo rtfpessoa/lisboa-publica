@@ -1,0 +1,75 @@
+# Included by the shared server Compose project; environment files stay on the host.
+services:
+  lisboa-dashboard:
+    image: ${LISBOA_IMAGE:?set LISBOA_IMAGE to the reviewed local image}
+    pull_policy: never
+    env_file:
+      - path: /etc/lisboa-publica/dashboard.env
+        format: raw
+    depends_on:
+      lisboa-database:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 1280m
+    cpus: 1.5
+    volumes:
+      - lisboa_transport_history:/app/transport-history
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks:
+      lisboa_web:
+        aliases: [lisboa-publica]
+      lisboa_private: {}
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    labels:
+      wud.watch: "false"
+
+  lisboa-database:
+    image: postgres:17-alpine
+    pull_policy: never
+    env_file:
+      - path: /etc/lisboa-publica/database.env
+        format: raw
+    command: [postgres, -c, shared_buffers=32MB, -c, max_connections=20, -c, work_mem=4MB]
+    volumes:
+      - lisboa_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U lisboapublica -d lisboapublica]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.5
+    networks:
+      lisboa_private:
+        aliases: [database]
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    labels:
+      wud.watch: "false"
+
+networks:
+  lisboa_web:
+    external: true
+    name: server_web
+  lisboa_private:
+    internal: true
+
+volumes:
+  lisboa_postgres_data:
+    external: true
+    name: lisboa-publica_postgres_20260928
+  lisboa_transport_history:
+    external: true
+    name: lisboa-publica_transport_history
