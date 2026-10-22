@@ -112,6 +112,13 @@ Each later-stage engine has 5,000 hot aggregates and 2,000 tracks/calls/predicti
 sampling keys, separate from Metro's larger hot limit but inside the same global
 archive budget. API summaries filter archived daily blocks by operator.
 
+For each operator, an overflow gap follows the dropped queue entry, while a write
+failure gap precedes the next processed receipt, even if it was already queued.
+The worker retries the gap on further failed writes; successful gap receipts are
+sampled outside the normal cadence. Pending markers are in memory and shutdown
+may discard them along with queued receipts. Restart cuts live continuity. A
+checkpoint error can occur after detail publication, making a later gap conservative.
+
 Daily generations are authoritative during recovery, including empty revised
 days; a cached row cannot resurrect a retired or withdrawn day. Replay across
 closed hours uses recorded issuance and suppresses contributions already covered

@@ -45,7 +45,7 @@ func (f *Fetcher) enqueueProviderHistory(receipt patterns.ProviderReceipt) {
 	// Direct helper use in tests/maintenance is synchronous; Run installs the
 	// bounded writer before starting collectors. No file write blocks publication.
 	if f.history == nil {
-		f.writeProviderHistory(receipt)
+		f.recordProviderHistorySynchronously(receipt)
 		return
 	}
 	f.mu.Lock()
@@ -55,7 +55,7 @@ func (f *Fetcher) enqueueProviderHistory(receipt patterns.ProviderReceipt) {
 	collected := receipt.ReceivedAt
 	receipt.CollectedAt = &collected
 	receipt.ReceivedAt = time.Now().UTC()
-	receipt.Gap = f.historyGaps[operator]
+	receipt.Gap = receipt.Gap || f.historyGaps[operator]
 	select {
 	case f.history <- receipt:
 		delete(f.historyGaps, operator)
@@ -65,25 +65,44 @@ func (f *Fetcher) enqueueProviderHistory(receipt patterns.ProviderReceipt) {
 	f.mu.Unlock()
 }
 
+func (f *Fetcher) recordProviderHistorySynchronously(receipt patterns.ProviderReceipt) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.historyGaps == nil {
+		f.historyGaps = map[string]bool{}
+	}
+	receipt.Gap = receipt.Gap || f.historyGaps[receipt.Operator]
+	if f.writeProviderHistory(receipt) != nil {
+		f.historyGaps[receipt.Operator] = true
+	} else {
+		delete(f.historyGaps, receipt.Operator)
+	}
+}
+
 func (f *Fetcher) historyLoop(ctx context.Context) {
+	// A write failure is ordered before all subsequently dequeued receipts,
+	// including receipts already in the queue when the failure occurred.
+	pendingLoss := map[string]bool{}
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case r := <-f.history:
-			f.writeProviderHistory(r)
+			r.Gap = r.Gap || pendingLoss[r.Operator]
+			if f.writeProviderHistory(r) != nil {
+				pendingLoss[r.Operator] = true
+			} else {
+				delete(pendingLoss, r.Operator)
+			}
 		}
 	}
 }
-func (f *Fetcher) writeProviderHistory(r patterns.ProviderReceipt) {
+func (f *Fetcher) writeProviderHistory(r patterns.ProviderReceipt) error {
 	if err := f.Patterns.RecordProvider(r); err != nil {
-		f.mu.Lock()
-		if f.historyGaps != nil {
-			f.historyGaps[r.Operator] = true
-		}
-		f.mu.Unlock()
 		f.Log.Warn("provider historical capture skipped", zap.String("operator", r.Operator), zap.Error(err))
+		return err
 	}
+	return nil
 }
 
 func providerHistoryReceipt(receipt patterns.ProviderReceipt, vehicles []api.Vehicle, static *StaticData, stops map[string]api.Stop) patterns.ProviderReceipt {
