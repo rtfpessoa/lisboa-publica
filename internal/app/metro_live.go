@@ -77,11 +77,14 @@ func (s *Server) admitMetroStream(ctx context.Context) (func(), error) {
 	}, nil
 }
 
-type metroInterest struct{ Route, Vehicle, Journey, Stop string }
+type metroInterest struct {
+	Route, Vehicle, Journey, Stop string
+	streamContext                 context.Context
+}
 
 func readMetroInterest(ctx context.Context) (metroInterest, error) {
 	q := request(ctx).URL.Query()
-	i := metroInterest{q.Get("route_id"), q.Get("vehicle_id"), q.Get("journey_id"), q.Get("stop_id")}
+	i := metroInterest{Route: q.Get("route_id"), Vehicle: q.Get("vehicle_id"), Journey: q.Get("journey_id"), Stop: q.Get("stop_id")}
 	if i.Vehicle != "" && i.Stop != "" {
 		return i, fail(400, "interest", "Selecione um comboio ou uma estação.")
 	}
@@ -137,6 +140,7 @@ func (s *Server) projectMetroFrame(ctx context.Context, i metroInterest) (api.Me
 	}
 	b.selectJourney()
 	b.associateVehicles()
+	b.projectPredecessor()
 	b.scopeCalls()
 	b.stationForecasts()
 	b.stationDirections()
@@ -187,6 +191,7 @@ func (s *Server) StreamMetroLive(ctx context.Context, _ api.StreamMetroLiveReque
 	if err != nil {
 		return nil, err
 	}
+	i.streamContext = ctx
 	release, err := s.admitMetroStream(ctx)
 	if err != nil {
 		return nil, err

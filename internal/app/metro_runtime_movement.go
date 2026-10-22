@@ -163,6 +163,7 @@ func withdrawMetroDeparture(t *metroTrack, n int, at time.Time, reason string) {
 	if c.Departure.Inferred == nil {
 		return
 	}
+	markMetroRetraction(t)
 	appendMetroDepartureRevision(c, "withdrawn", at, reason, c.Departure.Inferred)
 	c.Departure = missingCallTime("Estimativa retirada")
 }

@@ -21,35 +21,38 @@ type metroPoint struct {
 	Seconds        *int
 }
 type metroTrack struct {
-	LifecycleGroup        string
-	ModelStops            map[string]metroModelStop
-	FixedModelSign        int
-	FixedModelSupport     map[int64]metroModelPublication
-	ModelMotion           *metroOperationalMotion
-	ModelDepartureSupport map[string]map[int64]metroModelPublication
-	HistoricalCorrection  bool
-	ModelGeneration       uint64
-	Priors                []metroVisitPrior
-	Geometry              [][][]float64
-	ProviderDirection     string
-	Train                 api.MetroTrain
-	Profile               string
-	Codes                 []string
-	Points                map[string]metroPoint
-	Proofs                map[string]metroEventProof
-	ProofBytes            int
-	ProofOverflow         bool
-	HistoricalOnly        bool
-	BarrierBefore         *api.MetroTrain
-	BarrierRevision       uint64
-	PendingSuccessor      string
-	Movement              *metroTrackMovement
-	Revision              uint64
-	CommittedRevision     uint64
-	Generation            string
-	CommittedAt           time.Time
-	CheckpointHash        string
-	CheckpointUnavailable bool
+	LifecycleGroup                 string
+	ModelStops                     map[string]metroModelStop
+	FixedModelSign                 int
+	FixedModelSupport              map[int64]metroModelPublication
+	ModelMotion                    *metroOperationalMotion
+	ModelDepartureSupport          map[string]map[int64]metroModelPublication
+	HistoricalCorrection           bool
+	UncommittedRetraction          bool
+	RetractionGeneration           uint64
+	CheckpointRetractionGeneration uint64
+	ModelGeneration                uint64
+	Priors                         []metroVisitPrior
+	Geometry                       [][][]float64
+	ProviderDirection              string
+	Train                          api.MetroTrain
+	Profile                        string
+	Codes                          []string
+	Points                         map[string]metroPoint
+	Proofs                         map[string]metroEventProof
+	ProofBytes                     int
+	ProofOverflow                  bool
+	HistoricalOnly                 bool
+	BarrierBefore                  *api.MetroTrain
+	BarrierRevision                uint64
+	PendingSuccessor               string
+	Movement                       *metroTrackMovement
+	Revision                       uint64
+	CommittedRevision              uint64
+	Generation                     string
+	CommittedAt                    time.Time
+	CheckpointHash                 string
+	CheckpointUnavailable          bool
 }
 type metroEventProof struct {
 	Train         api.MetroTrain `json:"train"`
@@ -65,12 +68,14 @@ type metroRuntime struct {
 	metroRuntimeTracks
 	metroRuntimeJournal
 	metroRuntimePublication
-	recoveryMisses map[string]metroRecoveryMiss
-	models         map[string]patterns.MetroQualifiedModel
-	candidates     map[string]string
-	ownQueries     int64
-	ownHistorical  int64
-	ownSchedule    int64
+	recoveryMisses     map[string]metroRecoveryMiss
+	predecessorCache   map[metroPredecessorKey]*metroPredecessorCacheEntry
+	predecessorWorkers int
+	models             map[string]patterns.MetroQualifiedModel
+	candidates         map[string]string
+	ownQueries         int64
+	ownHistorical      int64
+	ownSchedule        int64
 }
 
 // Publication and its classified point batch describe one coherent source update.

@@ -37,6 +37,9 @@ func (r *metroRuntime) admitLifecycleGroup(group string) {
 		return
 	}
 	if !r.lifecycleGroupChanged(hashes) {
+		for id := range hashes {
+			coverMetroRetractionWithCheckpoint(r.tracks[id])
+		}
 		return
 	}
 	for id, record := range records {
@@ -80,6 +83,8 @@ func (r *metroRuntime) lifecycleGroupChanged(hashes map[string]string) bool {
 }
 func (r *metroRuntime) admitLifecycleCheckpoint(id string, record patterns.MetroJourneyCheckpoint, hash string) {
 	t := r.tracks[id]
+	r.invalidateMetroPredecessor(id)
+	t.CheckpointRetractionGeneration = t.RetractionGeneration
 	r.dirtyBytes += pendingMetroCheckpointBytes(record) - pendingMetroCheckpointBytes(r.dirty[id])
 	r.dirty[id] = record
 	t.Revision, t.CheckpointHash, t.CheckpointUnavailable = record.Revision, hash, false

@@ -825,6 +825,12 @@ export type MetroForecastContext = {
     /** Whether all compatible source paths agree on the origin. A shared downstream axis cannot fabricate earlier visits. */
     origin_known?: boolean;
 };
+export type MetroPredecessorHistory = {
+    journey_id: string;
+    status: "pending" | "available" | "unavailable" | "expired" | "corrupt";
+    reason: string;
+    train?: MetroTrain;
+};
 export type MetroLiveFrame = {
     revision: string;
     published_at: string;
@@ -840,6 +846,7 @@ export type MetroLiveFrame = {
     recovery?: MetroJourneyRecovery;
     forecast_contexts?: MetroForecastContext[];
     association_reason?: string;
+    predecessor?: MetroPredecessorHistory;
 };
 /**
  * getHealth
