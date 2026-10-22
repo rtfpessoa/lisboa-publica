@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/klauspost/compress/zstd"
+	"io"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -51,7 +52,7 @@ func openOwnedArchive(s *Service) (_ *Service, err error) {
 	if err = s.restoreArchive(); err != nil {
 		return nil, err
 	}
-	if err = s.ensureSpace(manifestReserve, time.Now().UTC()); err != nil {
+	if err = s.ensureSpace(0, time.Now().UTC()); err != nil {
 		s.status, s.message = "paused", "Arquivo pausado pelo limite de espaço."
 		err = nil
 	}
@@ -80,14 +81,19 @@ func (s *Service) initializeCodecs() error {
 }
 
 func (s *Service) readManifest() error {
-	data, err := os.ReadFile(filepath.Join(s.config.Directory, "manifest.json"))
+	f, err := os.Open(filepath.Join(s.config.Directory, "manifest.json"))
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	if len(data) > manifestReserve || json.Unmarshal(data, &s.index) != nil || s.index.Version != 1 {
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, maxManifestBytes+1))
+	if err != nil {
+		return err
+	}
+	if len(data) > maxManifestBytes || json.Unmarshal(data, &s.index) != nil || s.index.Version != 1 {
 		return fmt.Errorf("invalid transport archive manifest")
 	}
 	return validateArchiveBlocks(s.index.Blocks)

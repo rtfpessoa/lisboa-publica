@@ -31,6 +31,9 @@ func (s *Service) allocated() (int64, error) {
 }
 
 func (s *Service) reconcile() error {
+	if s.manifestUncertain {
+		return fmt.Errorf("archive manifest outcome uncertain; reopen required")
+	}
 	keep := map[string]bool{"manifest.json": true, ".lock": true}
 	for _, b := range s.index.Blocks {
 		keep[b.File] = true
@@ -54,15 +57,21 @@ func (s *Service) reconcile() error {
 }
 
 func (s *Service) ensureSpace(reserve int64, now time.Time) error {
+	if s.manifestUncertain {
+		return fmt.Errorf("archive manifest outcome uncertain; reopen required")
+	}
 	s.closeRetainedBlocks(now)
 	for {
 		used, err := s.allocated()
 		if err != nil {
 			return err
 		}
-		oldest, expired := s.retirementCandidate(now)
+		oldest, expired := s.retirementCandidate(now, false)
 		if !expired && used+reserve <= s.config.LimitBytes {
 			return nil
+		}
+		if !expired {
+			oldest, _ = s.retirementCandidate(now, true)
 		}
 		if oldest < 0 {
 			return fmt.Errorf("transport archive budget exhausted")
@@ -85,26 +94,16 @@ func (s *Service) closeRetainedBlocks(now time.Time) {
 	}
 }
 
-func (s *Service) blockExpired(b block, now time.Time) bool {
-	switch b.Kind {
-	case "popup-events", "popup-checkpoint", "metro-inputs":
-		return b.Age.Before(now.AddDate(0, 0, -7))
-	case "detail", "correction", "observations":
-		return b.Age.Before(now.AddDate(0, 0, -s.config.DetailDays))
-	case "aggregate":
-		return b.Date < now.In(lisbon).AddDate(0, -s.config.AggregateMonths, 0).Format("2006-01-02")
-	default:
-		return false
-	}
-}
-
-func (s *Service) retirementCandidate(now time.Time) (int, bool) {
+func (s *Service) retirementCandidate(now time.Time, pressure bool) (int, bool) {
 	oldest, expired := -1, false
 	for i, b := range s.index.Blocks {
 		if !b.Closed || b.Kind == "state" {
 			continue
 		}
 		candidateExpired := s.blockExpired(b, now)
+		if !candidateExpired && (!pressure || !s.pressureEligible(b, now)) {
+			continue
+		}
 		if oldest < 0 || preferRetirement(b, candidateExpired, s.index.Blocks[oldest], expired) {
 			oldest, expired = i, candidateExpired
 		}
@@ -123,18 +122,31 @@ func (s *Service) retireBlock(index int) error {
 	removed := s.index.Blocks[index]
 	next := manifest{Version: 1, Blocks: append([]block{}, s.index.Blocks...)}
 	next.Blocks = append(next.Blocks[:index], next.Blocks[index+1:]...)
+	// Retirement also needs a temporary manifest alongside the old one.
+	blob, err := encodeManifest(next)
+	if err != nil {
+		return err
+	}
+	used, err := s.allocated()
+	if err != nil {
+		return err
+	}
+	if used+allocatedBytes(len(blob)) > s.config.LimitBytes {
+		return fmt.Errorf("transport archive budget exhausted")
+	}
 	// Publish retirement before unlinking; serialized readers have already closed.
 	if err := s.saveManifest(next); err != nil {
 		return err
 	}
-	err := os.Remove(filepath.Join(s.config.Directory, removed.File))
+	s.forgetRetiredAggregate(removed)
+	delete(s.aggregateClocks, removed.File)
+	err = os.Remove(filepath.Join(s.config.Directory, removed.File))
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 	if err = syncDirectory(s.config.Directory); err != nil {
 		return err
 	}
-	s.forgetRetiredAggregate(removed)
 	return nil
 }
 

@@ -3,6 +3,7 @@ package patterns
 import (
 	"context"
 	"encoding/json"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -108,23 +109,28 @@ func TestSparseParquetAndCorruptionUnavailable(t *testing.T) {
 func TestGlobalFIFOAccountsAllocatedSpaceAndOrphans(t *testing.T) {
 	config := DefaultConfig(t.TempDir())
 	config.LimitBytes = 8 << 20
+	config.DetailDays = 30
 	s, err := Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer s.Close()
 	now := time.Now().UTC()
-	old := block{Key: "old", Kind: "aggregate", Operator: "metro", Date: now.In(lisbon).AddDate(0, 0, -2).Format("2006-01-02"), Age: now.Add(-48 * time.Hour), Closed: true}
-	newer := block{Key: "newer", Kind: "detail", Operator: "metro", Age: now.Add(-time.Hour), Closed: true}
-	payload := make([]byte, 2<<20)
-	for i := range payload {
-		payload[i] = byte(i)
-	}
-	s.engine.DirtyDays[old.Date] = true
+	old := block{Kind: "detail", Operator: "metro", Age: now.AddDate(0, 0, -8).Truncate(time.Hour), Closed: true}
+	newer := block{Kind: "detail", Operator: "metro", Age: now.Add(-time.Hour).Truncate(time.Hour), Closed: true}
+	old.Key = "metro:detail:" + old.Age.Format(time.RFC3339)
+	newer.Key = "metro:detail:" + newer.Age.Format(time.RFC3339)
+	data := make([]byte, 2<<20)
+	_, _ = rand.New(rand.NewSource(1)).Read(data)
+	encoded, _ := json.Marshal(data)
+	raw, _ := json.Marshal(Receipt{ReceivedAt: old.Age.Add(time.Minute), Operator: "metro", Raw: encoded})
+	payload := s.encoder.EncodeAll(append(raw, '\n'), nil)
 	if err = s.publish(old, payload, now); err != nil {
 		t.Fatal(err)
 	}
-	payload[0] = 77
+	oldFile := s.index.Blocks[0].File
+	raw, _ = json.Marshal(Receipt{ReceivedAt: newer.Age.Add(time.Minute), Operator: "metro", Raw: encoded})
+	payload = s.encoder.EncodeAll(append(raw, '\n'), nil)
 	if err = s.publish(newer, payload, now); err != nil {
 		t.Fatal(err)
 	}
@@ -132,11 +138,11 @@ func TestGlobalFIFOAccountsAllocatedSpaceAndOrphans(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, b := range s.index.Blocks {
-		if b.Key == "old" {
+		if b.Key == old.Key {
 			t.Fatal("FIFO kept older aggregate ahead of newer detail")
 		}
 	}
-	if _, err = os.Stat(filepath.Join(config.Directory, "metro-aggregate-"+digest(old.Key)[:16]+"-"+digestBytes(append([]byte{0}, payload[1:]...))+".parquet")); !os.IsNotExist(err) {
+	if _, err = os.Stat(filepath.Join(config.Directory, oldFile)); !os.IsNotExist(err) {
 		t.Fatal("retired bytes still on disk")
 	}
 	orphan := filepath.Join(config.Directory, "metro-unpublished.tmp")

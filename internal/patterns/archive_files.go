@@ -15,19 +15,36 @@ func safeFilename(value string) bool {
 	return value != "" && filepath.Base(value) == value && !strings.HasPrefix(value, ".")
 }
 
+var errManifestLimit = errors.New("archive manifest limit")
+
 func (s *Service) saveManifest(next manifest) error {
-	blob, err := json.Marshal(next)
+	if s.manifestUncertain {
+		return fmt.Errorf("archive manifest outcome uncertain; reopen required")
+	}
+	blob, err := encodeManifest(next)
 	if err != nil {
 		return err
 	}
-	if len(blob) > manifestReserve {
-		return fmt.Errorf("archive manifest limit")
+	sync := s.manifestSync
+	if sync == nil {
+		sync = syncDirectory
 	}
-	if err = atomicFile(s.config.Directory, "manifest.json", blob); err != nil {
-		return err
+	renamed, err := atomicFileWithSync(s.config.Directory, "manifest.json", blob, sync)
+	if renamed {
+		s.index = next
+		if err != nil {
+			s.manifestUncertain = true
+		}
 	}
-	s.index = next
-	return nil
+	return err
+}
+
+func encodeManifest(next manifest) ([]byte, error) {
+	blob, err := json.Marshal(next)
+	if err == nil && len(blob) > maxManifestBytes {
+		return nil, errManifestLimit
+	}
+	return blob, err
 }
 
 func (s *Service) readBlock(b block) ([]byte, error) {
@@ -50,6 +67,13 @@ func (s *Service) readBlock(b block) ([]byte, error) {
 func digestBytes(blob []byte) string { return fmt.Sprintf("%x", sha256.Sum256(blob)) }
 
 func atomicFile(directory, name string, data []byte) error {
+	_, err := atomicFileWithSync(directory, name, data, syncDirectory)
+	return err
+}
+
+// The caller must retain both generations when rename succeeds but directory
+// synchronization fails: either manifest may survive a crash.
+func atomicFileWithSync(directory, name string, data []byte, sync func(string) error) (bool, error) {
 	temporary := "metro-" + name + ".tmp"
 	if name == "manifest.json" {
 		temporary = ".manifest.tmp"
@@ -57,20 +81,27 @@ func atomicFile(directory, name string, data []byte) error {
 	path := filepath.Join(directory, temporary)
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
-		return err
+		return false, err
 	}
+	renamed := false
+	defer func() {
+		if !renamed {
+			_ = os.Remove(path)
+		}
+	}()
 	_, err = f.Write(data)
 	if err == nil {
 		err = f.Sync()
 	}
 	err = errors.Join(err, f.Close())
 	if err != nil {
-		return err
+		return false, err
 	}
 	if err = os.Rename(path, filepath.Join(directory, name)); err != nil {
-		return err
+		return false, err
 	}
-	return syncDirectory(directory)
+	renamed = true
+	return true, sync(directory)
 }
 
 func syncDirectory(path string) error {

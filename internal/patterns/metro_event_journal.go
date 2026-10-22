@@ -141,24 +141,24 @@ func (s *Service) MetroJourneyEvents(ctx context.Context, journey string, now ti
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		if b.Kind != "popup-events" || b.Age.Before(now.AddDate(0, 0, -7)) {
+		if b.Kind != "popup-events" || s.blockExpired(b, now) {
 			continue
 		}
 		var err error
-		out, err = s.appendMetroJourneyEvents(out, b, journey)
+		out, err = s.appendMetroJourneyEvents(out, b, journey, now)
 		if err != nil {
 			return nil, err
 		}
 	}
 	return out, nil
 }
-func (s *Service) appendMetroJourneyEvents(out []MetroEventRecord, b block, journey string) ([]MetroEventRecord, error) {
+func (s *Service) appendMetroJourneyEvents(out []MetroEventRecord, b block, journey string, now time.Time) ([]MetroEventRecord, error) {
 	values, err := s.readMetroEventBlock(b)
 	if err != nil {
 		return nil, err
 	}
 	for _, v := range values {
-		if v.Journey == journey {
+		if v.Journey == journey && !v.At.Before(now.AddDate(0, 0, -7)) {
 			out = append(out, v)
 			if len(out) > 1024 {
 				return nil, fmt.Errorf("event read limit")

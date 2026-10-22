@@ -12,7 +12,7 @@ const maxMetroCheckpointBytes = 256 << 10
 const maxMetroCheckpointBatchBytes = 8 << 20
 
 // MetroJourneyCheckpoint stores a complete latest state independently of event
-// proofs. SourceAt governs retention; reading or committing cannot renew it.
+// proofs. SourceAt governs episode read expiry; reading or committing cannot renew it.
 type MetroJourneyCheckpoint struct {
 	Journey     string          `json:"journey"`
 	Revision    uint64          `json:"revision"`
@@ -91,6 +91,9 @@ func (s *Service) validateMetroCheckpointPredecessor(value MetroJourneyCheckpoin
 	}
 	if state == "restored" && value.Revision <= prior.Revision {
 		return fmt.Errorf("checkpoint revision did not advance")
+	}
+	if state == "restored" && value.SourceAt.Before(prior.SourceAt) {
+		return fmt.Errorf("checkpoint source clock regressed")
 	}
 	return nil
 }
