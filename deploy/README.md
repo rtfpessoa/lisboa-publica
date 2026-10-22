@@ -44,18 +44,18 @@ Deploy one collector on the existing `server_web` network. The dashboard is publ
 
 ## Shared server Compose project
 
-[The server fragment](compose.server.yaml) is intended for inclusion by the
-shared `/root/dev/server` Compose project. It defines `lisboa-dashboard` and
+[The server fragment](compose.server.yaml) is included by the main Compose file
+of the shared `/root/dev/server` project. It defines `lisboa-dashboard` and
 `lisboa-database` with a dedicated internal network. The database retains its
 `database` network alias, so the existing connection URL need not change. The
 dashboard retains the `lisboa-publica` alias on `server_web` for Caddy. Both
 existing volumes are external and pinned by name; this fragment must not be used
-to initialize a replacement database. It is a migration option, not evidence
-that the shared project already owns the running service.
+to initialize a replacement database. The shared project owns the running Lisboa
+services following the 2026-10-22 cutover.
 
-Install a reviewed copy of the fragment at a stable server path and include it
-in the shared project's main Compose file, not only its override. Existing BuFin
-scripts pass the main file explicitly. For example:
+The main Compose file includes the protected installed fragment as follows.
+Keep the include in the main file: existing BuFin scripts pass that file
+explicitly.
 
 ```yaml
 include:
@@ -76,16 +76,17 @@ environment against protected container inspections before cutover. Include
 interpolation can also be overridden by the calling shell or shared project's
 environment; check those sources and the resolved image without exposing secrets.
 
-Plain `docker compose` in `/root/dev/server` also needs that project's existing
-required settings. Arrange its protected default environment without changing
-their values, and compare the resolved shared services with their running
-containers before applying anything. Do not recreate WUD or Caddy merely to
-migrate Lisboa. The Caddy image is pinned by the shared override; explicit `-f`
-invocations must include that override when required. Compare secret values
-without exposing them, accounting for Compose's escaped-dollar representation.
-Use targeted service commands until unrelated differences are resolved.
+Plain `docker compose` in `/root/dev/server` loads the shared project's existing
+settings through `.env`, a symlink to `/etc/bufin/sandbox.env`, and resolves both
+Lisboa services. Preserve the protected target and symlink. The Caddy image is
+pinned by the shared override; explicit `-f` invocations must include that
+override when required. Compare secret values without exposing them, accounting
+for Compose's escaped-dollar representation. A broad `docker compose up` may
+recreate unrelated services because of pre-existing Compose image-identity drift
+and may run the BuFin initialization service. Use targeted service commands for
+Lisboa releases.
 
-Before cutover, save protected copies of the active Compose inputs, container
+For another ownership change, save protected copies of the active Compose inputs, container
 inspections, image identities and rollback settings. Verify sufficient space in
 a protected backup destination for a PostgreSQL logical backup, the quiesced
 archive and database/WAL growth; verify backup integrity and restoration. Do not
@@ -116,14 +117,16 @@ the new database, restore the old configuration and restart policies, and start
 the old database followed by the old dashboard. If a later release changes
 storage compatibility, use a compatible image or a verified matching backup.
 
-For subsequent releases, update `LISBOA_IMAGE` only after loading and verifying
-the reviewed image, then recreate only `lisboa-dashboard` with the targeted
-command above. Check the effective configuration and owner state first; a broad
-`docker compose up` can also recreate unrelated shared services.
+For subsequent releases, update `LISBOA_IMAGE` in the protected
+`/etc/lisboa-publica/compose.env` only after loading and verifying the reviewed
+image, then recreate only `lisboa-dashboard` with the targeted command above.
+Check the effective configuration and owner state first.
 
 ## Separate application Compose project
 
-Production uses PostgreSQL 17 in the same Compose project, on its internal `private` network, without a published database port. Keep credentials in mode-600 `deploy/.env`, excluded from Git; [`.env.example`](.env.example) lists the required settings. Use a long URL-safe `POSTGRES_PASSWORD`. The Cloud configuration remains an optional recovery path using protected `deploy/.cloud.env` with `sslmode=verify-full`. Set `VERSION` to the deployed Git SHA, `SNAPSHOT_RETENTION_DAYS=30`, `HISTORY_INTERVAL_SECONDS=300`, `STORAGE_GUARD=true`, and `TRUSTED_PROXY_CIDRS` to the existing Caddy network subnet. Metro consumer key/secret are server environment variables.
+The separate application Compose project is a recovery and deployment option;
+the running services use the shared server project described above. This setup
+uses PostgreSQL 17 on its internal `private` network, without a published database port. Keep credentials in mode-600 `deploy/.env`, excluded from Git; [`.env.example`](.env.example) lists the required settings. Use a long URL-safe `POSTGRES_PASSWORD`. The Cloud configuration remains an optional recovery path using protected `deploy/.cloud.env` with `sslmode=verify-full`. Set `VERSION` to the deployed Git SHA, `SNAPSHOT_RETENTION_DAYS=30`, `HISTORY_INTERVAL_SECONDS=300`, `STORAGE_GUARD=true`, and `TRUSTED_PROXY_CIDRS` to the existing Caddy network subnet. Metro consumer key/secret are server environment variables.
 
 ```sh
 docker compose --env-file deploy/.env -f deploy/compose.yaml -f deploy/compose.local.yaml config --quiet
