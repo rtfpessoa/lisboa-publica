@@ -6,7 +6,8 @@ import type {MetroLiveFrame,Vehicle} from './api';
 // renews no observation clock and performs no network requests.
 export function metroModelVehicles(frame:MetroLiveFrame|undefined,now:number):Vehicle[]{
  if(!frame)return [];
- const linked=new Map(frame.trains.filter(t=>metroCurrentDirection(t,now)&&t.vehicle_id).map(t=>[t.vehicle_id,t]));
+ const linked=new Map<string,typeof frame.trains[number]|null>();
+ for(const train of frame.trains){if(!metroCurrentDirection(train,now)||!train.vehicle_id)continue;linked.set(train.vehicle_id,linked.has(train.vehicle_id)?null:train)}
  return frame.vehicles.map(vehicle=>{
   const train=linked.get(vehicle.id),p=train?.model_projection;
   if(!p||train?.lifecycle?.state!=='active'||vehicle.last_known||vehicle.stale)return vehicle;
