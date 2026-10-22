@@ -381,6 +381,7 @@ func TestPressureVacuumPermissionFailsClosed(t *testing.T) {
 	if allowed, err := limited.pressureVacuumAllowed(ctx); err != nil || allowed {
 		t.Fatalf("unprivileged vacuum: allowed=%v err=%v", allowed, err)
 	}
+	assertUnprivilegedEmptyRecovery(t, store, limited, roleSQL)
 	if _, err := store.DB.Exec(ctx, `UPDATE history_pressure SET enabled=TRUE,insert_credit=1,vacuum_pending=TRUE WHERE id=1`); err != nil {
 		t.Fatal(err)
 	}
@@ -395,4 +396,182 @@ func TestPressureVacuumPermissionFailsClosed(t *testing.T) {
 	}
 	store.schedulePressureVacuum(ctx)
 	waitPressureVacuum(t, store)
+}
+
+func assertUnprivilegedEmptyRecovery(t *testing.T, store, limited *Store, roleSQL string) {
+	t.Helper()
+	ctx := context.Background()
+	if _, err := store.DB.Exec(ctx, "GRANT SELECT ON history_pressure TO "+roleSQL); err != nil {
+		t.Fatal(err)
+	}
+	limited.budget = &storageBudget{now: time.Now, bytes: historyDatabaseBytes + 1, measure: func(context.Context) (int64, error) { return historyDatabaseBytes + 1, nil }}
+	if _, err := store.DB.Exec(ctx, `UPDATE history_pressure SET enabled=TRUE,insert_credit=1,vacuum_pending=FALSE WHERE id=1`); err != nil {
+		t.Fatal(err)
+	}
+	if err := limited.refreshEmptyHistoryStatus(ctx); err != nil || limited.historyStatus() != "paused" {
+		t.Fatalf("unprivileged empty recovery: status=%s err=%v", limited.historyStatus(), err)
+	}
+}
+
+func TestPressureEmptySaveRestoresStaging(t *testing.T) {
+	store := testStore(t)
+	if err := store.ConfigureHistory(30, staticRefreshInterval, true); err != nil {
+		t.Fatal(err)
+	}
+	measured := historyDatabaseBytes + 1
+	store.budget.measure = func(context.Context) (int64, error) { return measured, nil }
+	ctx := context.Background()
+	if _, err := store.DB.Exec(ctx, `UPDATE history_pressure SET enabled=TRUE,insert_credit=100,vacuum_pending=TRUE WHERE id=1`); err != nil {
+		t.Fatal(err)
+	}
+	assertEmptyPressureStatus(t, store, "paused")
+	if _, err := store.DB.Exec(ctx, `UPDATE history_pressure SET vacuum_pending=FALSE WHERE id=1`); err != nil {
+		t.Fatal(err)
+	}
+	assertEmptyPressureStatus(t, store, "collecting")
+	assertPressureStagesAndPersists(t, store)
+	store.budget.mu.Lock()
+	store.budget.checked = time.Time{}
+	store.budget.mu.Unlock()
+	assertEmptyPressureStatus(t, store, "collecting")
+	if _, err := store.DB.Exec(ctx, `UPDATE history_pressure SET insert_credit=0 WHERE id=1`); err != nil {
+		t.Fatal(err)
+	}
+	assertEmptyPressureStatus(t, store, "paused")
+	if _, err := store.DB.Exec(ctx, `UPDATE history_pressure SET insert_credit=100 WHERE id=1`); err != nil {
+		t.Fatal(err)
+	}
+	measured = pressureDatabaseBytes
+	assertEmptyPressureStatus(t, store, "paused")
+}
+
+func assertEmptyPressureStatus(t *testing.T, store *Store, want string) {
+	t.Helper()
+	op := NewCache().operator("carris")
+	if err := store.Save(context.Background(), "carris", nil, nil, op, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := store.historyStatus(); got != want {
+		t.Fatalf("empty save status=%s, want %s", got, want)
+	}
+}
+
+func assertPressureStagesAndPersists(t *testing.T, store *Store) {
+	t.Helper()
+	now := time.Now().UTC()
+	vehicle := historyVehicle("pressure-intermediate", now.Add(-10*time.Second), 20)
+	store.stageLive(&LiveData{Collected: now, Vehicles: []api.Vehicle{vehicle}}, nil)
+	if len(store.collector.Pending) != 1 {
+		t.Fatal("recovered collection did not stage an intermediate sample")
+	}
+	closeAt := vehicle.ObservedAt.Truncate(staticRefreshInterval).Add(staticRefreshInterval + sourceFreshness)
+	saveHistory(t, store, closeAt, nil, nil)
+	checkSnapshotCount(t, store, 1)
+}
+
+func TestPressurePendingVacuumBlocksHistorySave(t *testing.T) {
+	store := testStore(t)
+	if err := store.ConfigureHistory(30, 0, true); err != nil {
+		t.Fatal(err)
+	}
+	store.budget.measure = func(context.Context) (int64, error) { return historyDatabaseBytes + 1, nil }
+	ctx := context.Background()
+	if _, err := store.DB.Exec(ctx, `UPDATE history_pressure SET enabled=TRUE,insert_credit=100,vacuum_pending=TRUE WHERE id=1`); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	vehicle := historyVehicle("pending-vacuum", now, 20)
+	if err := store.Save(ctx, "carris", nil, &LiveData{Collected: now, Vehicles: []api.Vehicle{vehicle}}, NewCache().operator("carris"), nil); err != nil {
+		t.Fatal(err)
+	}
+	checkSnapshotCount(t, store, 0)
+	if store.historyStatus() != "paused" {
+		t.Fatalf("pending vacuum status=%s", store.historyStatus())
+	}
+}
+
+func TestPressureEmptyReadinessFailsClosed(t *testing.T) {
+	ctx := context.Background()
+	budget := &storageBudget{now: time.Now, bytes: historyDatabaseBytes + 1, state: "collecting", measure: func(context.Context) (int64, error) { return 0, errors.New("fixture failure") }}
+	store := &Store{budget: budget}
+	if err := store.refreshEmptyHistoryStatus(ctx); err == nil || store.historyStatus() != "unavailable" {
+		t.Fatalf("measurement failure: status=%s err=%v", store.historyStatus(), err)
+	}
+	budget.measure = func(context.Context) (int64, error) { return pressureDatabaseBytes - 1, nil }
+	budget.reserved = 2
+	if err := store.refreshEmptyHistoryStatus(ctx); err != nil || store.historyStatus() != "paused" {
+		t.Fatalf("reserved headroom: status=%s err=%v", store.historyStatus(), err)
+	}
+	budget.bytes, budget.reserved = historyDatabaseBytes-2*historyRecordOverhead, 0
+	if err := store.refreshEmptyHistoryStatus(ctx); err != nil || store.historyStatus() != "collecting" {
+		t.Fatalf("normal headroom: status=%s err=%v", store.historyStatus(), err)
+	}
+}
+
+func TestPressureLastCreditPausesAtCommit(t *testing.T) {
+	store := testStore(t)
+	if err := store.ConfigureHistory(30, 0, true); err != nil {
+		t.Fatal(err)
+	}
+	store.budget.measure = func(context.Context) (int64, error) { return historyDatabaseBytes + 1, nil }
+	ctx := context.Background()
+	if _, err := store.DB.Exec(ctx, `UPDATE history_pressure SET enabled=TRUE,insert_credit=1 WHERE id=1`); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	vehicle := historyVehicle("final-credit", now, 20)
+	if err := store.Save(ctx, "carris", nil, &LiveData{Collected: now, Vehicles: []api.Vehicle{vehicle}}, NewCache().operator("carris"), nil); err != nil {
+		t.Fatal(err)
+	}
+	checkSnapshotCount(t, store, 1)
+	if store.historyStatus() != "paused" {
+		t.Fatalf("status after final credit: %s", store.historyStatus())
+	}
+}
+
+func TestPressureFailedCommitPausesHistory(t *testing.T) {
+	store := testStore(t)
+	if err := store.ConfigureHistory(30, 0, true); err != nil {
+		t.Fatal(err)
+	}
+	store.budget.measure = func(context.Context) (int64, error) { return historyDatabaseBytes + 1, nil }
+	ctx := context.Background()
+	_, err := store.DB.Exec(ctx, `UPDATE history_pressure SET enabled=TRUE,insert_credit=1 WHERE id=1;
+		CREATE FUNCTION fail_history_insert() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture failure'; END $$;
+		CREATE TRIGGER fail_history BEFORE INSERT ON snapshots FOR EACH ROW EXECUTE FUNCTION fail_history_insert()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	vehicle := historyVehicle("failed-commit", now, 20)
+	if err := store.Save(ctx, "carris", nil, &LiveData{Collected: now, Vehicles: []api.Vehicle{vehicle}}, NewCache().operator("carris"), nil); err == nil {
+		t.Fatal("fixture write unexpectedly succeeded")
+	}
+	if store.historyStatus() != "paused" {
+		t.Fatalf("failed write status=%s", store.historyStatus())
+	}
+	checkSnapshotCount(t, store, 0)
+}
+
+func TestPressureFailedAdmissionPausesHistory(t *testing.T) {
+	store := testStore(t)
+	if err := store.ConfigureHistory(30, 0, true); err != nil {
+		t.Fatal(err)
+	}
+	store.budget.bytes = historyDatabaseBytes + 1
+	store.budget.checked = time.Now()
+	store.budget.state = "collecting"
+	store.budget.measure = func(context.Context) (int64, error) { return historyDatabaseBytes + 1, nil }
+	ctx := context.Background()
+	if _, err := store.DB.Exec(ctx, `DROP TABLE history_pressure`); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	vehicle := historyVehicle("failed-admission", now, 20)
+	if err := store.Save(ctx, "carris", nil, &LiveData{Collected: now, Vehicles: []api.Vehicle{vehicle}}, NewCache().operator("carris"), nil); err == nil {
+		t.Fatal("admission unexpectedly succeeded")
+	}
+	if store.historyStatus() != "paused" {
+		t.Fatalf("failed admission status=%s", store.historyStatus())
+	}
 }

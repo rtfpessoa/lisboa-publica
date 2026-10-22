@@ -170,6 +170,7 @@ func (s *Store) deletePressureBatch(ctx context.Context) (int64, error) {
 }
 
 func (s *Store) schedulePressureVacuum(parent context.Context) {
+	s.pauseHistoryCollection()
 	if !s.pressureVacuum.CompareAndSwap(false, true) {
 		return
 	}

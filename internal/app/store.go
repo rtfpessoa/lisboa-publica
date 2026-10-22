@@ -285,15 +285,23 @@ func (s *Store) savePreparedUpdate(ctx context.Context, id string, publication p
 		return err
 	}
 	records, next := s.prepareHistory(id, publication.Live, publication.Distances)
-	records, replacement, _, err := s.guardUpdate(ctx, update, records)
+	records, replacement, partial, err := s.guardUpdate(ctx, update, records)
 	if err != nil {
+		s.pauseHistoryCollection()
 		return err
 	}
 	err = s.persistUpdate(ctx, id, update, records, replacement)
-	if err == nil {
-		s.acknowledgeUpdate(id, update, next)
+	if err != nil {
+		s.pauseHistoryCollection()
+		return err
 	}
-	return err
+	s.acknowledgeUpdate(id, update, next)
+	if replacement && !partial {
+		// The transaction may have consumed the final credit. A failed check
+		// changes status, but cannot undo or falsely reject the committed write.
+		_ = s.refreshEmptyHistoryStatus(ctx)
+	}
+	return nil
 }
 func (s *Store) acknowledgeUpdate(id string, update cacheUpdate, next *historyCollector) {
 	s.acknowledgeFacts(id, update.Facts)
