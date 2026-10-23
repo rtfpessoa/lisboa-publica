@@ -193,6 +193,8 @@ func (s *Store) deletePressureBatch(ctx context.Context) (pressureMaintenanceRes
 		if err != nil || result.deleted == 0 {
 			return err
 		}
+		// Prevent new staging before the pending vacuum becomes durable.
+		s.pauseHistoryCollection()
 		retainedCutoff := cutoff.Add(time.Microsecond)
 		result.cutoff = &retainedCutoff
 		result.reason = "vacuum_scheduled"
@@ -215,7 +217,12 @@ func (s *Store) schedulePressureVacuum(parent context.Context) {
 	s.pressureVacuumWG.Add(1)
 	go func() {
 		defer s.pressureVacuumWG.Done()
-		defer s.pressureVacuum.Store(false)
+		ownsFlag := true
+		defer func() {
+			if ownsFlag {
+				s.pressureVacuum.Store(false)
+			}
+		}()
 		started := time.Now()
 		failed := func(err error) {
 			message := "history pressure vacuum failed or is not permitted"
@@ -265,11 +272,36 @@ func (s *Store) schedulePressureVacuum(parent context.Context) {
 			failed(err)
 			return
 		}
+		// VACUUM and the durable pending-clear transaction have completed.
+		// Drop ownership while holding writeMu, so an older goroutine cannot
+		// clear a later vacuum's flag after that lock is released.
+		s.pressureVacuum.Store(false)
+		ownsFlag = false
 		s.pressureError.Store(nil)
+		s.recoverAfterPressureVacuum(ctx)
 		if log := s.maintenanceLog.Load(); log != nil {
 			log.Info("history pressure vacuum completed", zap.Duration("duration", time.Since(started)))
 		}
 	}()
+}
+
+// The pending clear is already committed; recovery failures are reported
+// separately and cannot turn a successful vacuum into a failed transaction.
+func (s *Store) recoverAfterPressureVacuum(ctx context.Context) {
+	if s.budget == nil {
+		return
+	}
+	check, cancel := context.WithTimeout(ctx, storageCheckTimeout)
+	defer cancel()
+	err := s.reconcileCompletedReservations(check)
+	if err == nil {
+		err = s.refreshEmptyHistoryStatus(check)
+	}
+	if err != nil {
+		if log := s.maintenanceLog.Load(); log != nil {
+			log.Warn("history vacuum completed; readiness check failed", zap.Error(err))
+		}
+	}
 }
 
 func (s *Store) runPressureVacuum(ctx context.Context) error {

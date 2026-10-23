@@ -36,6 +36,7 @@ type storageBudget struct {
 	checked           time.Time
 	bytes, reserved   int64
 	state             string
+	pressureReady     bool
 	filesystem        *filesystemProbe
 	vacuumActive      *atomic.Bool
 	uncertainBackends map[databaseBackend]struct{}
@@ -49,6 +50,20 @@ type historyAdmissionRejection struct {
 	reason                   string
 	bytes, reserved, history int64
 	replacement              bool
+}
+
+// setHistoryState requires budget.mu. Any non-collecting state invalidates
+// the previously verified replacement-history readiness.
+func (b *storageBudget) setHistoryState(state string) {
+	b.state = state
+	if state != "collecting" {
+		b.pressureReady = false
+	}
+}
+
+func (b *storageBudget) setOrdinaryCollecting() {
+	b.state = "collecting"
+	b.pressureReady = false
 }
 
 type databaseBackend struct {
@@ -109,19 +124,48 @@ func (b *storageBudget) claim(bytes, ceiling int64) error {
 		return err
 	}
 	if bytes > maximumWriteBytes || bytes < 0 || b.bytes+b.reserved+bytes > ceiling {
-		b.state = "paused"
+		b.setHistoryState("paused")
 		return errStorageBudgetExhausted
 	}
 	b.reserved += bytes
 	if ceiling == historyDatabaseBytes {
-		b.state = "collecting"
+		b.setOrdinaryCollecting()
+	} else if err := b.retainPressureReadiness(bytes); err != nil {
+		return err
 	}
 	return nil
 }
 
+// retainPressureReadiness accounts for the current uncommitted operation as
+// well as database reservations. Known history-only shortages may still allow
+// the operation itself; unknown filesystem state fails closed.
+func (b *storageBudget) retainPressureReadiness(operationBytes int64) error {
+	projected := b.bytes + b.reserved + historyRecordOverhead
+	if projected <= historyDatabaseBytes {
+		b.pressureReady = false
+		return nil
+	}
+	if !b.pressureReady {
+		if b.state == "collecting" {
+			b.setHistoryState("paused")
+		}
+		return nil
+	}
+	if b.vacuumActive != nil && b.vacuumActive.Load() {
+		b.setHistoryState("paused")
+		return nil
+	}
+	if projected > pressureDatabaseBytes {
+		b.setHistoryState("paused")
+		return nil
+	}
+	_, err := b.historyReadinessFilesystem(operationBytes)
+	return err
+}
+
 func (b *storageBudget) refresh(ctx context.Context) error {
 	if b.uncertainUnknown || len(b.uncertainBackends) != 0 {
-		b.state = "unavailable"
+		b.setHistoryState("unavailable")
 		return errUncertainStorageWrite
 	}
 	if err := b.checkFilesystem(0); err != nil {
@@ -142,25 +186,47 @@ func (b *storageBudget) refreshMeasurement(ctx context.Context) error {
 	bytes, err := b.measure(check)
 	b.checked = b.now()
 	if err != nil || bytes < 0 {
-		b.state = "unavailable"
+		b.setHistoryState("unavailable")
 		return fmt.Errorf("storage measurement unavailable")
 	}
 	b.bytes = bytes
 	if b.vacuumActive == nil || !b.vacuumActive.Load() {
 		b.reserved = 0
 	}
-	b.state = "collecting"
-	if bytes >= historyDatabaseBytes {
-		b.state = "paused"
+	return b.updateMeasuredHistoryState()
+}
+
+// updateMeasuredHistoryState does not query application tables: measurements
+// also run before migrations. Only a verified pressure state can survive a
+// new pressure-range measurement.
+func (b *storageBudget) updateMeasuredHistoryState() error {
+	if b.bytes+b.reserved+historyRecordOverhead <= historyDatabaseBytes {
+		b.setOrdinaryCollecting()
+		return nil
 	}
+	if b.pressureReady && b.state == "collecting" && (b.vacuumActive == nil || !b.vacuumActive.Load()) && b.bytes+b.reserved+historyRecordOverhead <= pressureDatabaseBytes {
+		ready, err := b.historyReadinessFilesystem(0)
+		if err != nil || !ready {
+			return err
+		}
+		return nil
+	}
+	b.setHistoryState("paused")
 	return nil
 }
 
 // measureFresh keeps outstanding reservations while checking the current
 // physical database size for a replacement-history admission.
 func (b *storageBudget) measureFresh(ctx context.Context) error {
+	if err := b.measureCurrent(ctx); err != nil {
+		return err
+	}
+	return b.retainPressureReadiness(0)
+}
+
+func (b *storageBudget) measureCurrent(ctx context.Context) error {
 	if b.uncertainUnknown || len(b.uncertainBackends) != 0 {
-		b.state = "unavailable"
+		b.setHistoryState("unavailable")
 		return errUncertainStorageWrite
 	}
 	if err := b.checkFilesystem(0); err != nil {
@@ -170,7 +236,7 @@ func (b *storageBudget) measureFresh(ctx context.Context) error {
 	defer cancel()
 	bytes, err := b.measure(check)
 	if err != nil || bytes < 0 {
-		b.state = "unavailable"
+		b.setHistoryState("unavailable")
 		return fmt.Errorf("storage measurement unavailable")
 	}
 	b.bytes = bytes
@@ -182,13 +248,13 @@ func (b *storageBudget) checkFilesystem(required int64) error {
 		// The ordinary writer and an asynchronous pressure vacuum can both
 		// grow database files. Keep their estimated headroom separate.
 		if required > int64(^uint64(0)>>1)-cleanupReservation {
-			b.state = "unavailable"
+			b.setHistoryState("unavailable")
 			return errFilesystemHeadroom
 		}
 		required += cleanupReservation
 	}
 	if err := b.filesystem.check(required); err != nil {
-		b.state = "unavailable"
+		b.setHistoryState("unavailable")
 		return err
 	}
 	return nil
@@ -214,17 +280,12 @@ func (s *Store) reconcileCompletedReservations(ctx context.Context) error {
 	b := s.budget
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if err := b.measureFresh(ctx); err != nil {
+	if err := b.measureCurrent(ctx); err != nil {
 		return err
 	}
 	b.reserved = 0
 	b.checked = b.now()
-	if b.bytes >= historyDatabaseBytes {
-		b.state = "paused"
-	} else {
-		b.state = "collecting"
-	}
-	return nil
+	return b.updateMeasuredHistoryState()
 }
 
 // markUncertainWrite retains all current reservations when an interrupted
@@ -244,7 +305,7 @@ func (s *Store) markUncertainWrite(backend databaseBackend) {
 		}
 		b.uncertainBackends[backend] = struct{}{}
 	}
-	b.state = "unavailable"
+	b.setHistoryState("unavailable")
 }
 
 // resolveUncertainBackends requires writeMu and never releases reservations
@@ -328,6 +389,13 @@ func (s *Store) ConfigureHistory(days int, interval time.Duration, guard bool) e
 	}
 	if guard && s.budget == nil {
 		s.budget = &storageBudget{measure: s.databaseBytes, now: time.Now, state: "unavailable", vacuumActive: &s.pressureVacuum}
+	} else if guard {
+		s.budget.mu.Lock()
+		s.budget.pressureReady = false
+		if s.budget.bytes+s.budget.reserved+historyRecordOverhead > historyDatabaseBytes && s.budget.state == "collecting" {
+			s.budget.setHistoryState("paused")
+		}
+		s.budget.mu.Unlock()
 	}
 	return nil
 }
@@ -443,7 +511,7 @@ func (b *storageBudget) reserveUpdatePressure(ctx context.Context, operations, h
 		return false, err
 	}
 	if !admitHistory {
-		b.state = "paused"
+		b.setHistoryState("paused")
 		return false, nil
 	}
 	return b.reserveAdmittedHistory(reservation)
@@ -495,6 +563,9 @@ func (b *storageBudget) reserveAdmittedHistory(reservation updateReservation) (b
 		b.reserved -= reservation.history
 		return b.fallbackToOperations(reservation, err)
 	}
+	if err := b.retainPressureReadiness(reservation.operations + reservation.history); err != nil {
+		return false, err
+	}
 	return true, nil
 }
 
@@ -505,7 +576,7 @@ func (b *storageBudget) fallbackToOperations(reservation updateReservation, caus
 	if err := b.checkFilesystem(reservation.operations); err != nil {
 		return false, err
 	}
-	b.state = "paused"
+	b.setHistoryState("paused")
 	return false, nil
 }
 
@@ -521,9 +592,6 @@ func (b *storageBudget) reserveHistoryUpdate(history int64, replacement bool) (b
 	err := b.claim(history, ceiling)
 	if err != nil && !errors.Is(err, errStorageBudgetExhausted) {
 		return false, err
-	}
-	if err == nil && ceiling == pressureDatabaseBytes {
-		b.state = "collecting"
 	}
 	return err == nil, nil
 }
@@ -644,98 +712,4 @@ func (s *Store) guardEmptyUpdate(ctx context.Context, operations int64) ([]histo
 	}
 	err = s.refreshEmptyHistoryStatusWithPending(ctx, operations)
 	return nil, false, false, err
-}
-
-// refreshEmptyHistoryStatus checks whether collection can resume without
-// charging an empty batch against the ordinary history ceiling.
-func (s *Store) refreshEmptyHistoryStatus(ctx context.Context) error {
-	return s.refreshEmptyHistoryStatusWithPending(ctx, 0)
-}
-
-func (s *Store) refreshEmptyHistoryStatusWithPending(ctx context.Context, pendingOperations int64) error {
-	checkRecovery, err := s.budget.emptyHistoryHeadroom(ctx, pendingOperations)
-	if err != nil || !checkRecovery {
-		return err
-	}
-	ready, err := s.emptyHistoryRecoveryReady(ctx)
-	b := s.budget
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	if err != nil {
-		b.state = "unavailable"
-		return err
-	}
-	if ready {
-		filesystemReady, err := b.historyReadinessFilesystem(pendingOperations)
-		if err != nil || !filesystemReady {
-			return err
-		}
-		b.state = "collecting"
-	}
-	return nil
-}
-
-func (b *storageBudget) emptyHistoryHeadroom(ctx context.Context, pendingOperations int64) (bool, error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	projected := b.bytes + b.reserved + historyRecordOverhead
-	if projected > historyDatabaseBytes {
-		if err := b.measureFresh(ctx); err != nil {
-			return false, err
-		}
-		projected = b.bytes + b.reserved + historyRecordOverhead
-	}
-	filesystemReady, err := b.historyReadinessFilesystem(pendingOperations)
-	if err != nil || !filesystemReady {
-		return false, err
-	}
-	if projected <= historyDatabaseBytes {
-		b.state = "collecting"
-		return false, nil
-	}
-	b.state = "paused"
-	return projected <= pressureDatabaseBytes, nil
-}
-
-// historyReadinessFilesystem requires budget.mu. If history does not fit,
-// an operation that has not committed must pass its own fresh check before it
-// can continue without history.
-func (b *storageBudget) historyReadinessFilesystem(pendingOperations int64) (bool, error) {
-	err := b.checkFilesystem(pendingOperations + historyRecordOverhead)
-	if err == nil {
-		return true, nil
-	}
-	if !errors.Is(err, errFilesystemHeadroom) {
-		return false, err
-	}
-	if pendingOperations > 0 {
-		if err := b.checkFilesystem(pendingOperations); err != nil {
-			return false, err
-		}
-	}
-	b.state = "paused"
-	return false, nil
-}
-
-func (s *Store) emptyHistoryRecoveryReady(ctx context.Context) (bool, error) {
-	var enabled, pending bool
-	var credit int64
-	if err := s.DB.QueryRow(ctx, `SELECT enabled,insert_credit,vacuum_pending FROM history_pressure WHERE id=1`).Scan(&enabled, &credit, &pending); err != nil {
-		return false, err
-	}
-	if !enabled || pending || credit <= 0 {
-		return false, nil
-	}
-	return s.pressureVacuumAllowed(ctx)
-}
-
-func (s *Store) pauseHistoryCollection() {
-	if s.budget == nil {
-		return
-	}
-	s.budget.mu.Lock()
-	defer s.budget.mu.Unlock()
-	if s.budget.state != "unavailable" {
-		s.budget.state = "paused"
-	}
 }
