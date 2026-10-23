@@ -23,7 +23,7 @@ func (s *Service) MetroPopupForecasts(q MetroPopupForecastQuery) []Forecast {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	out := []Forecast{}
-	if s.lock == nil || s.status != "collecting" || s.maintenanceError != nil || !freshSourceReceipt(s.engine.LastReceipt, q.Now) {
+	if s.lock == nil || s.status != "collecting" || s.maintenanceError != nil || s.detailFence != nil || !freshSourceReceipt(s.engine.LastReceipt, q.Now) {
 		return out
 	}
 	g := s.engine.Groups[groupKey(groupIdentity{Train: q.Train, Route: q.Route, Direction: q.Direction})]

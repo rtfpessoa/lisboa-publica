@@ -16,11 +16,18 @@ func (s *Service) publish(b block, blob []byte, now time.Time) error {
 		return fmt.Errorf("archive block limit")
 	}
 	prepared := namedGeneration(b, blob)
+	source, err := s.guardPublication(b)
+	if err != nil {
+		return err
+	}
 	if _, _, changed := replacementManifest(s.index, prepared); !changed {
 		return nil
 	}
 	build := func() manifest { next, _, _ := replacementManifest(s.index, prepared); return next }
 	if err := s.admitManifest(build, allocatedBytes(len(blob)), now); err != nil {
+		return err
+	}
+	if err = s.verifyGuardedSource(source); err != nil {
 		return err
 	}
 	if !s.generationRetained(prepared) {
@@ -64,7 +71,11 @@ func replacementManifest(current manifest, b block) (manifest, string, bool) {
 }
 
 func (s *Service) commitGeneration(next manifest, b block, previous string, blob []byte) error {
-	if err := atomicFile(s.config.Directory, b.File, blob); err != nil {
+	source, err := s.guardPublication(b)
+	if err != nil {
+		return err
+	}
+	if err = s.writeGuardedGeneration(b, blob, source); err != nil {
 		return err
 	}
 	// Callers verify a complete codec roundtrip before admission.
@@ -74,10 +85,32 @@ func (s *Service) commitGeneration(next manifest, b block, previous string, blob
 		}
 		return err
 	}
+	if source != nil && previous != "" {
+		if err := s.verifyOldGeneration(*source); err != nil {
+			return err
+		}
+	}
 	if err := s.removePreviousGeneration(previous); err != nil {
 		return err
 	}
-	return syncDirectory(s.config.Directory)
+	sync := s.publicationSync
+	if sync == nil {
+		sync = syncDirectory
+	}
+	return sync(s.config.Directory)
+}
+
+func (s *Service) writeGuardedGeneration(b block, blob []byte, source *publicationSource) error {
+	if err := atomicFile(s.config.Directory, b.File, blob); err != nil {
+		return err
+	}
+	if err := s.verifyGuardedSource(source); err != nil {
+		if !s.generationReferenced(b.File) {
+			_ = os.Remove(filepath.Join(s.config.Directory, b.File))
+		}
+		return err
+	}
+	return nil
 }
 
 func (s *Service) removePreviousGeneration(previous string) error {
