@@ -16,7 +16,7 @@ const maxBlockBytes = 64 << 20
 // single block even after restoring several large days.
 const checkpointAggregateBudget = 40 << 20
 const maxDetailHourBytes = 16 << 20
-const manifestReserve = 1 << 20
+const maxManifestBytes = 8 << 20
 
 type block struct {
 	AsOf     time.Time `json:"as_of,omitempty"`
@@ -61,6 +61,10 @@ type archiveResources struct {
 	lock    *os.File
 	encoder *zstd.Encoder
 	decoder *zstd.Decoder
+	// An uncertain manifest rename must be resolved by reopening the archive.
+	manifestUncertain bool
+	manifestSync      func(string) error
+	aggregateClocks   map[string]aggregateClock
 }
 
 // metroArchiveState is the inference and publication cursor for Metro receipts.

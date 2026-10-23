@@ -25,10 +25,13 @@ func (s *Service) flush(now time.Time) error {
 }
 
 func (s *Service) prepareFlush(now time.Time) error {
+	if s.manifestUncertain {
+		return fmt.Errorf("archive manifest outcome uncertain; reopen required")
+	}
 	if err := s.reconcile(); err != nil {
 		return err
 	}
-	return s.ensureSpace(manifestReserve, now)
+	return s.ensureSpace(0, now)
 }
 
 func (s *Service) flushMetroDetail(now time.Time) error {
@@ -256,14 +259,16 @@ func (s *Service) flushCheckpoint(now time.Time) error {
 		return err
 	}
 	// FIFO during reservation may retire training; serialize the admitted state again.
-	if err = s.ensureSpace(generationReserve(blob), now); err != nil {
+	state := block{Key: "metro:state", Kind: "state", Operator: "metro", Age: now}
+	build := func() manifest { next, _, _ := replacementManifest(s.index, namedGeneration(state, blob)); return next }
+	if err = s.admitManifest(build, allocatedBytes(len(blob)), now); err != nil {
 		return err
 	}
 	blob, err = s.encodeCheckpoint()
 	if err != nil {
 		return err
 	}
-	return s.publish(block{Key: "metro:state", Kind: "state", Operator: "metro", Age: now}, blob, now)
+	return s.publish(state, blob, now)
 }
 
 func (s *Service) acknowledgeFlush(now time.Time) {

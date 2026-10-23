@@ -9,8 +9,18 @@ import (
 )
 
 func (s *Service) publish(b block, blob []byte, now time.Time) error {
-	prepared, err := s.prepareGeneration(b, blob, now)
-	if err != nil {
+	if s.manifestUncertain {
+		return fmt.Errorf("archive manifest outcome uncertain; reopen required")
+	}
+	if len(blob) > maxBlockBytes {
+		return fmt.Errorf("archive block limit")
+	}
+	prepared := namedGeneration(b, blob)
+	if _, _, changed := replacementManifest(s.index, prepared); !changed {
+		return nil
+	}
+	build := func() manifest { next, _, _ := replacementManifest(s.index, prepared); return next }
+	if err := s.admitManifest(build, allocatedBytes(len(blob)), now); err != nil {
 		return err
 	}
 	if !s.generationRetained(prepared) {
@@ -21,20 +31,6 @@ func (s *Service) publish(b block, blob []byte, now time.Time) error {
 		return nil
 	}
 	return s.commitGeneration(next, prepared, existing, blob)
-}
-
-func (s *Service) prepareGeneration(b block, blob []byte, now time.Time) (block, error) {
-	if len(blob) > maxBlockBytes {
-		return b, fmt.Errorf("archive block limit")
-	}
-	b = namedGeneration(b, blob)
-	// Account for replacement, manifest publication and allocation rounding.
-	err := s.ensureSpace(generationReserve(blob), now)
-	return b, err
-}
-
-func generationReserve(blob []byte) int64 {
-	return int64((len(blob)+4095)/4096*4096) + manifestReserve
 }
 
 func (s *Service) generationRetained(b block) bool {
@@ -73,6 +69,9 @@ func (s *Service) commitGeneration(next manifest, b block, previous string, blob
 	}
 	// Callers verify a complete codec roundtrip before admission.
 	if err := s.saveManifest(next); err != nil {
+		if !s.manifestUncertain {
+			_ = os.Remove(filepath.Join(s.config.Directory, b.File))
+		}
 		return err
 	}
 	if err := s.removePreviousGeneration(previous); err != nil {

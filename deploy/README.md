@@ -7,7 +7,9 @@ the persistent `transport_history` volume owned by UID 10001. Keep one collector
 The archive has its own server-only 10,000,000,000-byte budget, separate from the
 existing database guard. It counts allocated file/directory bytes and reserves
 space for replacements and metadata. Closed blocks expire or are removed globally
-by data age; target retention can therefore shrink. Reads close their files while
+by data age; pressure removal protects at least seven days, while explicitly shorter
+configured normal retention still applies. Unverifiable clocks and correction ledgers
+are retained, so admission can pause before the byte limit. Reads close their files while
 holding the same lock as FIFO. A file lock prevents two archive owners.
 
 Defaults: `TRANSPORT_SAMPLE_SECONDS=30`, `TRANSPORT_BIN_SECONDS=30`,
@@ -30,6 +32,18 @@ Hourly detail and checkpoint buffers, row counts, query duration and output are 
 if a buffer or budget is exhausted, historical collection pauses and official live
 data remain independent. The source collection and compression costs still need
 weekday/weekend measurements after deployment.
+
+The JSON v1 manifest is limited to 8 MiB, separately from the allocated-byte budget;
+candidate metadata and replacement files must fit concurrently. A 1 MiB archive
+configuration remains valid but can pause without enough temporary headroom. If a
+manifest rename succeeds but its directory sync fails, writes are fenced until the
+owner is restarted; both generations are retained. Older binaries reject manifests
+over 1 MiB: roll forward to a compatible binary, not back against that archive.
+For disaster recovery, stop the sole owner, copy the complete volume and verify
+file hashes and manifest generations before resuming. Verify restoration in a
+separate directory; restoring an older backup loses later commits and is not a
+routine rollback. Previously unacknowledged or evicted evidence cannot be recovered
+by this change.
 
 `GET /api/v1/metro/patterns?stop_id=metro:...` returns collection health,
 hourly proxy counts and both forecast sources. Optional `episode` includes remaining
@@ -235,7 +249,7 @@ Keep `info` outside diagnosis.
 collection; existing live JSON intervals and other providers are unchanged. Keep one subscribed collector and
 shared attempt budget; multiple independently budgeted instances or external consumers can exceed an account quota.
 The inferred-event lane uses the existing archive volume and global allocated-byte budget, with a seven-day target
-subject to TTL/FIFO. Do not lower `TRANSPORT_SAMPLE_SECONDS` to enable per-update event processing.
+and pressure floor; collection gaps remain possible. Do not lower `TRANSPORT_SAMPLE_SECONDS` to enable per-update event processing.
 
 [Metro streaming](../docs/metro-live-popups.md) requires unbuffered event-stream flushes through Go/Caddy. Stream
 writes use separate bounded deadlines; ordinary API timeout/rate/auth policy remains in effect. Initial stream limits

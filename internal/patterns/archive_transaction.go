@@ -34,18 +34,42 @@ func (s *Service) prepareTransaction(prepared []preparedBlock, sources map[strin
 	if err != nil {
 		return nil, err
 	}
-	if err = s.ensureSpace(reserve, now); err != nil {
+	build := func() manifest {
+		next := manifest{Version: 1, Blocks: append([]block{}, s.index.Blocks...)}
+		for _, p := range prepared {
+			next = mergeTransactionManifest(next, p.block)
+		}
+		return next
+	}
+	if err = s.admitManifest(build, reserve, now); err != nil {
 		return nil, err
 	}
 	transaction := &archiveTransaction{service: s, next: manifest{Version: 1, Blocks: append([]block{}, s.index.Blocks...)}, admitted: map[string]bool{}}
 	for _, b := range s.index.Blocks {
 		transaction.admitted[b.File] = true
 	}
-	return transaction, transaction.checkSources(sources)
+	if err = transaction.checkSources(sources); err != nil {
+		return nil, err
+	}
+	for _, p := range prepared {
+		transaction.mergeBlock(p.block)
+	}
+	return transaction, nil
+}
+
+func mergeTransactionManifest(next manifest, value block) manifest {
+	for i := range next.Blocks {
+		if next.Blocks[i].Key == value.Key {
+			next.Blocks[i] = value
+			return next
+		}
+	}
+	next.Blocks = append(next.Blocks, value)
+	return next
 }
 
 func prepareTransactionGenerations(prepared []preparedBlock) (int64, error) {
-	reserve, working := int64(manifestReserve), 0
+	reserve, working := int64(0), 0
 	for i := range prepared {
 		p := &prepared[i]
 		working += len(p.blob)
@@ -56,7 +80,7 @@ func prepareTransactionGenerations(prepared []preparedBlock) (int64, error) {
 			return 0, fmt.Errorf("reprocessing block limit")
 		}
 		p.block = namedGeneration(p.block, p.blob)
-		reserve += int64((len(p.blob) + 4095) / 4096 * 4096)
+		reserve += allocatedBytes(len(p.blob))
 	}
 	return reserve, nil
 }
@@ -81,7 +105,6 @@ func (t *archiveTransaction) write(ctx context.Context, prepared []preparedBlock
 			}
 			t.created = append(t.created, p.block.File)
 		}
-		t.mergeBlock(p.block)
 	}
 	return nil
 }
@@ -102,6 +125,10 @@ func (t *archiveTransaction) mergeBlock(value block) {
 
 func (t *archiveTransaction) commit() error {
 	if err := t.service.saveManifest(t.next); err != nil {
+		if t.service.manifestUncertain {
+			// Both generations must survive until a reopen resolves the manifest.
+			t.committed = true
+		}
 		return err
 	}
 	t.committed = true

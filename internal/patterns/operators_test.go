@@ -54,6 +54,7 @@ func TestProviderStagesSamplingRecoveryAndSharedArchive(t *testing.T) {
 
 func TestGlobalFIFOIncludesOtherOperatorDetail(t *testing.T) {
 	c := DefaultConfig(t.TempDir())
+	c.DetailDays = 30
 	s, err := Open(c)
 	if err != nil {
 		t.Fatal(err)
@@ -63,7 +64,7 @@ func TestGlobalFIFOIncludesOtherOperatorDetail(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Now().UTC().Truncate(24 * time.Hour).Add(12 * time.Hour)
-	if err = s.RecordProvider(ProviderReceipt{Operator: "cm", ReceivedAt: now.Add(-2 * time.Hour), Rows: []Observation{}}); err != nil {
+	if err = s.RecordProvider(ProviderReceipt{Operator: "cm", ReceivedAt: now.AddDate(0, 0, -8), Rows: []Observation{}}); err != nil {
 		t.Fatal(err)
 	}
 	at := now.Add(-time.Hour)
