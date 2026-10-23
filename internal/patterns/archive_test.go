@@ -115,6 +115,9 @@ func TestGlobalFIFOAccountsAllocatedSpaceAndOrphans(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
+	// Private archive helpers require the same owner lock as production callers.
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	now := time.Now().UTC()
 	old := block{Kind: "detail", Operator: "metro", Age: now.AddDate(0, 0, -8).Truncate(time.Hour), Closed: true}
 	newer := block{Kind: "detail", Operator: "metro", Age: now.Add(-time.Hour).Truncate(time.Hour), Closed: true}
@@ -167,6 +170,9 @@ func TestPublicationFailureKeepsPreviousManifest(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
+	// Private archive helpers require the same owner lock as production callers.
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	now := time.Now().UTC()
 	b := block{Key: "fixture", Kind: "detail", Operator: "metro", Age: now}
 	if err = s.publish(b, []byte("old"), now); err != nil {

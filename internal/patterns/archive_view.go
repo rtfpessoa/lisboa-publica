@@ -38,6 +38,9 @@ func (s *Service) metroViewMetadata() View {
 	if s.engine.LastReceipt.IsZero() && s.status == "collecting" {
 		v.Status, v.Message = "waiting", "A aguardar a primeira amostra da API direta do Metro."
 	}
+	if s.maintenanceError != nil {
+		v.Status, v.Message = "paused", "Arquivo pausado; a manutenção do armazenamento não conseguiu avançar."
+	}
 	if s.engine.Limited {
 		v.Message += " A janela efetiva de treino pode ser menor por limite de memória; consultar o suporte de cada componente."
 	}

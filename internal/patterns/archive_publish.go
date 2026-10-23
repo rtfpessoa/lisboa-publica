@@ -69,7 +69,7 @@ func (s *Service) commitGeneration(next manifest, b block, previous string, blob
 	}
 	// Callers verify a complete codec roundtrip before admission.
 	if err := s.saveManifest(next); err != nil {
-		if !s.manifestUncertain {
+		if !s.manifestUncertain && !s.generationReferenced(b.File) {
 			_ = os.Remove(filepath.Join(s.config.Directory, b.File))
 		}
 		return err
@@ -81,9 +81,10 @@ func (s *Service) commitGeneration(next manifest, b block, previous string, blob
 }
 
 func (s *Service) removePreviousGeneration(previous string) error {
-	if previous == "" {
+	if previous == "" || s.generationReferenced(previous) {
 		return nil
 	}
+	s.forgetRetentionFile(previous)
 	err := os.Remove(filepath.Join(s.config.Directory, previous))
 	if errors.Is(err, os.ErrNotExist) {
 		return nil

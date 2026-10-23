@@ -97,13 +97,33 @@ type maintenanceOptions struct {
 }
 
 func maintenanceOptionsFromFlags() (maintenanceOptions, error) {
-	operator := flag.String("operator", "metro", "operator whose retained inputs are revised")
-	directory := flag.String("archive", "", "server archive directory")
-	corrections := flag.String("corrections", "", "private source correction JSON file")
-	config := maintenanceConfigFlags()
+	return parseMaintenanceOptions(flag.CommandLine, os.Args[1:])
+}
+
+func parseMaintenanceOptions(flags *flag.FlagSet, args []string) (maintenanceOptions, error) {
+	operator := flags.String("operator", "metro", "operator whose retained inputs are revised")
+	directory := flags.String("archive", "", "server archive directory")
+	corrections := flags.String("corrections", "", "private source correction JSON file")
+	config := patterns.DefaultConfig("pending")
+	maintenanceConfigFlags(flags, &config)
+	if err := flags.Parse(args); err != nil {
+		return maintenanceOptions{}, err
+	}
 	config.Directory = *directory
 	if *directory == "" || *corrections == "" {
 		return maintenanceOptions{}, fmt.Errorf("archive and corrections are required")
+	}
+	if config.MinFreeBytes < 0 {
+		return maintenanceOptions{}, fmt.Errorf("invalid -min-free-bytes")
+	}
+	if config.MinFreeInodes < 0 {
+		return maintenanceOptions{}, fmt.Errorf("invalid -min-free-inodes")
+	}
+	if err := config.Validate(); err != nil {
+		return maintenanceOptions{}, err
+	}
+	if config.MaintenanceInterval < 10*time.Second || config.MaintenanceInterval > time.Hour {
+		return maintenanceOptions{}, fmt.Errorf("invalid maintenance interval")
 	}
 	return maintenanceOptions{*operator, *corrections, config}, nil
 }
@@ -119,17 +139,17 @@ func validateCorrectionFile(f *os.File) error {
 	return nil
 }
 
-func maintenanceConfigFlags() patterns.Config {
-	config := patterns.DefaultConfig("pending")
-	flag.DurationVar(&config.SampleInterval, "sample", config.SampleInterval, "configured detail cadence")
-	flag.IntVar(&config.BinSeconds, "bin", config.BinSeconds, "configured histogram width in seconds")
-	flag.Int64Var(&config.LimitBytes, "limit", config.LimitBytes, "allocated archive byte budget")
-	flag.IntVar(&config.DetailDays, "detail-days", config.DetailDays, "configured detail retention")
-	flag.IntVar(&config.AggregateMonths, "aggregate-months", config.AggregateMonths, "configured aggregate retention")
-	flag.IntVar(&config.TrainingDays, "training-days", config.TrainingDays, "configured training window")
-	flag.IntVar(&config.CalibrationDays, "calibration-days", config.CalibrationDays, "configured calibration window")
-	flag.DurationVar(&config.CheckpointInterval, "checkpoint", config.CheckpointInterval, "configured checkpoint cadence")
-	flag.DurationVar(&config.EvaluationInterval, "evaluation", config.EvaluationInterval, "configured evaluation cadence")
-	flag.Parse()
-	return config
+func maintenanceConfigFlags(flags *flag.FlagSet, config *patterns.Config) {
+	flags.DurationVar(&config.SampleInterval, "sample", config.SampleInterval, "configured detail cadence")
+	flags.IntVar(&config.BinSeconds, "bin", config.BinSeconds, "configured histogram width in seconds")
+	flags.Int64Var(&config.LimitBytes, "limit", config.LimitBytes, "allocated archive byte budget")
+	flags.Int64Var(&config.MinFreeBytes, "min-free-bytes", 0, "filesystem free-byte reserve (0 disables the reserve)")
+	flags.Int64Var(&config.MinFreeInodes, "min-free-inodes", 0, "filesystem free-inode reserve (0 disables the reserve)")
+	flags.DurationVar(&config.MaintenanceInterval, "maintenance-interval", time.Minute, "background maintenance cadence")
+	flags.IntVar(&config.DetailDays, "detail-days", config.DetailDays, "configured detail retention")
+	flags.IntVar(&config.AggregateMonths, "aggregate-months", config.AggregateMonths, "configured aggregate retention")
+	flags.IntVar(&config.TrainingDays, "training-days", config.TrainingDays, "configured training window")
+	flags.IntVar(&config.CalibrationDays, "calibration-days", config.CalibrationDays, "configured calibration window")
+	flags.DurationVar(&config.CheckpointInterval, "checkpoint", config.CheckpointInterval, "configured checkpoint cadence")
+	flags.DurationVar(&config.EvaluationInterval, "evaluation", config.EvaluationInterval, "configured evaluation cadence")
 }

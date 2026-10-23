@@ -25,6 +25,10 @@ func (s *Service) flush(now time.Time) error {
 }
 
 func (s *Service) prepareFlush(now time.Time) error {
+	s.expireUnownedReservation()
+	if s.pressurePending {
+		return s.maintenanceError
+	}
 	if s.manifestUncertain {
 		return fmt.Errorf("archive manifest outcome uncertain; reopen required")
 	}

@@ -12,8 +12,13 @@ var lisbon, _ = time.LoadLocation("Europe/Lisbon")
 
 // Config controls independent sampling, inference resolution and storage budgets.
 type Config struct {
-	Directory                                                  string
-	LimitBytes                                                 int64
+	Directory  string
+	LimitBytes int64
+	// MinFreeBytes and MinFreeInodes reserve space on the archive filesystem.
+	// Zero leaves that filesystem constraint disabled.
+	MinFreeBytes, MinFreeInodes int64
+	// MaintenanceInterval is the idle cleanup cadence. Zero uses one minute.
+	MaintenanceInterval                                        time.Duration
 	SampleInterval, CheckpointInterval, EvaluationInterval     time.Duration
 	DetailDays, AggregateMonths, TrainingDays, CalibrationDays int
 	BinSeconds                                                 int
@@ -21,12 +26,12 @@ type Config struct {
 
 // DefaultConfig returns the initial server-only sampling and retention policy.
 func DefaultConfig(directory string) Config {
-	return Config{directory, 10_000_000_000, 30 * time.Second, time.Minute, time.Minute, 7, 12, 30, 30, 30}
+	return Config{Directory: directory, LimitBytes: 10_000_000_000, SampleInterval: 30 * time.Second, CheckpointInterval: time.Minute, EvaluationInterval: time.Minute, DetailDays: 7, AggregateMonths: 12, TrainingDays: 30, CalibrationDays: 30, BinSeconds: 30}
 }
 
 // Validate checks the independent archive configuration bounds.
 func (c Config) Validate() error {
-	valid := c.Directory != "" && c.LimitBytes >= 1<<20
+	valid := c.Directory != "" && c.LimitBytes >= 1<<20 && c.MinFreeBytes >= 0 && c.MinFreeInodes >= 0 && c.MaintenanceInterval >= 0
 	checks := []bool{
 		validSampleInterval(c.SampleInterval),
 		validSampleInterval(c.CheckpointInterval),

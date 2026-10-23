@@ -109,6 +109,9 @@ func (s *Service) operatorSummary(id string) OperatorHistory {
 	}
 	if id == "metro" && v.AsOf != nil {
 		v.Status = s.status
+		if s.maintenanceError != nil {
+			v.Status = "paused"
+		}
 	}
 	return v
 }

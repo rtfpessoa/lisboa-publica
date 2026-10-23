@@ -32,6 +32,7 @@ func (s *Service) saveManifest(next manifest) error {
 	renamed, err := atomicFileWithSync(s.config.Directory, "manifest.json", blob, sync)
 	if renamed {
 		s.index = next
+		s.trimRetentionClocks()
 		if err != nil {
 			s.manifestUncertain = true
 		}

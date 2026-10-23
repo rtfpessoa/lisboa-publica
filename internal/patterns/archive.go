@@ -64,7 +64,24 @@ type archiveResources struct {
 	// An uncertain manifest rename must be resolved by reopening the archive.
 	manifestUncertain bool
 	manifestSync      func(string) error
-	aggregateClocks   map[string]aggregateClock
+	reconcileSync     func(string) error
+	reconciledHead    bool
+	aggregateClocks   map[retentionClockKey]aggregateClock
+	spaceProbe        func(string) (archiveSpace, error)
+	maintenanceStop   chan struct{}
+	maintenanceDone   chan struct{}
+	maintenanceWake   chan struct{}
+	maintenanceOnce   sync.Once
+	maintenanceError  error
+	pressurePending   bool
+	pressureBytes     int64
+	pressureFiles     uint64
+	pressurePinned    bool
+	pressureBuffered  bool
+	pressureDeadline  time.Time
+	pressurePasses    int
+	pressureManifest  bool
+	maintenanceWork   *cleanupWork
 }
 
 // metroArchiveState is the inference and publication cursor for Metro receipts.
@@ -81,6 +98,10 @@ type metroArchiveState struct {
 
 // Close flushes retained evidence and releases exclusive archive ownership.
 func (s *Service) Close() error {
+	if s.maintenanceStop != nil {
+		s.maintenanceOnce.Do(func() { close(s.maintenanceStop) })
+		<-s.maintenanceDone
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.lock == nil {
