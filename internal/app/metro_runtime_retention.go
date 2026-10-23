@@ -15,10 +15,15 @@ func (r *metroRuntime) prune(now time.Time) {
 	r.expireLifecycleGroups(now)
 	pruneMetroContexts(r.active, r.tracks, now)
 	pruneMetroContexts(r.candidates, r.tracks, now)
+	retired := r.retireEventAdmissionLoss(now)
 	for id, t := range r.tracks {
 		if now.Sub(t.Train.SourceUpdatedAt) > 7*24*time.Hour && t.LifecycleGroup == "" {
+			retired = retired || t.CheckpointUnavailable || t.ProofOverflow
 			r.forgetTrack(id)
 		}
+	}
+	if retired && r.historyStatus == "paused" {
+		r.historyCollecting(now)
 	}
 }
 func pruneMetroContexts(contexts map[string]string, tracks map[string]*metroTrack, now time.Time) {
@@ -110,5 +115,8 @@ func (r *metroRuntime) evictRetired() {
 	}
 	if oldest != nil {
 		delete(r.tracks, oldest.Train.JourneyId)
+		if (oldest.CheckpointUnavailable || oldest.ProofOverflow) && r.historyStatus == "paused" {
+			r.historyCollecting(time.Now().UTC())
+		}
 	}
 }

@@ -15,25 +15,55 @@ func (r *metroRuntime) projectOwn(data *MetroData, history *patterns.Service, no
 }
 
 func (r *metroRuntime) projectOwnWithClock(data *MetroData, history *patterns.Service, now time.Time, clock func() time.Time) {
+	r.mu.Lock()
+	_ = r.bindMetroHistory(history)
+	cut := r.fenceMetroForecasts(now)
+	useHistory := r.metroForecastHistoryReady(history, cut)
 	tracks := r.metroOwnForecastWork()
-	for n := range tracks {
-		projectMetroOwnTrack(&tracks[n], history, now)
-		projectMetroScheduled(&tracks[n], now)
-		r.countOwnForecasts(tracks[n])
-	}
+	r.mu.Unlock()
+	r.prepareMetroForecastWork(tracks, history, now, useHistory)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	// History lookups and lock acquisition may outlive the input evidence.
 	now = clock().UTC()
+	r.fenceMetroForecasts(now)
+	if useHistory && !r.claimMetroSnapshot(cut) {
+		discardMetroForecastHistory(tracks, now)
+	}
+	r.publishMetroForecastWork(data, tracks, now)
+}
+
+func (r *metroRuntime) metroForecastHistoryReady(history *patterns.Service, cut patterns.MetroCutSnapshot) bool {
+	return history != nil && !r.historyCutMismatch && cut.Valid && !cut.Pending
+}
+
+func (r *metroRuntime) publishMetroForecastWork(data *MetroData, tracks []metroTrack, now time.Time) {
 	for _, copy := range tracks {
 		r.applyOwnForecastWork(copy, now)
 	}
 	r.forecastCacheUntil = time.Time{}
 	data.Trains = r.current(now)
 }
+func (r *metroRuntime) prepareMetroForecastWork(tracks []metroTrack, history *patterns.Service, now time.Time, useHistory bool) {
+	for n := range tracks {
+		if useHistory {
+			projectMetroOwnTrack(&tracks[n], history, now)
+		} else {
+			clearMetroOwnPredictions(&tracks[n])
+		}
+		projectMetroScheduled(&tracks[n], now)
+		r.countOwnForecasts(tracks[n])
+	}
+}
+
+func discardMetroForecastHistory(tracks []metroTrack, now time.Time) {
+	for n := range tracks {
+		clearMetroOwnPredictions(&tracks[n])
+		projectMetroScheduled(&tracks[n], now)
+	}
+}
+
 func (r *metroRuntime) metroOwnForecastWork() []metroTrack {
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	tracks := []metroTrack{}
 	for _, id := range r.active {
 		if t := r.tracks[id]; t != nil {

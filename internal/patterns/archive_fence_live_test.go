@@ -67,9 +67,13 @@ func TestProviderFlushCorruptionImmediatelyWithdrawsMetroSupport(t *testing.T) {
 			if err = os.WriteFile(filepath.Join(config.Directory, source.block.File), []byte("corrupt"), 0600); err != nil {
 				t.Fatal(err)
 			}
+			beforeCut := s.MetroCut().Snapshot()
 			r := ProviderReceipt{Operator: "cm", ReceivedAt: now.Add(time.Second), Rows: []Observation{}}
 			if err = s.RecordProvider(r); err == nil {
 				t.Fatal("provider flush accepted corrupt Metro generation")
+			}
+			if afterCut := s.MetroCut().Snapshot(); !afterCut.Pending || afterCut.Revision <= beforeCut.Revision {
+				t.Fatal("provider-triggered shared failure did not fence the shared cut")
 			}
 			if len(s.MetroPopupForecasts(query)) != 0 {
 				t.Fatal("popup retained support after the fence")
@@ -85,5 +89,64 @@ func TestProviderFlushCorruptionImmediatelyWithdrawsMetroSupport(t *testing.T) {
 				t.Fatal("fence did not immediately reset continuity")
 			}
 		})
+	}
+}
+
+func TestProviderDetailStorageFailureImmediatelyFencesMetro(t *testing.T) {
+	config := DefaultConfig(t.TempDir())
+	s, err := Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	// Keep the background worker stopped so only the publication path can
+	// report the storage failure before these visibility assertions.
+	s.maintenanceOnce.Do(func() { close(s.maintenanceStop) })
+	<-s.maintenanceDone
+	if err = s.ConfigureOperators([]string{"metro", "cm"}); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC().Truncate(time.Second)
+	if err = s.Record(durabilityReceipt(now, "metro"), testTopology()); err != nil {
+		t.Fatal(err)
+	}
+	query := seedSupportedMetroForecast(t, s, now)
+	if len(s.MetroPopupForecasts(query)) != 1 {
+		t.Fatal("fixture did not expose Metro support")
+	}
+	before := s.MetroCut().Snapshot()
+	if err = s.RecordProvider(ProviderReceipt{Operator: "cm"}); err == nil || s.MetroCut().Snapshot() != before {
+		t.Fatal("invalid provider input altered the shared cut")
+	}
+	s.mu.Lock()
+	s.config.MinFreeBytes = 1
+	s.spaceProbe = func(string) (archiveSpace, error) {
+		return archiveSpace{}, fmt.Errorf("injected filesystem probe failure")
+	}
+	s.mu.Unlock()
+	r := ProviderReceipt{Operator: "cm", ReceivedAt: now.Add(time.Second), Rows: []Observation{}}
+	if err = s.RecordProvider(r); err == nil {
+		t.Fatal("provider detail publication accepted unknown filesystem reserve")
+	}
+	after := s.MetroCut().Snapshot()
+	if !after.Pending || after.Revision != before.Revision+1 {
+		t.Fatalf("publication failure did not synchronously mark one cut: before=%+v after=%+v", before, after)
+	}
+	if len(s.MetroPopupForecasts(query)) != 0 {
+		t.Fatal("popup retained support after provider storage failure")
+	}
+	view, err := s.View(context.Background(), "A")
+	if err != nil || view.Status != "paused" || len(view.Forecasts) != 0 {
+		t.Fatalf("view retained support after storage failure: status=%s forecasts=%d err=%v", view.Status, len(view.Forecasts), err)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.maintenanceError == nil || !s.pendingMetroDeliveryGap || len(s.engine.Groups) != 0 || len(s.engine.Live) != 0 {
+		t.Fatal("provider storage failure did not pause and reset shared continuity")
+	}
+	for _, b := range s.index.Blocks {
+		if b.Operator == "cm" && b.Kind == "observations" {
+			t.Fatal("fixture reached a provider detail commit or shared flush")
+		}
 	}
 }

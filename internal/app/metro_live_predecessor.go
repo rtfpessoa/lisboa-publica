@@ -93,6 +93,9 @@ func (b *metroFrameBuilder) projectHotPredecessor(current, prior *metroTrack, re
 	if metroCompatiblePredecessor(current, prior, b.now) {
 		train := predecessorTrain(prior, b.now)
 		result.Train, result.Status, result.Reason = &train, "available", "Episódio anterior estimado; a ligação não identifica a mesma unidade física"
+		if prior.HistoricalOnly {
+			result.Reason = restoredMetroCorrectionReason
+		}
 	}
 }
 
@@ -126,7 +129,7 @@ func (b *metroFrameBuilder) projectCachedPredecessor(current *metroTrack, entry 
 	prior := &metroTrack{Train: entry.payload.Train, Profile: entry.payload.Profile, ProviderDirection: entry.payload.ProviderDirection, Codes: entry.payload.Codes, Revision: entry.record.Revision, CommittedRevision: entry.record.Revision, Generation: entry.record.Generation, CommittedAt: entry.record.CommittedAt, HistoricalOnly: true}
 	if metroCompatiblePredecessor(current, prior, b.now) {
 		train := predecessorTrain(prior, b.now)
-		result.Train, result.Status, result.Reason = &train, "available", "Histórico guardado do episódio anterior estimado; ligação física não comprovada"
+		result.Train, result.Status, result.Reason = &train, "available", restoredMetroCorrectionReason
 		return true
 	}
 	entry.payload = nil
@@ -315,6 +318,9 @@ func predecessorTrain(t *metroTrack, now time.Time) api.MetroTrain {
 				c.Departure.Inferred.Persistence = "committed"
 			}
 		}
+	}
+	if t.HistoricalOnly {
+		maskRestoredMetroDepartures(&train)
 	}
 	return train
 }

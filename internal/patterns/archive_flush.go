@@ -17,7 +17,7 @@ func (s *Service) flush(now time.Time) error {
 	steps := []func(time.Time) error{s.prepareFlush, s.flushMetroDetail, s.flushMetroAggregates, s.flushProviders, s.flushCheckpoint}
 	for _, step := range steps {
 		if err := step(now); err != nil {
-			return err
+			return s.markPaused(err)
 		}
 	}
 	s.acknowledgeFlush(now)

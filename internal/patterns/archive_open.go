@@ -41,6 +41,9 @@ func acquireArchiveLock(directory string) (*os.File, error) {
 }
 
 func openOwnedArchive(s *Service) (_ *Service, err error) {
+	if s.metroCut == nil {
+		s.metroCut = newMetroCut()
+	}
 	defer func() {
 		if err != nil {
 			s.releaseArchiveResources()
@@ -60,7 +63,7 @@ func openOwnedArchive(s *Service) (_ *Service, err error) {
 		pending, err = s.expireSome(now, work)
 	}
 	if err != nil {
-		s.maintenanceError = err
+		s.maintenanceError = s.markPaused(err)
 		err = nil
 	}
 	s.startMaintenance(pending)

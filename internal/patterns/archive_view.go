@@ -6,17 +6,22 @@ import (
 )
 
 // View reads verified admitted generations with a bounded serialized file phase.
-func (s *Service) View(ctx context.Context, stop string, episode ...string) (View, error) {
+func (s *Service) View(ctx context.Context, stop string, episode ...string) (v View, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	cut := s.metroCut.Snapshot()
+	defer func() {
+		if !cut.Valid || cut.Pending || !s.metroCut.Claim(cut) {
+			fenceMetroView(&v)
+		}
+	}()
 	now := time.Now().UTC()
-	v := s.metroViewMetadata()
+	v = s.metroViewMetadata()
 	stale := !freshSourceReceipt(s.engine.LastReceipt, now)
 	if stale && v.Status == "collecting" {
 		v.Status = "stale"
 		v.Message += " A fonte já não é recente."
 	}
-	var err error
 	v.StorageBytes, err = s.allocated()
 	if err != nil {
 		return v, err
@@ -31,6 +36,22 @@ func (s *Service) View(ctx context.Context, stop string, episode ...string) (Vie
 	}
 	s.appendMetroForecasts(&v, stop, selected, now, stale)
 	return s.fencedPatternView(ctx, v, stop)
+}
+
+func fenceMetroView(v *View) {
+	v.Status, v.Message = "paused", "Histórico do Metro temporariamente indisponível; existem lacunas."
+	v.Pending = 0
+	for i := range v.Forecasts {
+		f := &v.Forecasts[i]
+		withdrawOwnForecast(f, "history_interrupted")
+		f.OwnValidUntil = nil
+		f.Components = []Component{}
+		f.CalibrationSamples = 0
+		f.ReferenceLower, f.ReferenceUpper = nil, nil
+		f.ErrorLower, f.ErrorUpper = nil, nil
+		f.Selected, f.Evaluated = false, false
+		f.Result, f.Unavailable = "lost_support", "history_interrupted"
+	}
 }
 
 func (s *Service) fencedPatternView(ctx context.Context, v View, stop string) (View, error) {

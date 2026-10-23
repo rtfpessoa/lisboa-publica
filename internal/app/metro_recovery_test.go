@@ -176,7 +176,7 @@ func TestMetroCheckpointCommitFailureKeepsForecasts(t *testing.T) {
 	s.Cache.metroRuntime.flushCheckpoints(context.Background(), s.Patterns, now)
 	s.Cache.updateMetro(data, s.Cache.operator("metro"))
 	f, _, err := s.metroFrame(context.Background(), metroInterest{Stop: "metro:gtfs-rm"})
-	if err != nil || len(f.Trains) != 1 || f.Trains[0].Persistence.State != "pending" || f.Trains[0].Calls[0].Arrival.Prediction == nil || f.HistoryStatus != "paused" {
+	if err != nil || len(f.Trains) != 1 || f.Trains[0].Persistence.State != "unavailable" || f.Trains[0].Calls[0].Arrival.Prediction == nil || f.HistoryStatus != "paused" {
 		t.Fatal("failed admission hid source forecasts or selected identity", f, err)
 	}
 }
@@ -244,8 +244,16 @@ func TestMetroPendingCheckpointAccountingIncludesEncodedMetadata(t *testing.T) {
 		t.Fatal("bounded queue produced an inadmissible archive batch")
 	}
 	r.flushCheckpoints(context.Background(), s.Patterns, now)
+	if len(r.dirty) != 0 || r.dirtyBytes != 0 || r.historyStatus != "paused" {
+		t.Fatal("batch commit concealed unavailable tracks", len(r.dirty), r.dirtyBytes, r.historyStatus)
+	}
+	r.queueCurrentCheckpoints()
+	if len(r.dirty) == 0 {
+		t.Fatal("unavailable tracks were not retried after capacity was released")
+	}
+	r.flushCheckpoints(context.Background(), s.Patterns, now.Add(time.Second))
 	if len(r.dirty) != 0 || r.dirtyBytes != 0 || r.historyStatus != "collecting" {
-		t.Fatal("bounded batch could not commit", len(r.dirty), r.dirtyBytes, r.historyStatus)
+		t.Fatal("remaining checkpoint batch could not commit", len(r.dirty), r.dirtyBytes, r.historyStatus)
 	}
 	// Replacing pending progress neither double-counts nor leaks its reservation.
 	track := r.tracks["synthetic-capacity:0"]

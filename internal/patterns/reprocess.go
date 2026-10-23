@@ -41,12 +41,12 @@ func (s *Service) Reprocess(ctx context.Context, changes []Correction, now time.
 	return ReprocessResult{Receipts: len(job.frames), Corrections: len(changes), Days: len(job.days), PartialCoverage: true}, nil
 }
 
-func (s *Service) beginMetroRevision(ctx context.Context, count int, now time.Time) error {
+func (s *Service) beginMetroRevision(ctx context.Context, count int, _ time.Time) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	if s.lock == nil || count == 0 || count > 1000 {
 		return fmt.Errorf("invalid reprocessing request")
 	}
-	return s.flush(now)
+	return fmt.Errorf("Metro reprocessing unavailable: retained input order and restart boundaries cannot be verified")
 }

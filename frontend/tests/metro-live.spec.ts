@@ -290,6 +290,21 @@ test('Metro behind visits never count down and keep their last official estimate
  await expect(panel.locator('[data-call-id="next-visit"]')).toContainText('min');
 });
 
+test('Metro retained own forecast expires without another stream frame',async({page})=>{
+ await page.clock.install();await fixture(page);
+ await page.evaluate(()=>{
+  const w=window as any,t=w.metroFrame.trains[0],c=t.calls[0],now=Date.now();
+  t.next_index=1;t.current_index=null;t.calls=[{...c,id:'expired-own',phase:'previous',arrival:{kind:'unavailable',at:null,reason:''},own_prediction:{at:new Date(now+60000).toISOString(),valid_until:new Date(now+3000).toISOString(),source_updated_at:new Date(now).toISOString(),source_url:'https://official.example',model_version:'synthetic'}}];
+  w.metroFrame.revision='expiry';w.emitMetro('frame');
+ });
+ const panel=page.locator('.detail-panel');await panel.getByRole('button',{name:'Abrir comboio',exact:true}).click();
+ const row=panel.locator('[data-call-id="expired-own"]');await expect(row).toContainText('Nossa previsão histórica (experimental)');
+ await page.clock.fastForward(5000);
+ await expect(row).toContainText('Última previsão nossa expirada (experimental)');await expect(row).not.toContainText('min');
+ await page.evaluate(()=>{const w=window as any;w.holdMetro=true;w.failMetro()});
+ await expect(row).not.toContainText('Última previsão nossa expirada');
+});
+
 test('Metro forecast groups render in published stop order',async({page})=>{
  await fixture(page);
  await page.getByRole('button',{name:'Abrir comboio',exact:true}).click();
@@ -526,4 +541,14 @@ test('a superseded fallback rejection cannot invalidate a newer accepted frame',
  await expect(panel.locator('[data-metro-revision]')).toHaveAttribute('data-metro-revision','new-fallback');
  await page.evaluate(()=>{const w=window as any;w.pendingFallbacks[0].reject(new DOMException('Old request aborted','AbortError'))});
  await page.waitForTimeout(500);await expect(panel).toContainText('Viagem inferida com suporte atual');await expect(panel).not.toContainText('Atualização Metro indisponível');
+});
+
+test('Metro reports partial history without implying all collection stopped',async({page})=>{
+ await fixture(page);
+ await page.evaluate(()=>{const w=window as any;w.metroFrame.history_status='paused';w.metroFrame.revision='partial-history';w.emitMetro('frame')});
+ const panel=page.locator('.detail-panel');
+ await expect(panel).toContainText('Histórico parcial; podem existir lacunas na gravação.');
+ await expect(panel).toContainText('Comboio 7');
+ await page.evaluate(()=>{const w=window as any;w.metroFrame.history_status='collecting';w.metroFrame.revision='history-recovered';w.emitMetro('frame')});
+ await expect(panel).not.toContainText('Histórico parcial; podem existir lacunas na gravação.');
 });

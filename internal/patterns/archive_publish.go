@@ -8,7 +8,12 @@ import (
 	"time"
 )
 
-func (s *Service) publish(b block, blob []byte, now time.Time) error {
+func (s *Service) publish(b block, blob []byte, now time.Time) (err error) {
+	defer func() {
+		if err != nil {
+			err = s.markPaused(err)
+		}
+	}()
 	if s.manifestUncertain {
 		return fmt.Errorf("archive manifest outcome uncertain; reopen required")
 	}

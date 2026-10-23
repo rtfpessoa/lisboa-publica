@@ -18,8 +18,7 @@ func (s *Service) fenceDetail(err error, b *block) error {
 		s.protectedGenerations[retentionKey(*b)] = true
 	}
 	if s.detailFence == nil {
-		s.detailFence = fmt.Errorf("transport archive detail unavailable: %w", err)
-		s.markPaused(s.detailFence)
+		s.detailFence = s.markPaused(fmt.Errorf("transport archive detail unavailable: %w", err))
 	}
 	return s.detailFence
 }

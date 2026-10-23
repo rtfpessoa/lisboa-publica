@@ -33,6 +33,9 @@ func maintainArchive(options maintenanceOptions) error {
 	if err != nil {
 		return err
 	}
+	if options.operator == "metro" {
+		return rejectMetroCorrections(payload)
+	}
 	service, err := patterns.Open(options.config)
 	if err != nil {
 		return err
@@ -45,6 +48,19 @@ func maintainArchive(options maintenanceOptions) error {
 		return err
 	}
 	return json.NewEncoder(os.Stdout).Encode(result)
+}
+
+// Metro replay cannot establish legacy restart boundaries. Reject before Open
+// so a failed correction does not flush or otherwise change the archive.
+func rejectMetroCorrections(payload json.RawMessage) error {
+	var changes []patterns.Correction
+	if err := json.Unmarshal(payload, &changes); err != nil {
+		return err
+	}
+	if len(changes) == 0 || len(changes) > 1000 {
+		return fmt.Errorf("invalid reprocessing request")
+	}
+	return fmt.Errorf("Metro reprocessing unavailable: retained input order and restart boundaries cannot be verified")
 }
 
 func readCorrectionPayload(path string) (json.RawMessage, error) {

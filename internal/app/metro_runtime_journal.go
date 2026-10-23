@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -11,16 +12,26 @@ import (
 	"time"
 )
 
+type metroEventFailure struct {
+	Record  patterns.MetroEventRecord
+	Attempt uint64
+}
+
 func (r *metroRuntime) queueArrival(t *metroTrack, c api.StopCall, before, after metroPoint) {
-	raw, err := r.retainArrivalProof(t, c, before, after)
+	r.queueArrivalWithClaim(t, c, before, after, r.claimMetroSnapshot)
+}
+func (r *metroRuntime) queueArrivalWithClaim(t *metroTrack, c api.StopCall, before, after metroPoint, claim func(patterns.MetroCutSnapshot) bool) {
+	raw, err := r.retainArrivalProofWithClaim(t, c, before, after, claim)
 
 	if !r.archiveAvailable {
+		r.markEventAdmissionLoss(after.Clock)
 		if c.Arrival.Inferred != nil {
 			c.Arrival.Inferred.Persistence = "unavailable"
 		}
 		return
 	}
 	if err != nil || len(raw) > 64<<10 || len(r.pending) >= 1024 || r.pendingBytes+r.dirtyBytes+len(raw) > 8<<20 {
+		r.markEventAdmissionLoss(after.Clock)
 		if c.Arrival.Inferred != nil {
 			c.Arrival.Inferred.Persistence = "unavailable"
 		}
@@ -34,19 +45,54 @@ func (r *metroRuntime) queueArrival(t *metroTrack, c api.StopCall, before, after
 	r.pendingBytes += len(raw)
 	r.pending[record.ID] = record
 }
-func (r *metroRuntime) retainArrivalProof(t *metroTrack, c api.StopCall, before, after metroPoint) ([]byte, error) {
-	if t.Proofs == nil {
-		t.Proofs = map[string]metroEventProof{}
+func (r *metroRuntime) markEventAdmissionLoss(at time.Time) {
+	r.eventAdmissionLost = true
+	if at.IsZero() {
+		r.eventLossUnknown = true
+	} else if at.After(r.eventAdmissionAt) {
+		r.eventAdmissionAt = at
 	}
-	proofTrain := cloneMetroTrain(t.Train)
-	proofTrain.Calls = []api.StopCall{c}
-	proofTrain.NextIndex = nil
-	proof := metroEventProof{Train: proofTrain, CallID: c.Id, Before: before, After: after}
+}
+func (r *metroRuntime) retireEventAdmissionLoss(now time.Time) bool {
+	if !r.eventAdmissionLost || r.eventLossUnknown || !r.eventAdmissionAt.Before(now.AddDate(0, 0, -7)) {
+		return false
+	}
+	r.eventAdmissionLost, r.eventAdmissionAt = false, time.Time{}
+	return true
+}
+func (r *metroRuntime) retainArrivalProofWithClaim(t *metroTrack, c api.StopCall, before, after metroPoint, claim func(patterns.MetroCutSnapshot) bool) ([]byte, error) {
+	cut := r.historySnapshot()
+	proof := r.arrivalProofCandidate(t, c, before, after, cut, false)
 	raw, err := json.Marshal(proof)
+	if err == nil && !claim(cut) {
+		proof = r.arrivalProofCandidate(t, c, before, after, patterns.MetroCutSnapshot{}, true)
+		raw, err = json.Marshal(proof)
+	}
 	if err == nil {
+		if t.Proofs == nil {
+			t.Proofs = map[string]metroEventProof{}
+		}
 		r.storeArrivalProof(t, c.Id, proof, raw)
 	}
 	return raw, err
+}
+func (r *metroRuntime) arrivalProofCandidate(t *metroTrack, c api.StopCall, before, after metroPoint, cut patterns.MetroCutSnapshot, safe bool) metroEventProof {
+	copy := r.snapshotMetroTrack(t, cut, safe, time.Now().UTC())
+	call := c
+	found := false
+	for _, candidate := range copy.Train.Calls {
+		if candidate.Id == c.Id {
+			call = candidate
+			found = true
+			break
+		}
+	}
+	if !found {
+		call.OwnPrediction, call.OwnDeparturePrediction = nil, nil
+	}
+	copy.Train.Calls = []api.StopCall{call}
+	copy.Train.NextIndex = nil
+	return metroEventProof{ForecastCut: metroCutOrigin(cut), Train: copy.Train, CallID: c.Id, Before: before, After: after}
 }
 func (r *metroRuntime) storeArrivalProof(t *metroTrack, call string, proof metroEventProof, raw []byte) {
 	id := fmt.Sprintf("%s:arrival:%x", call, sha256.Sum256(raw))
@@ -66,36 +112,65 @@ func (r *metroRuntime) flushEvents(history *patterns.Service, now time.Time) {
 	if history == nil {
 		return
 	}
+	r.flushEventsWithWrite(now, history.RecordMetroEvents)
+}
+func (r *metroRuntime) flushEventsWithWrite(now time.Time, write func([]patterns.MetroEventRecord, time.Time) error) {
 	r.mu.Lock()
-	batch := r.eventBatch(now)
-	r.mu.Unlock()
+	batch, retired := r.eventBatch(now)
+	if retired {
+		r.historyCollecting(now)
+	}
 	if len(batch) == 0 {
+		r.mu.Unlock()
 		return
 	}
-	err := history.RecordMetroEvents(batch, now)
+	if r.eventWriteSequence == ^uint64(0) {
+		r.eventWriteExhausted, r.historyStatus = true, "paused"
+		r.mu.Unlock()
+		return
+	}
+	r.eventWriteSequence++
+	attempt := r.eventWriteSequence
+	r.mu.Unlock()
+	err := write(batch, now)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if err != nil {
-		r.historyStatus = "paused"
+		r.failEventBatch(batch, attempt)
 		return
 	}
-	r.historyCollecting(now)
 	for _, record := range batch {
-		r.commitEvent(record)
+		r.commitEvent(record, attempt)
+	}
+	r.historyCollecting(now)
+}
+func (r *metroRuntime) failEventBatch(batch []patterns.MetroEventRecord, attempt uint64) {
+	for _, record := range batch {
+		if pending, ok := r.pending[record.ID]; ok && samePendingEvent(pending, record) {
+			if r.failedEvents == nil {
+				r.failedEvents = map[string]metroEventFailure{}
+			}
+			if failed, exists := r.failedEvents[record.ID]; !exists || failed.Attempt < attempt {
+				r.failedEvents[record.ID] = metroEventFailure{Record: record, Attempt: attempt}
+			}
+			r.historyStatus = "paused"
+		}
 	}
 }
-func (r *metroRuntime) eventBatch(now time.Time) []patterns.MetroEventRecord {
+func (r *metroRuntime) eventBatch(now time.Time) ([]patterns.MetroEventRecord, bool) {
 	batch := make([]patterns.MetroEventRecord, 0, len(r.pending))
+	retired := false
 	for id, v := range r.pending {
 		if v.At.Before(now.AddDate(0, 0, -7)) {
 			delete(r.pending, id)
 			r.pendingBytes -= len(v.Payload)
 			r.expireEvent(v)
+			retired = r.clearFailedEvent(v) || retired
 			continue
 		}
 		batch = append(batch, v)
 	}
-	return batch
+	return batch, retired
 }
 func (r *metroRuntime) expireEvent(v patterns.MetroEventRecord) {
 	if t := r.tracks[v.Journey]; t != nil {
@@ -106,12 +181,30 @@ func (r *metroRuntime) expireEvent(v patterns.MetroEventRecord) {
 		}
 	}
 }
-func (r *metroRuntime) commitEvent(record patterns.MetroEventRecord) {
+func (r *metroRuntime) commitEvent(record patterns.MetroEventRecord, attempt uint64) {
+	latest, exists := r.pending[record.ID]
+	if !exists || !samePendingEvent(latest, record) {
+		return
+	}
+	if failed, ok := r.failedEvents[record.ID]; ok && samePendingEvent(failed.Record, record) && failed.Attempt > attempt {
+		return
+	}
 	delete(r.pending, record.ID)
 	r.pendingBytes -= len(record.Payload)
+	r.clearFailedEvent(record)
 	if t := r.tracks[record.Journey]; t != nil {
 		commitMetroCallEvents(t, record)
 	}
+}
+func samePendingEvent(a, b patterns.MetroEventRecord) bool {
+	return a.ID == b.ID && a.Journey == b.Journey && a.At.Equal(b.At) && bytes.Equal(a.Payload, b.Payload)
+}
+func (r *metroRuntime) clearFailedEvent(record patterns.MetroEventRecord) bool {
+	if failed, ok := r.failedEvents[record.ID]; ok && samePendingEvent(failed.Record, record) {
+		delete(r.failedEvents, record.ID)
+		return true
+	}
+	return false
 }
 func commitMetroCallEvents(t *metroTrack, record patterns.MetroEventRecord) {
 	for n := range t.Train.Calls {

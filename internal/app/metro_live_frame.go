@@ -17,14 +17,15 @@ type metroFrameRequest struct {
 }
 type metroFrameBuilder struct {
 	metroFrameRequest
-	state    *State
-	static   *StaticData
-	now      time.Time
-	frame    api.MetroLiveFrame
-	contexts []api.MetroForecastContext
+	state     *State
+	static    *StaticData
+	now       time.Time
+	frame     api.MetroLiveFrame
+	contexts  []api.MetroForecastContext
+	forceSafe bool
 }
 
-func (s *Server) newMetroFrameBuilder(ctx context.Context, i metroInterest) (*metroFrameBuilder, error) {
+func (s *Server) newMetroFrameBuilder(ctx context.Context, i metroInterest, forceSafe bool) (*metroFrameBuilder, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -32,7 +33,7 @@ func (s *Server) newMetroFrameBuilder(ctx context.Context, i metroInterest) (*me
 	if err != nil {
 		return nil, err
 	}
-	b := &metroFrameBuilder{metroFrameRequest: metroFrameRequest{server: s, ctx: ctx, interest: i}, state: state, static: state.Static["metro"], now: time.Now().UTC()}
+	b := &metroFrameBuilder{metroFrameRequest: metroFrameRequest{server: s, ctx: ctx, interest: i}, state: state, static: state.Static["metro"], now: time.Now().UTC(), forceSafe: forceSafe}
 	historyStatus := b.readRuntimeView()
 
 	b.initialize()
@@ -42,7 +43,15 @@ func (s *Server) newMetroFrameBuilder(ctx context.Context, i metroInterest) (*me
 }
 func (b *metroFrameBuilder) readRuntimeView() string {
 	state := b.state
-	data, plan, contexts, historyStatus := b.server.Cache.metroRuntime.view(b.now)
+	var data *MetroData
+	var plan *StaticData
+	var contexts []api.MetroForecastContext
+	var historyStatus string
+	if b.forceSafe {
+		data, plan, contexts, historyStatus = b.server.Cache.metroRuntime.safeView(b.now)
+	} else {
+		data, plan, contexts, historyStatus = b.server.Cache.metroRuntime.view(b.now)
+	}
 	if data != nil {
 		copy := *state
 		copy.Metro = data
