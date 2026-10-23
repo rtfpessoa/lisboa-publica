@@ -74,6 +74,18 @@ owner is restarted; both generations are retained. On reopen, the selected manif
 is directory-synced before orphan cleanup and the cleanup is synced afterwards.
 Buffered Metro detail blocked by pressure is retried before other admissions.
 Rejected receipts are not recovered, and unacknowledged detail can be lost on restart.
+The Metro hour buffer holds at most 1,200 receipts and 16 MiB of encoded JSON lines;
+ordinary write failures retain it for retry. A post-inference overflow attempts to
+publish earlier detail and fences further engine/checkpoint writes until reopen.
+Missing referenced, corrupt, oversized, conflicting or non-round-trippable detail
+or checkpoint data, and multiple later hours after a checkpoint, also fence
+collection and preserve identified evidence. The
+shared checkpoint fence may interrupt other enabled operators after their detail
+already committed; their next receipt records a gap. Investigate a persistent pause
+by stopping the owner and preserving a complete, verified copy of the volume; inspect
+or restore evidence on a separate copy before resuming. Do not delete the affected
+generations as a shortcut. Reopening verifies evidence again but cannot repair it or
+recover observations already rejected or lost from memory.
 Older binaries reject manifests
 over 1 MiB: roll forward to a compatible binary, not back against that archive.
 For disaster recovery, stop the sole owner, copy the complete volume and verify

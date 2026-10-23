@@ -25,6 +25,9 @@ func (s *Service) flush(now time.Time) error {
 }
 
 func (s *Service) prepareFlush(now time.Time) error {
+	if s.detailFence != nil {
+		return s.detailFence
+	}
 	s.expireUnownedReservation()
 	if s.pressurePending {
 		return s.maintenanceError
@@ -34,6 +37,9 @@ func (s *Service) prepareFlush(now time.Time) error {
 	}
 	if err := s.reconcile(); err != nil {
 		return err
+	}
+	if s.detailFence != nil {
+		return s.detailFence
 	}
 	return s.ensureSpace(0, now)
 }
@@ -54,6 +60,9 @@ func (s *Service) flushMetroDetail(now time.Time) error {
 		return err
 	}
 	b := block{AsOf: s.lastSample, Samples: int64(len(s.detail)), Key: "metro:detail:" + s.hour.Format(time.RFC3339), Kind: "detail", Operator: "metro", Age: s.hour, Closed: s.hour.Before(now.UTC().Truncate(time.Hour))}
+	if err := s.verifyDetailBase(b, raw.Bytes()); err != nil {
+		return err
+	}
 	return s.publish(b, blob, now)
 }
 

@@ -16,6 +16,7 @@ const maxBlockBytes = 64 << 20
 // single block even after restoring several large days.
 const checkpointAggregateBudget = 40 << 20
 const maxDetailHourBytes = 16 << 20
+const maxDetailHourReceipts = 1200
 const maxManifestBytes = 8 << 20
 
 type block struct {
@@ -64,6 +65,7 @@ type archiveResources struct {
 	// An uncertain manifest rename must be resolved by reopening the archive.
 	manifestUncertain bool
 	manifestSync      func(string) error
+	publicationSync   func(string) error
 	reconcileSync     func(string) error
 	reconciledHead    bool
 	aggregateClocks   map[retentionClockKey]aggregateClock
@@ -87,6 +89,8 @@ type archiveResources struct {
 // metroArchiveState is the inference and publication cursor for Metro receipts.
 type metroArchiveState struct {
 	pendingMetroDeliveryGap    bool
+	detailFence                error
+	protectedGenerations       map[retentionClockKey]bool
 	engine                     *engine
 	topology                   Topology
 	hour                       time.Time

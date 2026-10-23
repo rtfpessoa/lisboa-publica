@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -172,11 +173,39 @@ func (s *Service) removeOrphanedEntry(entry os.DirEntry, keep map[string]bool) e
 	if entry.IsDir() || !(strings.HasPrefix(entry.Name(), "metro-") || entry.Name() == ".manifest.tmp") {
 		return fmt.Errorf("unmanaged file in transport archive")
 	}
+	if s.preserveUncertainOrphan(entry.Name()) {
+		return nil
+	}
 	if err := os.Remove(filepath.Join(s.config.Directory, entry.Name())); err != nil {
 		return err
 	}
 	s.forgetRetentionFile(entry.Name())
 	return nil
+}
+
+// Generated detail/state names embed a hash. Do not delete an orphan whose
+// contents cannot be verified, including across a restart after a partial commit.
+func (s *Service) preserveUncertainOrphan(name string) bool {
+	if !strings.HasPrefix(name, "metro-detail-") && !strings.HasPrefix(name, "metro-state-") {
+		return false
+	}
+	const suffix = ".json.zst"
+	stem := strings.TrimSuffix(name, suffix)
+	cut := strings.LastIndexByte(stem, '-')
+	if !strings.HasSuffix(name, suffix) || cut < 0 || len(stem)-cut-1 != 64 {
+		s.fenceDetail(fmt.Errorf("unidentifiable archive orphan"), nil)
+		return true
+	}
+	hash := stem[cut+1:]
+	if _, err := hex.DecodeString(hash); err != nil {
+		s.fenceDetail(fmt.Errorf("unidentifiable archive orphan"), nil)
+		return true
+	}
+	if _, err := s.readBlock(block{File: name, Hash: hash}); err != nil {
+		s.fenceDetail(err, nil)
+		return true
+	}
+	return false
 }
 
 func (s *Service) ensureSpace(reserve int64, now time.Time) error {
@@ -296,7 +325,7 @@ func (s *Service) retirementCandidate(now time.Time, pressure bool, work *cleanu
 func (s *Service) retirementCandidates(now time.Time, pressure bool) []int {
 	indices := make([]int, 0)
 	for i, b := range s.index.Blocks {
-		if !b.Closed || b.Kind == "state" {
+		if !b.Closed || b.Kind == "state" || s.protectedGenerations[retentionKey(b)] {
 			continue
 		}
 		cutoff, ok := s.expiryCutoff(b, now)

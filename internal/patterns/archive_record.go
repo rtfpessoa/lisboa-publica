@@ -13,6 +13,9 @@ func (s *Service) Record(receipt Receipt, topology Topology) error {
 	if s.lock == nil {
 		return fmt.Errorf("transport archive closed")
 	}
+	if s.detailFence != nil {
+		return s.markPaused(s.detailFence)
+	}
 	if len(receipt.Rows) > 2000 {
 		return fmt.Errorf("Metro receipt exceeds archive limits")
 	}
@@ -55,13 +58,24 @@ func (s *Service) recordMetroSample(receipt Receipt, topology Topology) error {
 	if err := s.prepareMetroSample(receipt); err != nil {
 		return err
 	}
-	s.lastSample, s.topology = receipt.ReceivedAt, topology
+	previousReceipt := s.engine.LastReceipt
 	s.engine.step(receipt, topology, s.config)
 	receipt.Outcomes = append([]Forecast{}, s.engine.Outcomes...)
 	if s.engine.LastEvaluation.Equal(receipt.ReceivedAt) {
 		receipt.Forecasts = append([]Forecast{}, s.engine.Live...)
 	}
-	return s.appendMetroSample(receipt)
+	if err := s.appendMetroSample(receipt); err != nil {
+		// Inference has already changed the engine. Persist only the previously
+		// admitted detail, then fence all further engine writes until reopen.
+		persistErr := s.flushMetroDetail(s.lastSample)
+		s.engine.LastReceipt = previousReceipt
+		if persistErr != nil {
+			err = fmt.Errorf("%w; preserving earlier detail: %v", err, persistErr)
+		}
+		return s.markPaused(s.fenceDetail(err, nil))
+	}
+	s.lastSample, s.topology = receipt.ReceivedAt, topology
+	return s.checkpointMetroSample(receipt.ReceivedAt)
 }
 
 func (s *Service) prepareMetroSample(receipt Receipt) error {
@@ -72,7 +86,10 @@ func (s *Service) prepareMetroSample(receipt Receipt) error {
 	if err = s.advanceMetroHour(receipt.ReceivedAt); err != nil {
 		return err
 	}
-	if s.detailBytes+len(raw) > maxDetailHourBytes {
+	if len(s.detail) > 0 && !receipt.ReceivedAt.After(s.detail[len(s.detail)-1].ReceivedAt) {
+		return s.pause(fmt.Errorf("detail receipt clock regressed"))
+	}
+	if len(s.detail) >= maxDetailHourReceipts || s.detailBytes+len(raw)+1 > maxDetailHourBytes {
 		return s.pause(fmt.Errorf("detail hour exceeds bounded buffer"))
 	}
 	return nil
@@ -92,10 +109,18 @@ func boundedMetroReceipt(receipt Receipt) ([]byte, error) {
 func (s *Service) advanceMetroHour(at time.Time) error {
 	next := at.UTC().Truncate(time.Hour)
 	if !s.hour.IsZero() && !next.Equal(s.hour) {
+		if next.Before(s.hour) {
+			return s.pause(fmt.Errorf("detail hour clock regressed"))
+		}
 		if err := s.flush(at); err != nil {
 			return s.pause(err)
 		}
 		s.detail, s.detailBytes = []Receipt{}, 0
+	}
+	if !next.Equal(s.hour) {
+		if err := s.loadDetailHour(next); err != nil {
+			return s.pause(err)
+		}
 	}
 	s.hour = next
 	return nil
@@ -106,12 +131,12 @@ func (s *Service) appendMetroSample(receipt Receipt) error {
 	if err != nil {
 		return err
 	}
-	if s.detailBytes+len(raw) > maxDetailHourBytes {
+	if len(s.detail) >= maxDetailHourReceipts || s.detailBytes+len(raw)+1 > maxDetailHourBytes {
 		return s.pause(fmt.Errorf("detail and forecasts exceed hour buffer"))
 	}
 	s.detail = append(s.detail, receipt)
-	s.detailBytes += len(raw)
-	return s.checkpointMetroSample(receipt.ReceivedAt)
+	s.detailBytes += len(raw) + 1
+	return nil
 }
 
 func (s *Service) checkpointMetroSample(at time.Time) error {
@@ -136,11 +161,6 @@ func (s *Service) markPaused(err error) error {
 	s.status, s.message = "paused", "Recolha histórica pausada; o tempo real mantém-se. Existem lacunas."
 	s.engine.resetContinuity()
 	s.pendingMetroDeliveryGap = true
-	// A pending publication has bounded buffered evidence that can be retried
-	// once maintenance has made room. Do not discard it on every new receipt.
-	if !s.pressurePending {
-		s.detail, s.detailBytes = []Receipt{}, 0
-	}
 	return err
 }
 

@@ -30,7 +30,15 @@ func (s *Service) View(ctx context.Context, stop string, episode ...string) (Vie
 		selected = episode[0]
 	}
 	s.appendMetroForecasts(&v, stop, selected, now, stale)
-	return s.patternView(ctx, v, stop)
+	return s.fencedPatternView(ctx, v, stop)
+}
+
+func (s *Service) fencedPatternView(ctx context.Context, v View, stop string) (View, error) {
+	result, err := s.patternView(ctx, v, stop)
+	if s.detailFence != nil {
+		result.Status, result.Message = v.Status, v.Message
+	}
+	return result, err
 }
 
 func (s *Service) metroViewMetadata() View {
@@ -38,7 +46,9 @@ func (s *Service) metroViewMetadata() View {
 	if s.engine.LastReceipt.IsZero() && s.status == "collecting" {
 		v.Status, v.Message = "waiting", "A aguardar a primeira amostra da API direta do Metro."
 	}
-	if s.maintenanceError != nil {
+	if s.detailFence != nil {
+		v.Status, v.Message = "paused", "Histórico do Metro indisponível; é necessária recuperação do arquivo."
+	} else if s.maintenanceError != nil {
 		v.Status, v.Message = "paused", "Arquivo pausado; a manutenção do armazenamento não conseguiu avançar."
 	}
 	if s.engine.Limited {

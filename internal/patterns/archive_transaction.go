@@ -14,6 +14,7 @@ type archiveTransaction struct {
 	admitted     map[string]bool
 	created, old []string
 	committed    bool
+	stateSource  *publicationSource
 }
 
 // Admit corrected days, ledger and checkpoint through one durable manifest.
@@ -30,6 +31,10 @@ func (s *Service) publishTransaction(ctx context.Context, prepared []preparedBlo
 }
 
 func (s *Service) prepareTransaction(prepared []preparedBlock, sources map[string]bool, now time.Time) (*archiveTransaction, error) {
+	source, err := s.transactionStateSource(prepared)
+	if err != nil {
+		return nil, err
+	}
 	reserve, err := prepareTransactionGenerations(prepared)
 	if err != nil {
 		return nil, err
@@ -44,7 +49,12 @@ func (s *Service) prepareTransaction(prepared []preparedBlock, sources map[strin
 	if err = s.admitManifestFiles(build, reserve, uint64(len(prepared)), now); err != nil {
 		return nil, err
 	}
-	transaction := &archiveTransaction{service: s, next: manifest{Version: 1, Blocks: append([]block{}, s.index.Blocks...)}, admitted: map[string]bool{}}
+	if source != nil {
+		if err = s.verifyPublicationSource(*source); err != nil {
+			return nil, err
+		}
+	}
+	transaction := &archiveTransaction{service: s, stateSource: source, next: manifest{Version: 1, Blocks: append([]block{}, s.index.Blocks...)}, admitted: map[string]bool{}}
 	for _, b := range s.index.Blocks {
 		transaction.admitted[b.File] = true
 	}
@@ -55,6 +65,26 @@ func (s *Service) prepareTransaction(prepared []preparedBlock, sources map[strin
 		transaction.mergeBlock(p.block)
 	}
 	return transaction, nil
+}
+
+func (s *Service) transactionStateSource(prepared []preparedBlock) (*publicationSource, error) {
+	for _, item := range prepared {
+		if item.block.Key != "metro:state" {
+			continue
+		}
+		if s.detailFence != nil {
+			return nil, s.detailFence
+		}
+		source, err := s.publicationSource(item.block.Key)
+		if err != nil {
+			return nil, err
+		}
+		if err = s.verifyPublicationSource(source); err != nil {
+			return nil, err
+		}
+		return &source, nil
+	}
+	return nil, nil
 }
 
 func mergeTransactionManifest(next manifest, value block) manifest {
@@ -124,6 +154,11 @@ func (t *archiveTransaction) mergeBlock(value block) {
 }
 
 func (t *archiveTransaction) commit() error {
+	if t.stateSource != nil {
+		if err := t.service.verifyPublicationSource(*t.stateSource); err != nil {
+			return err
+		}
+	}
 	if err := t.service.saveManifest(t.next); err != nil {
 		if t.service.manifestUncertain {
 			// Both generations must survive until a reopen resolves the manifest.
@@ -133,6 +168,11 @@ func (t *archiveTransaction) commit() error {
 	}
 	t.committed = true
 	// Cleanup after admission is recoverable by startup reconciliation.
+	if t.stateSource != nil && t.stateSource.block != nil && !t.service.generationReferenced(t.stateSource.block.File) {
+		if err := t.service.verifyOldGeneration(*t.stateSource); err != nil {
+			return err
+		}
+	}
 	t.removeFiles(t.old)
 	return nil
 }
