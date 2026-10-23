@@ -9,11 +9,14 @@ import (
 
 // stageLive accepts intermediate samples without closing or acknowledging a durable batch.
 func (s *Store) stageLive(live *LiveData, distances map[string]*float64) {
-	if live == nil || s.HistoryInterval == 0 || s.historyStatus() != "collecting" {
+	if live == nil || s.HistoryInterval == 0 {
 		return
 	}
 	s.historyMu.Lock()
 	defer s.historyMu.Unlock()
+	if s.historyStatus() != "collecting" {
+		return
+	}
 	if s.collector == nil {
 		s.collector = newHistoryCollector()
 	}

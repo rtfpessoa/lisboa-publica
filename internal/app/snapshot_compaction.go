@@ -139,6 +139,9 @@ func (b *storageBudget) reserveOptional(ctx context.Context, bytes int64) (bool,
 		return false, nil
 	}
 	b.reserved += bytes
+	if err := b.retainPressureReadiness(bytes); err != nil {
+		return false, err
+	}
 	return true, nil
 }
 func (s *Store) writeArchives(ctx context.Context, updates []snapshotArchiveUpdate) error {

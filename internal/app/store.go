@@ -438,8 +438,8 @@ func (s *Store) savePreparedUpdate(ctx context.Context, id string, publication p
 		return err
 	}
 	s.acknowledgeUpdate(id, update, next)
-	if replacement && !partial {
-		// The transaction may have consumed the final credit. A failed check
+	if s.budget != nil && len(records) > 0 && !partial {
+		// Any recent insert may have consumed the final credit. A failed check
 		// changes status, but cannot undo or falsely reject the committed write.
 		_ = s.refreshEmptyHistoryStatus(ctx)
 	}
@@ -500,6 +500,11 @@ func (s *Store) finishPressureMaintenance(ctx, vacuumParent context.Context) (pr
 	}
 	if err := s.reconcileCompletedReservations(ctx); err != nil {
 		return result, fmt.Errorf("pressure maintenance completed; measurement failed: %w", err)
+	}
+	if s.budget != nil && !s.pressureVacuum.Load() {
+		if err := s.refreshEmptyHistoryStatus(ctx); err != nil {
+			return result, fmt.Errorf("pressure maintenance completed; readiness check failed: %w", err)
+		}
 	}
 	return result, nil
 }
