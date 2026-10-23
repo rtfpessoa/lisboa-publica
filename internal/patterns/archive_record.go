@@ -16,6 +16,10 @@ func (s *Service) Record(receipt Receipt, topology Topology) error {
 	if len(receipt.Rows) > 2000 {
 		return fmt.Errorf("Metro receipt exceeds archive limits")
 	}
+	s.expireUnownedReservation()
+	if s.pressurePending {
+		return s.markPaused(s.maintenanceError)
+	}
 	receipt.Operator = "metro"
 	receipt.DeliveryGap = receipt.DeliveryGap || s.pendingMetroDeliveryGap
 	topology.Profile = fmt.Sprintf("%s-s%d-b%d", topology.Profile, int(s.config.SampleInterval/time.Second), s.config.BinSeconds)
@@ -121,11 +125,22 @@ func (s *Service) checkpointMetroSample(at time.Time) error {
 }
 
 func (s *Service) pause(err error) error {
+	if s.pressurePending && len(s.detail) > 0 {
+		s.pressurePinned = true
+		s.pressureBuffered = true
+	}
+	return s.markPaused(err)
+}
+
+func (s *Service) markPaused(err error) error {
 	s.status, s.message = "paused", "Recolha histórica pausada; o tempo real mantém-se. Existem lacunas."
 	s.engine.resetContinuity()
 	s.pendingMetroDeliveryGap = true
-	// Keep the buffer bounded even through prolonged disk failure.
-	s.detail, s.detailBytes = []Receipt{}, 0
+	// A pending publication has bounded buffered evidence that can be retried
+	// once maintenance has made room. Do not discard it on every new receipt.
+	if !s.pressurePending {
+		s.detail, s.detailBytes = []Receipt{}, 0
+	}
 	return err
 }
 

@@ -38,11 +38,44 @@ func openPatternStages(config patterns.Config) (*patterns.Service, error) {
 }
 
 func patternEnvironment(config *patterns.Config) error {
-	limit, err := strconv.ParseInt(env("TRANSPORT_ARCHIVE_LIMIT_BYTES", "10000000000"), 10, 64)
-	if err != nil {
-		return fmt.Errorf("invalid TRANSPORT_ARCHIVE_LIMIT_BYTES")
+	if err := patternLimits(config); err != nil {
+		return err
 	}
-	config.LimitBytes = limit
+	if err := patternIntegers(config); err != nil {
+		return err
+	}
+	if err := patternDurations(config); err != nil {
+		return err
+	}
+	seconds, err := strconv.Atoi(env("TRANSPORT_ARCHIVE_MAINTENANCE_SECONDS", "60"))
+	if err != nil || seconds < 10 || seconds > 3600 {
+		return fmt.Errorf("invalid TRANSPORT_ARCHIVE_MAINTENANCE_SECONDS")
+	}
+	config.MaintenanceInterval = time.Duration(seconds) * time.Second
+	return nil
+}
+
+func patternLimits(config *patterns.Config) error {
+	limits := []struct {
+		name   string
+		target *int64
+		min    int64
+	}{
+		{"TRANSPORT_ARCHIVE_LIMIT_BYTES", &config.LimitBytes, 1 << 20},
+		{"TRANSPORT_ARCHIVE_MIN_FREE_BYTES", &config.MinFreeBytes, 0},
+		{"TRANSPORT_ARCHIVE_MIN_FREE_INODES", &config.MinFreeInodes, 0},
+	}
+	for _, setting := range limits {
+		value, err := strconv.ParseInt(env(setting.name, strconv.FormatInt(*setting.target, 10)), 10, 64)
+		if err != nil || value < setting.min {
+			return fmt.Errorf("invalid %s", setting.name)
+		}
+		*setting.target = value
+	}
+	return nil
+}
+
+func patternIntegers(config *patterns.Config) error {
 	integers := []struct {
 		name   string
 		target *int
@@ -58,7 +91,7 @@ func patternEnvironment(config *patterns.Config) error {
 		}
 		*setting.target = value
 	}
-	return patternDurations(config)
+	return nil
 }
 
 func patternDurations(config *patterns.Config) error {

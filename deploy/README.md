@@ -6,11 +6,13 @@ checked at the existing refresh rate without creating faster training samples. `
 the persistent `transport_history` volume owned by UID 10001. Keep one collector.
 The archive has its own server-only 10,000,000,000-byte budget, separate from the
 existing database guard. It counts allocated file/directory bytes and reserves
-space for replacements and metadata. Closed blocks expire or are removed globally
-by data age; pressure removal protects at least seven days, while explicitly shorter
-configured normal retention still applies. Unverifiable clocks and correction ledgers
-are retained, so admission can pause before the byte limit. Reads close their files while
-holding the same lock as FIFO. A file lock prevents two archive owners.
+space for replacements and metadata. An independent worker performs bounded cleanup
+even when no receipts arrive. Without pressure it applies configured expiry; under
+pressure it retires the oldest eligible data across kinds while protecting seven days.
+An explicitly shorter normal retention still applies when not under pressure.
+Unverifiable clocks and correction ledgers are retained, so admission can pause
+before the byte limit. Reads close their files while holding the same lock as FIFO.
+A file lock prevents two archive owners.
 
 Defaults: `TRANSPORT_SAMPLE_SECONDS=30`, `TRANSPORT_BIN_SECONDS=30`,
 `TRANSPORT_CHECKPOINT_SECONDS=60`, `TRANSPORT_EVALUATION_SECONDS=60`,
@@ -20,6 +22,37 @@ All are configurable; sampling never increases the existing provider request rat
 Sampling intervals above 60 seconds intentionally prevent continuous Metro proxy
 associations under the initial 60-second gap rule, while still collecting detail.
 Unset `TRANSPORT_ARCHIVE_DIR` to disable this collector outside Compose.
+
+`TRANSPORT_ARCHIVE_LIMIT_BYTES` defaults to `10000000000` and must be at least
+1,048,576. `TRANSPORT_ARCHIVE_MIN_FREE_BYTES` and
+`TRANSPORT_ARCHIVE_MIN_FREE_INODES` are nonnegative integers, each defaulting to
+`0` (no extra reserve for that resource). When either is enabled, the archive
+probes the filesystem containing its own volume and blocks writes if measurement
+fails or available bytes or inodes cannot cover the prospective write and reserves.
+`TRANSPORT_ARCHIVE_MAINTENANCE_SECONDS` defaults to
+`60` and accepts 10–3600; bounded-progress retries use one second. For example,
+the following settings choose a decimal 1 GB archive cap and reserve 2 GiB plus
+10,000 inodes on its filesystem:
+
+```dotenv
+TRANSPORT_ARCHIVE_LIMIT_BYTES=1000000000
+TRANSPORT_ARCHIVE_MIN_FREE_BYTES=2147483648
+TRANSPORT_ARCHIVE_MIN_FREE_INODES=10000
+TRANSPORT_ARCHIVE_MAINTENANCE_SECONDS=60
+```
+
+These are operator choices, not new defaults or a guarantee that all seven days
+fit. Verify that the archive mount shares the filesystem intended by the reserve,
+and account separately for database, WAL and other services. The probe cannot
+prevent other writers from consuming space. When lowering the cap below current
+usage, cleanup can take several passes and must be able to create and sync a
+temporary manifest before deleting a block, even if this briefly consumes reserve.
+If cleanup cannot make safe progress, history stays paused. A directory with more
+than 32,768 entries, unmanaged files or nested directories can block maintenance.
+Checks and unlink are count-bounded, but a large decode or filesystem call can
+still hold the archive owner lock for an unbounded duration. Archive status reports
+storage pauses generically; check the archive limit, filesystem headroom and
+directory contents when diagnosing them.
 
 Detail is JSON lines compressed with Zstd, retaining the original wait response,
 issued forecasts and later evaluation outcomes. Sparse daily hourly aggregates
@@ -37,7 +70,11 @@ The JSON v1 manifest is limited to 8 MiB, separately from the allocated-byte bud
 candidate metadata and replacement files must fit concurrently. A 1 MiB archive
 configuration remains valid but can pause without enough temporary headroom. If a
 manifest rename succeeds but its directory sync fails, writes are fenced until the
-owner is restarted; both generations are retained. Older binaries reject manifests
+owner is restarted; both generations are retained. On reopen, the selected manifest
+is directory-synced before orphan cleanup and the cleanup is synced afterwards.
+Buffered Metro detail blocked by pressure is retried before other admissions.
+Rejected receipts are not recovered, and unacknowledged detail can be lost on restart.
+Older binaries reject manifests
 over 1 MiB: roll forward to a compatible binary, not back against that archive.
 For disaster recovery, stop the sole owner, copy the complete volume and verify
 file hashes and manifest generations before resuming. Verify restoration in a
@@ -89,6 +126,9 @@ print or embed these files in Compose output or logs. Compare the resolved
 environment against protected container inspections before cutover. Include
 interpolation can also be overridden by the calling shell or shared project's
 environment; check those sources and the resolved image without exposing secrets.
+For the shared project, put archive settings in the protected `dashboard.env`;
+the standalone [Compose file](compose.yaml) accepts the same variables through
+its interpolation environment. Neither form changes the existing volumes.
 
 The shared fragment also mounts the existing PostgreSQL data volume read-only at
 `/app/postgres-filesystem` and enables its filesystem probe. `STORAGE_GUARD=true`
@@ -309,7 +349,7 @@ above rather than applying the earlier experimental overlays.
 
 `TRANSPORT_ARCHIVE_OPERATORS=metro` remains the first-stage default. Add one stage at a time using the exact prefix `metro,cm,carris,cp,fertagus,ttsl,tcb,mobi`. Capture reuses existing fetches and shares the archive’s allocated-byte/FIFO budget; no new polling endpoint is introduced. All eight stages have experimental adapters. Later stages require coherent reported stop transitions and exact published paths; their own points remain unavailable until those inputs and historical components are supported. Both official and own forecasts use the operator-scoped patterns API/UI. Disabling stages keeps existing retained evidence subject to normal expiry/FIFO.
 
-For evidence-backed revisions, build/run `cmd/patterns-maintenance` locally against a private archive fixture. The Dockerfile also includes `/app/patterns-maintenance` for a future authorized maintenance window; no image was packaged or deployed in this follow-up. It requires exclusive ownership; attempting access while the service holds the lock fails. `-operator` defaults to `metro`; other stages accept a normalized observation in `row`. The private correction JSON contains `received_at`, `expected_hash`, `row` and `evidence`; the hash refers to the currently corrected normalized row using its canonical Go JSON encoding. Match all actual service settings with `-sample`, `-bin`, `-limit`, `-detail-days`, `-aggregate-months`, `-training-days`, `-calibration-days`, `-checkpoint` and `-evaluation`. Mismatched retention settings can retire data on open. The command reads no provider endpoint and exposes only scalar revision results. Expired/stale/ambiguous inputs and oversized revisions fail explicitly. See [maintenance semantics](../docs/metro-patterns.md#evidence-backed-maintenance).
+For evidence-backed revisions, build/run `cmd/patterns-maintenance` locally against a private archive fixture. The Dockerfile also includes `/app/patterns-maintenance` for a future authorized maintenance window; no image was packaged or deployed in this follow-up. It requires exclusive ownership; attempting access while the service holds the lock fails. `-operator` defaults to `metro`; other stages accept a normalized observation in `row`. The private correction JSON contains `received_at`, `expected_hash`, `row` and `evidence`; the hash refers to the currently corrected normalized row using its canonical Go JSON encoding. Match all actual service settings with `-sample`, `-bin`, `-limit`, `-min-free-bytes`, `-min-free-inodes`, `-maintenance-interval`, `-detail-days`, `-aggregate-months`, `-training-days`, `-calibration-days`, `-checkpoint` and `-evaluation`. The two reserve flags default to zero and do not inherit the server environment; explicitly pass its configured values, for example `-min-free-bytes 2147483648 -min-free-inodes 10000`. The interval uses Go duration syntax, such as `-maintenance-interval 60s`. Mismatched retention or reserve settings can retire data on open or leave insufficient filesystem headroom. The command reads no provider endpoint and exposes only scalar revision results. Expired/stale/ambiguous inputs and oversized revisions fail explicitly. See [maintenance semantics](../docs/metro-patterns.md#evidence-backed-maintenance).
 
 The earlier local-only follow-up remains dated evidence in the validation log. The subsequent 2026-09-28 instruction authorizes commit, push to main and deployment after the normal gates. Operational collection must preserve existing provider request limits and explicitly separate inferred signals from physical validation.
 

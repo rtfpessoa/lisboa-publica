@@ -20,6 +20,9 @@ func TestManifestCeilingAndProtectedAdmission(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
+	// Private archive helpers require the same owner lock as production callers.
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	now := time.Now().UTC().Truncate(time.Hour)
 	b := block{Key: "protected", Kind: "detail", Operator: "metro", Age: now.Add(-time.Hour)}
 	if err = s.publish(b, []byte("protected generation"), now); err != nil {
@@ -109,6 +112,9 @@ func TestSmallArchiveRejectsWithoutDeletingRecent(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
+	// Private archive helpers require the same owner lock as production callers.
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	now := time.Now().UTC().Truncate(time.Hour)
 	b := block{Kind: "detail", Operator: "metro", Age: now.Add(-time.Hour)}
 	b.Key = "metro:detail:" + b.Age.Format(time.RFC3339)
@@ -222,6 +228,9 @@ func TestOversizedCandidateRetriesNormalExpiryOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
+	// Private archive helpers require the same owner lock as production callers.
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	now := time.Now().UTC().Truncate(time.Hour)
 	oldAge := now.AddDate(0, 0, -8)
 	payload, err := s.encodeMetroCheckpoint(MetroJourneyCheckpoint{Journey: "old", Revision: 1, SourceAt: oldAge, Generation: "test", CommittedAt: oldAge, Payload: json.RawMessage(`{}`)})

@@ -14,11 +14,24 @@ import (
 )
 
 type aggregateClock struct {
-	newest   time.Time
-	modified time.Time
-	size     int64
-	hash     string
-	valid    bool
+	newest                    time.Time
+	modified                  time.Time
+	size                      int64
+	hash                      string
+	key, kind, operator, date string
+	valid                     bool
+}
+
+type retentionClockKey struct {
+	file, hash, key, kind, operator, date string
+}
+
+func retentionKey(b block) retentionClockKey {
+	return retentionClockKey{b.File, b.Hash, b.Key, b.Kind, b.Operator, b.Date}
+}
+
+func cachedRetentionClock(c aggregateClock, b block, info os.FileInfo) bool {
+	return c.hash == b.Hash && c.key == b.Key && c.kind == b.Kind && c.operator == b.Operator && c.date == b.Date && c.size == info.Size() && c.modified.Equal(info.ModTime())
 }
 
 func bucketKeyMatches(b block, age time.Time) bool {
@@ -102,14 +115,14 @@ func (s *Service) recordNewest(b block) (time.Time, bool) {
 	if err != nil {
 		return time.Time{}, false
 	}
-	if cached, ok := s.aggregateClocks[b.File]; ok && cached.hash == b.Hash && cached.size == info.Size() && cached.modified.Equal(info.ModTime()) {
+	if cached, ok := s.aggregateClocks[retentionKey(b)]; ok && cachedRetentionClock(cached, b, info) {
 		return cached.newest, cached.valid
 	}
 	if s.aggregateClocks == nil {
-		s.aggregateClocks = make(map[string]aggregateClock)
+		s.aggregateClocks = make(map[retentionClockKey]aggregateClock)
 	}
 	latest, ok := s.readRecordNewest(b)
-	s.aggregateClocks[b.File] = aggregateClock{newest: latest, modified: info.ModTime(), size: info.Size(), hash: b.Hash, valid: ok}
+	s.aggregateClocks[retentionKey(b)] = aggregateClock{newest: latest, modified: info.ModTime(), size: info.Size(), hash: b.Hash, key: b.Key, kind: b.Kind, operator: b.Operator, date: b.Date, valid: ok}
 	return latest, ok
 }
 
@@ -283,14 +296,14 @@ func (s *Service) aggregateNewest(b block) (time.Time, bool) {
 	if err != nil {
 		return time.Time{}, false
 	}
-	if cached, ok := s.aggregateClocks[b.File]; ok && cached.hash == b.Hash && cached.size == info.Size() && cached.modified.Equal(info.ModTime()) {
+	if cached, ok := s.aggregateClocks[retentionKey(b)]; ok && cachedRetentionClock(cached, b, info) {
 		return cached.newest, cached.valid
 	}
 	if s.aggregateClocks == nil {
-		s.aggregateClocks = make(map[string]aggregateClock)
+		s.aggregateClocks = make(map[retentionClockKey]aggregateClock)
 	}
 	latest, ok := s.readAggregateNewest(b)
-	s.aggregateClocks[b.File] = aggregateClock{newest: latest, modified: info.ModTime(), size: info.Size(), hash: b.Hash, valid: ok}
+	s.aggregateClocks[retentionKey(b)] = aggregateClock{newest: latest, modified: info.ModTime(), size: info.Size(), hash: b.Hash, key: b.Key, kind: b.Kind, operator: b.Operator, date: b.Date, valid: ok}
 	return latest, ok
 }
 
@@ -336,11 +349,10 @@ func aggregateBatchNewest(rows []Aggregate, b block, latest *time.Time) bool {
 
 func (s *Service) pastBoundary(b block, cutoff, now time.Time) bool {
 	// Do not decompress young blocks when their bucket alone protects them.
-	end, point, ok := metadataBoundary(b)
-	if !ok || end.After(now) || (point && !end.Before(cutoff)) || (!point && end.After(cutoff)) {
+	if !pastMetadataBoundary(b, cutoff, now) {
 		return false
 	}
-	end, point, ok = s.blockBoundary(b)
+	end, point, ok := s.blockBoundary(b)
 	if !ok || end.After(now) {
 		return false
 	}
@@ -350,7 +362,12 @@ func (s *Service) pastBoundary(b block, cutoff, now time.Time) bool {
 	return !end.After(cutoff)
 }
 
-func (s *Service) blockExpired(b block, now time.Time) bool {
+func pastMetadataBoundary(b block, cutoff, now time.Time) bool {
+	end, point, ok := metadataBoundary(b)
+	return ok && !end.After(now) && ((point && end.Before(cutoff)) || (!point && !end.After(cutoff)))
+}
+
+func (s *Service) expiryCutoff(b block, now time.Time) (time.Time, bool) {
 	var cutoff time.Time
 	switch b.Kind {
 	case "popup-events", "popup-checkpoint", "metro-inputs":
@@ -360,12 +377,17 @@ func (s *Service) blockExpired(b block, now time.Time) bool {
 	case "aggregate":
 		cutoff = now.In(lisbon).AddDate(0, -s.config.AggregateMonths, 0)
 		if b.Date >= cutoff.Format("2006-01-02") {
-			return false
+			return time.Time{}, false
 		}
 	default:
-		return false
+		return time.Time{}, false
 	}
-	return s.pastBoundary(b, cutoff, now)
+	return cutoff, true
+}
+
+func (s *Service) blockExpired(b block, now time.Time) bool {
+	cutoff, ok := s.expiryCutoff(b, now)
+	return ok && s.pastBoundary(b, cutoff, now)
 }
 
 func (s *Service) pressureEligible(b block, now time.Time) bool {

@@ -52,10 +52,18 @@ func openOwnedArchive(s *Service) (_ *Service, err error) {
 	if err = s.restoreArchive(); err != nil {
 		return nil, err
 	}
-	if err = s.ensureSpace(0, time.Now().UTC()); err != nil {
-		s.status, s.message = "paused", "Arquivo pausado pelo limite de espaço."
+	now := time.Now().UTC()
+	work := &cleanupWork{}
+	err = s.ensureSpaceFor(0, 0, now, work)
+	pending := false
+	if err == nil {
+		pending, err = s.expireSome(now, work)
+	}
+	if err != nil {
+		s.maintenanceError = err
 		err = nil
 	}
+	s.startMaintenance(pending)
 	return s, nil
 }
 

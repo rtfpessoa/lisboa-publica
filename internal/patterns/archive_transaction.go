@@ -41,7 +41,7 @@ func (s *Service) prepareTransaction(prepared []preparedBlock, sources map[strin
 		}
 		return next
 	}
-	if err = s.admitManifest(build, reserve, now); err != nil {
+	if err = s.admitManifestFiles(build, reserve, uint64(len(prepared)), now); err != nil {
 		return nil, err
 	}
 	transaction := &archiveTransaction{service: s, next: manifest{Version: 1, Blocks: append([]block{}, s.index.Blocks...)}, admitted: map[string]bool{}}
@@ -145,6 +145,10 @@ func (t *archiveTransaction) rollback() {
 
 func (t *archiveTransaction) removeFiles(names []string) {
 	for _, name := range names {
+		if t.service.generationReferenced(name) {
+			continue
+		}
+		t.service.forgetRetentionFile(name)
 		_ = os.Remove(filepath.Join(t.service.config.Directory, name))
 	}
 	_ = syncDirectory(t.service.config.Directory)
