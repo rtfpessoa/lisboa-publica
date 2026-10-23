@@ -40,6 +40,15 @@ type storageBudget struct {
 	vacuumActive      *atomic.Bool
 	uncertainBackends map[databaseBackend]struct{}
 	uncertainUnknown  bool
+	rejectedBatches   int64
+	partialBatches    int64
+	lastRejection     historyAdmissionRejection
+}
+
+type historyAdmissionRejection struct {
+	reason                   string
+	bytes, reserved, history int64
+	replacement              bool
 }
 
 type databaseBackend struct {
@@ -409,6 +418,11 @@ type updateReservation struct {
 	replacement         bool
 }
 
+type historyAdmissionOutcome struct {
+	updateReservation
+	partial, rejected bool
+}
+
 func (b *storageBudget) reserveUpdatePressure(ctx context.Context, operations, history int64, replacement bool) (bool, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -523,6 +537,9 @@ func (s *Store) guardUpdate(ctx context.Context, update cacheUpdate, records []h
 		}
 		return records, false, false, nil
 	}
+	if err := s.reconcileUpdatePressure(ctx, updateReservation{operations: operations, history: historyBytes}); err != nil {
+		return nil, false, false, err
+	}
 	if len(records) == 0 {
 		return s.guardEmptyUpdate(ctx, operations)
 	}
@@ -537,6 +554,9 @@ func (s *Store) guardUpdate(ctx context.Context, update cacheUpdate, records []h
 	if err != nil {
 		return nil, false, false, err
 	}
+	if !keep || partial {
+		s.budget.noteHistoryAdmission(historyAdmissionOutcome{updateReservation: updateReservation{operations: operations, history: historyBytes, replacement: replacement}, partial: partial, rejected: !keep})
+	}
 	if !keep {
 		records = nil
 		replacement = false
@@ -545,6 +565,44 @@ func (s *Store) guardUpdate(ctx context.Context, update cacheUpdate, records []h
 		s.pauseHistoryCollection()
 	}
 	return records, replacement, partial, nil
+}
+
+// The current update has not claimed its operational or history reservation.
+func (s *Store) reconcileUpdatePressure(ctx context.Context, pending updateReservation) error {
+	b := s.budget
+	b.mu.Lock()
+	nearLimit := b.reserved > 0 && b.bytes+b.reserved+pending.operations+max(pending.history, historyRecordOverhead) >= historyDatabaseBytes
+	b.mu.Unlock()
+	if nearLimit {
+		return s.reconcileCompletedReservations(ctx)
+	}
+	return nil
+}
+
+// noteHistoryAdmission records only bounded aggregate diagnostic state. The
+// operation reservation has already been claimed when history is rejected.
+func (b *storageBudget) noteHistoryAdmission(outcome historyAdmissionOutcome) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if outcome.partial {
+		b.partialBatches++
+	}
+	if !outcome.rejected {
+		return
+	}
+	b.rejectedBatches++
+	ceiling := historyDatabaseBytes
+	if outcome.replacement {
+		ceiling = pressureDatabaseBytes
+	}
+	operations, history := outcome.operations, outcome.history
+	reason := "filesystem_headroom"
+	if operations < 0 || history < 0 || operations > maximumWriteBytes || history > maximumWriteBytes-operations {
+		reason = "write_size"
+	} else if b.bytes+b.reserved+history > ceiling {
+		reason = "database_headroom"
+	}
+	b.lastRejection = historyAdmissionRejection{reason, b.bytes, b.reserved, history, outcome.replacement}
 }
 
 func cacheUpdateBytes(update cacheUpdate) int64 {

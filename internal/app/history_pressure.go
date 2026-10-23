@@ -85,6 +85,12 @@ func (s *Store) pressurePrune(ctx, vacuumParent context.Context) (pressureMainte
 	if err != nil || pending {
 		return pressureMaintenanceResult{reason: "vacuum_pending"}, err
 	}
+	// A previously pending vacuum needs the ordinary cleanup reservation until
+	// it finishes. Only reconcile that completed transaction once no vacuum is
+	// being resumed.
+	if err := s.reconcileCompletedReservations(ctx); err != nil {
+		return pressureMaintenanceResult{reason: "ordinary_cleanup_committed_measurement_failed"}, err
+	}
 	eligible, reason, err := s.pressureCleanupEligible(ctx)
 	if err != nil || !eligible {
 		return pressureMaintenanceResult{reason: reason}, err
