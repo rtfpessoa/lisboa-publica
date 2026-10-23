@@ -1,6 +1,7 @@
 package app
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -8,6 +9,53 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 	"lisboapublica/internal/api"
 )
+
+func TestMetroRuntimeTopologyRefreshesDestinationMetadata(t *testing.T) {
+	data, static := metroPlatformFixture()
+	r := newMetroRuntime()
+	cases := []struct {
+		name         string
+		destinations []MetroDestination
+		want         string
+		rebuild      bool
+	}{
+		{"initial", []MetroDestination{{ID: "old", Name: "Santa Apolónia"}}, "old", true},
+		{"unchanged", []MetroDestination{{ID: "old", Name: "Santa Apolónia"}}, "old", false},
+		{"changed ID", []MetroDestination{{ID: "new", Name: "Santa Apolónia"}}, "new", true},
+		{"changed name", []MetroDestination{{ID: "new", Name: "Other"}}, "42", true},
+		{"removed", nil, "42", true},
+		{"ambiguous", []MetroDestination{{ID: "new", Name: "Santa Apolónia"}, {ID: "other", Name: "Santa Apolónia"}}, "", true},
+		{"restored", []MetroDestination{{ID: "old", Name: "Santa Apolónia"}}, "old", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			data.Destinations = tc.destinations
+			r.priorCache = map[string][]metroVisitPrior{"sentinel": nil}
+			r.operational = map[string]*metroOperationalMotion{"sentinel": nil}
+			r.operationalAxes = map[string]metroOperationalAxisData{"sentinel": {}}
+			r.updateTopology(data, static)
+			want, unmapped := metroTopologyReport(data, static)
+			if !reflect.DeepEqual(r.topology, want) || !reflect.DeepEqual(data.Topology, want) || !reflect.DeepEqual(r.unmappedStations, unmapped) {
+				t.Fatal("runtime topology differs from a fresh build")
+			}
+			_, priorRetained := r.priorCache["sentinel"]
+			_, motionRetained := r.operational["sentinel"]
+			_, axesRetained := r.operationalAxes["sentinel"]
+			if priorRetained != !tc.rebuild || motionRetained != !tc.rebuild || axesRetained != !tc.rebuild {
+				t.Fatal("topology-dependent caches did not follow the rebuild")
+			}
+			got := ""
+			for _, path := range r.topology.Patterns {
+				if path.Destination == "SP" {
+					got = path.Direction
+				}
+			}
+			if got != tc.want {
+				t.Fatalf("Santa Apolónia direction = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
 
 func metroPlatformFixture() (*MetroData, *StaticData) {
 	now := time.Now().UTC()

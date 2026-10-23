@@ -8,12 +8,13 @@ import (
 )
 
 type metroPointBatch struct {
-	provenance map[string]metroSourceSlot
-	groups     map[string][]metroPoint
-	paths      map[string]patterns.Pattern
-	references map[string]map[string]bool
-	rejected   map[string]bool
-	localOnly  []metroLocalForecast
+	provenance          map[string]metroSourceSlot
+	groups              map[string][]metroPoint
+	paths               map[string]patterns.Pattern
+	references          map[string]map[string]bool
+	rejected            map[string]bool
+	localOnly           []metroLocalForecast
+	topologyUnavailable bool
 }
 
 type metroSourceSlot struct {

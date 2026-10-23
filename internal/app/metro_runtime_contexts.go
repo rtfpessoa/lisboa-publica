@@ -298,7 +298,16 @@ func (l metroLocalContexts) add(f metroLocalForecast) {
 	if !exists {
 		return
 	}
-	arrival := metroArrival(f.Row, l.stations, l.routes, metroPopupStationID(station, l.catalog))
+	var arrival api.Arrival
+	if l.runtime.batch.topologyUnavailable {
+		var ok bool
+		arrival, ok = l.unavailableArrival(f.Row)
+		if !ok {
+			return
+		}
+	} else {
+		arrival = metroArrival(f.Row, l.stations, l.routes, metroPopupStationID(station, l.catalog))
+	}
 	if arrival.RouteId == "" {
 		return
 	}
@@ -327,7 +336,11 @@ func (l metroLocalContexts) context(f metroLocalForecast, arrival api.Arrival) *
 	if c := l.contexts[key]; c != nil {
 		return c
 	}
-	c := &api.MetroForecastContext{Reference: f.Reference, RouteId: arrival.RouteId, DirectionCode: localMetroDirection(l.runtime.topology, arrival.RouteId, f.Row.Destination), Destination: arrival.Headsign, Status: "admissible", Reason: "Previsão local; percurso completo por confirmar", Calls: []api.StopCall{}}
+	var direction *string
+	if !l.runtime.batch.topologyUnavailable {
+		direction = localMetroDirection(l.runtime.topology, arrival.RouteId, f.Row.Destination)
+	}
+	c := &api.MetroForecastContext{Reference: f.Reference, RouteId: arrival.RouteId, DirectionCode: direction, Destination: arrival.Headsign, Status: "admissible", Reason: "Previsão local; percurso completo por confirmar", Calls: []api.StopCall{}}
 	l.contexts[key] = c
 	return c
 }
@@ -374,6 +387,9 @@ func (r *metroRuntime) viewLocked(now time.Time) (*MetroData, *StaticData, []api
 	}
 	data := *r.publication
 	data.Topology, data.Trains, data.InventoryOverflow = r.topology, r.current(now), r.inventoryOverflow
+	if !r.directUsable && data.Status.Status == "ok" {
+		data.Topology = patterns.Topology{}
+	}
 	return &data, r.plan, r.forecastContexts(now), r.historyStatus
 }
 

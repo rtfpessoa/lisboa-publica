@@ -89,18 +89,20 @@ type metroRuntimePublication struct {
 	forecastSequence   uint64
 	publication        *MetroData
 	batch              *metroPointBatch
+	directUsable       bool
 }
 
 type metroRuntimeTopology struct {
-	hubError          string
-	hubCorrections    []hubPosition
-	operational       map[string]*metroOperationalMotion
-	operationalAxes   map[string]metroOperationalAxisData
-	priorCache        map[string][]metroVisitPrior
-	plan              *StaticData
-	topology          patterns.Topology
-	unmappedStations  []string
-	stationsSignature string
+	hubError              string
+	hubCorrections        []hubPosition
+	operational           map[string]*metroOperationalMotion
+	operationalAxes       map[string]metroOperationalAxisData
+	priorCache            map[string][]metroVisitPrior
+	plan                  *StaticData
+	topology              patterns.Topology
+	unmappedStations      []string
+	stationsSignature     string
+	destinationsSignature string
 }
 type metroRuntimeTracks struct {
 	tracks            map[string]*metroTrack
@@ -161,21 +163,31 @@ func (r *metroRuntime) observe(data *MetroData, static *StaticData, history *pat
 	r.archiveAvailable = history != nil && !r.historyCutMismatch
 	copy := *data
 	r.publication = &copy
+	r.directUsable = data.Status.Status == "ok" && static != nil && static.Schedule != nil
 	r.forecastCacheUntil = time.Time{}
 	r.inventoryOverflow = false
 	if r.archiveAvailable && (r.historyCut == nil || r.historyCut.Snapshot().Valid) && r.historyStatus == "unavailable" {
 		r.historyStatus = "pending"
 	}
-	if data.Status.Status != "ok" || static == nil || static.Schedule == nil {
-		r.suspendAll("Fonte ou topologia indisponível")
-		r.markCaptureGap()
-		r.captureChanged(now)
-		r.queueCurrentCheckpoints()
-		data.Trains = r.current(now)
-		data.Topology = r.topology
+	if !r.directUsable {
+		r.observeUnavailable(data, now)
 		return
 	}
 	r.observeSupported(data, static, now)
+}
+
+func (r *metroRuntime) observeUnavailable(data *MetroData, now time.Time) {
+	if data.Status.Status == "ok" {
+		// The current waits remain useful without a complete route topology.
+		r.batch = collectMetroPoints(data, patterns.Topology{}, now)
+		r.batch.topologyUnavailable = true
+	}
+	r.suspendAll("Fonte ou topologia indisponível")
+	r.markCaptureGap()
+	r.captureChanged(now)
+	r.queueCurrentCheckpoints()
+	data.Trains = r.current(now)
+	data.Topology = r.topology
 }
 func (r *metroRuntime) observeSupported(data *MetroData, static *StaticData, now time.Time) {
 	r.forecastCacheUntil = time.Time{}
@@ -200,12 +212,15 @@ func (r *metroRuntime) observeSupported(data *MetroData, static *StaticData, now
 func (r *metroRuntime) updateTopology(data *MetroData, static *StaticData) {
 	raw, _ := json.Marshal(data.Stations)
 	signature := string(raw)
-	if r.plan != static || r.stationsSignature != signature {
+	destinations, _ := json.Marshal(data.Destinations)
+	destinationsSignature := string(destinations)
+	if r.plan != static || r.stationsSignature != signature || r.destinationsSignature != destinationsSignature {
 		r.plan = static
 		r.priorCache = map[string][]metroVisitPrior{}
 		r.operational = map[string]*metroOperationalMotion{}
 		r.operationalAxes = map[string]metroOperationalAxisData{}
 		r.stationsSignature = signature
+		r.destinationsSignature = destinationsSignature
 		topology, unmapped := metroTopologyReport(data, static)
 		r.topology, r.unmappedStations = topology, unmapped
 	}

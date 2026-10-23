@@ -44,6 +44,15 @@ func (r *metroRuntime) observeHub(positions []hubPosition, received time.Time) {
 		r.observeHubPosition(position, routes, received)
 	}
 	r.expireOperationalMotions(received)
+	if !r.directUsable {
+		// Keep independent model observations and corrections, but do not admit
+		// journeys from waits retained by a failed or unsupported direct update.
+		r.forecastCacheUntil = time.Time{}
+		r.prune(received)
+		r.queueCurrentCheckpoints()
+		r.captureChanged(received)
+		return
+	}
 	// Reclassify the retained direct revision without renewing its original clock.
 	r.observeSupported(r.publication, r.plan, received)
 }
