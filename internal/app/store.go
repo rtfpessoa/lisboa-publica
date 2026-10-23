@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 	"lisboapublica/internal/api"
 )
 
@@ -52,20 +53,25 @@ CREATE INDEX IF NOT EXISTS keys_owner ON api_keys(owner_email,created_at);
 
 // Store persists cached feeds, observations, hashed sessions and scoped API keys.
 type Store struct {
-	DB              *pgxpool.Pool
-	RetentionDays   int
-	HistoryInterval time.Duration
-	writeMu         sync.Mutex
-	historyReadMu   sync.RWMutex
-	pressureVacuum  atomic.Bool
-	pressureError   atomic.Pointer[string]
-	historyMu       sync.Mutex
-	collector       *historyCollector
-	archiveCursor   *snapshotArchiveKey
-	budget          *storageBudget
-	PublishMu       sync.Mutex
-	facts           factRegistry
-	reporting       reportingRegistry
+	DB                 *pgxpool.Pool
+	RetentionDays      int
+	HistoryInterval    time.Duration
+	writeMu            writeLock
+	historyReadMu      historyLock
+	pressureVacuum     atomic.Bool
+	pressureVacuumWG   sync.WaitGroup
+	maintenanceRunning atomic.Bool
+	maintenanceLog     atomic.Pointer[zap.Logger]
+	postgres           bool
+	directPostgres     bool
+	pressureError      atomic.Pointer[string]
+	historyMu          sync.Mutex
+	collector          *historyCollector
+	archiveCursor      *snapshotArchiveKey
+	budget             *storageBudget
+	PublishMu          sync.Mutex
+	facts              factRegistry
+	reporting          reportingRegistry
 }
 
 // OpenStore opens a database pool and applies compatible Postgres/Cockroach migrations.
@@ -75,11 +81,40 @@ func OpenStore(ctx context.Context, url string) (*Store, error) {
 
 // OpenStoreWithStorageGuard budgets migrations before applying any schema writes.
 func OpenStoreWithStorageGuard(ctx context.Context, url string, guard bool) (*Store, error) {
+	return OpenStoreWithStorageFilesystem(ctx, url, guard, nil)
+}
+
+// OpenStoreWithStorageFilesystem enables an optional fail-closed local PGDATA
+// filesystem probe in addition to the existing database-size storage guard.
+func OpenStoreWithStorageFilesystem(ctx context.Context, url string, guard bool, filesystem *StorageFilesystemConfig) (*Store, error) {
+	return OpenStoreWithStorageOptions(ctx, url, guard, filesystem, false)
+}
+
+// OpenStoreWithStorageOptions checks for work left by a previous process before
+// migrations when direct PostgreSQL identity has been verified by an operator.
+func OpenStoreWithStorageOptions(ctx context.Context, url string, guard bool, filesystem *StorageFilesystemConfig, direct bool) (*Store, error) {
+	if direct && !guard {
+		return nil, fmt.Errorf("direct PostgreSQL recovery requires a storage guard")
+	}
+	var probe *filesystemProbe
+	if filesystem != nil {
+		if !guard {
+			return nil, fmt.Errorf("database filesystem probe requires STORAGE_GUARD")
+		}
+		var err error
+		probe, err = newFilesystemProbe(*filesystem)
+		if err != nil {
+			return nil, err
+		}
+	}
 	pool, err := openDatabasePool(ctx, url)
 	if err != nil {
 		return nil, err
 	}
-	value := &Store{DB: pool}
+	value := &Store{DB: pool, directPostgres: direct}
+	if guard {
+		value.budget = &storageBudget{measure: value.databaseBytes, now: time.Now, state: "unavailable", filesystem: probe, vacuumActive: &value.pressureVacuum}
+	}
 	if err = value.initialize(ctx, guard); err != nil {
 		pool.Close()
 		return nil, err
@@ -101,19 +136,53 @@ func (s *Store) initialize(ctx context.Context, guard bool) error {
 	if err := s.DB.Ping(ctx); err != nil {
 		return err
 	}
-	if guard {
-		s.budget = &storageBudget{measure: s.databaseBytes, now: time.Now, state: "unavailable"}
-		if err := s.reserveMigrations(ctx); err != nil {
+	var product string
+	if err := s.DB.QueryRow(ctx, "SELECT version()").Scan(&product); err != nil {
+		return err
+	}
+	s.postgres = strings.Contains(product, "PostgreSQL") && !strings.Contains(product, "CockroachDB")
+	if err := s.initializeDirectPostgres(ctx); err != nil {
+		return err
+	}
+	if err := s.initializeStorageGuard(ctx, guard); err != nil {
+		return err
+	}
+	return s.applySchema(ctx)
+}
+
+func (s *Store) initializeDirectPostgres(ctx context.Context) error {
+	if !s.directPostgres {
+		return nil
+	}
+	if !s.postgres {
+		return fmt.Errorf("direct PostgreSQL recovery requires PostgreSQL")
+	}
+	if err := s.ensurePriorBackendsSettled(ctx); err != nil {
+		return fmt.Errorf("guarded database initialization refused before migrations: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) initializeStorageGuard(ctx context.Context, guard bool) error {
+	if !guard {
+		return nil
+	}
+	if s.budget == nil {
+		s.budget = &storageBudget{measure: s.databaseBytes, now: time.Now, state: "unavailable", vacuumActive: &s.pressureVacuum}
+	}
+	if err := s.reserveMigrations(ctx); err != nil {
+		return fmt.Errorf("guarded database initialization refused before migrations; inspect storage and use the read-only recovery procedure: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) applySchema(ctx context.Context) error {
+	for _, q := range splitStatements(schema) {
+		if _, err := s.DB.Exec(ctx, q); err != nil {
 			return err
 		}
 	}
-	var err error
-	for _, q := range splitStatements(schema) {
-		if _, err = s.DB.Exec(ctx, q); err != nil {
-			break
-		}
-	}
-	return err
+	return nil
 }
 
 func splitStatements(s string) []string {
@@ -131,22 +200,12 @@ func splitStatements(s string) []string {
 }
 func (s *Store) transaction(ctx context.Context, fn func(pgx.Tx) error) error {
 	for attempt := 0; attempt < serializationAttempts; attempt++ {
-		tx, e := s.DB.BeginTx(ctx, pgx.TxOptions{})
-		if e != nil {
-			return e
-		}
-		e = fn(tx)
-		if e == nil {
-			e = tx.Commit(ctx)
-		} else {
-			_ = tx.Rollback(ctx)
-		}
+		e, uncertain := s.transactionAttempt(ctx, fn)
 		if e == nil {
 			return nil
 		}
-		_ = tx.Rollback(ctx)
 		var pg *pgconn.PgError
-		if !errors.As(e, &pg) || pg.Code != "40001" {
+		if uncertain || !errors.As(e, &pg) || pg.Code != "40001" {
 			return e
 		}
 		select {
@@ -156,6 +215,89 @@ func (s *Store) transaction(ctx context.Context, fn func(pgx.Tx) error) error {
 		}
 	}
 	return fmt.Errorf("serialization retry limit exceeded")
+}
+
+func (s *Store) transactionAttempt(ctx context.Context, fn func(pgx.Tx) error) (error, bool) {
+	conn, err := s.DB.Acquire(ctx)
+	if err != nil {
+		return err, false
+	}
+	defer conn.Release()
+	tx, err := conn.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err, false
+	}
+	var backend databaseBackend
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			if rollbackTransaction(tx) != nil {
+				s.discardUncertainConnection(conn, backend)
+			}
+			panic(recovered)
+		}
+	}()
+	backend, err = s.backendForWrite(ctx, tx)
+	if err != nil {
+		_ = rollbackTransaction(tx)
+		return err, false
+	}
+	return s.executeTransaction(ctx, conn, tx, backend, fn)
+}
+
+type backendConnection interface {
+	activityQuery
+	Conn() *pgx.Conn
+}
+
+func (s *Store) backendForWrite(ctx context.Context, conn backendConnection) (databaseBackend, error) {
+	var backend databaseBackend
+	if s.budget == nil || !s.postgres || !s.directPostgres {
+		return backend, nil
+	}
+	err := conn.QueryRow(ctx, `SELECT pg_backend_pid(),COALESCE(inet_server_addr()::TEXT,''),COALESCE(inet_server_port(),0)`).Scan(&backend.pid, &backend.host, &backend.port)
+	if err != nil {
+		return backend, err
+	}
+	if backend.pid <= 0 || uint32(backend.pid) != conn.Conn().PgConn().PID() || backend.host == "" || backend.port <= 0 {
+		return backend, fmt.Errorf("direct PostgreSQL backend identity is unavailable or mismatched")
+	}
+	return backend, nil
+}
+
+func rollbackTransaction(tx pgx.Tx) error {
+	rollbackCtx, cancel := context.WithTimeout(context.Background(), storageCheckTimeout)
+	defer cancel()
+	return tx.Rollback(rollbackCtx)
+}
+
+// An uncertain connection must not return to the pool before reconciliation.
+func (s *Store) discardUncertainConnection(conn *pgxpool.Conn, backend databaseBackend) {
+	s.markUncertainWrite(backend)
+	closeCtx, cancel := context.WithTimeout(context.Background(), storageCheckTimeout)
+	_ = conn.Conn().Close(closeCtx)
+	cancel()
+}
+
+func (s *Store) executeTransaction(ctx context.Context, conn *pgxpool.Conn, tx pgx.Tx, backend databaseBackend, fn func(pgx.Tx) error) (error, bool) {
+	err := fn(tx)
+	if err != nil {
+		if rollbackTransaction(tx) != nil {
+			s.discardUncertainConnection(conn, backend)
+			return err, true
+		}
+		return err, false
+	}
+	err = tx.Commit(ctx)
+	if err != nil {
+		var pg *pgconn.PgError
+		// A server error followed by ReadyForQuery in the idle state proves
+		// the transaction ended; transport errors have no such guarantee.
+		if !errors.As(err, &pg) || conn.Conn().PgConn().TxStatus() != 'I' {
+			s.discardUncertainConnection(conn, backend)
+			return err, true
+		}
+	}
+	return err, false
 }
 func encodeCache(v any) ([]byte, error) {
 	var b bytes.Buffer
@@ -312,10 +454,23 @@ func (s *Store) acknowledgeUpdate(id string, update cacheUpdate, next *historyCo
 }
 
 func (s *Store) prune(ctx context.Context) error {
-	s.writeMu.Lock()
+	_, err := s.pruneWithVacuumContext(ctx, ctx)
+	return err
+}
+
+func (s *Store) pruneWithVacuumContext(ctx, vacuumParent context.Context) (pressureMaintenanceResult, error) {
+	if err := s.writeMu.LockContext(ctx); err != nil {
+		return pressureMaintenanceResult{reason: "write_lock_canceled"}, err
+	}
 	defer s.writeMu.Unlock()
+	if s.pressureVacuum.Load() {
+		return pressureMaintenanceResult{reason: "vacuum_in_progress"}, nil
+	}
+	if err := s.reconcileCompletedReservations(ctx); err != nil {
+		return pressureMaintenanceResult{reason: "measurement_failed"}, err
+	}
 	if err := s.reserveStorage(ctx, cleanupReservation, maximumDatabaseBytes); err != nil {
-		return err
+		return pressureMaintenanceResult{reason: "cleanup_reservation_failed"}, err
 	}
 	err := s.transaction(ctx, func(tx pgx.Tx) error {
 		for _, q := range []string{"DELETE FROM stop_events WHERE (journey_id,stop_sequence,event_kind,generation) IN (SELECT journey_id,stop_sequence,event_kind,generation FROM stop_events WHERE event_at < $1 ORDER BY event_at LIMIT 10000)", "DELETE FROM snapshots WHERE (operator_id,vehicle_id,observed_at) IN (SELECT operator_id,vehicle_id,observed_at FROM snapshots WHERE observed_at < $1 ORDER BY observed_at LIMIT 10000)", "DELETE FROM sessions WHERE token_hash IN (SELECT token_hash FROM sessions WHERE expires_at < $1 LIMIT 10000)", "DELETE FROM api_keys WHERE id IN (SELECT id FROM api_keys WHERE expires_at < $1 LIMIT 10000)"} {
@@ -333,9 +488,9 @@ func (s *Store) prune(ctx context.Context) error {
 		return nil
 	})
 	if err != nil {
-		return err
+		return pressureMaintenanceResult{reason: "ordinary_cleanup_failed"}, err
 	}
-	return s.pressurePrune(ctx)
+	return s.pressurePrune(ctx, vacuumParent)
 }
 func (s *Store) generation(ctx context.Context) (int64, error) {
 	var n int64

@@ -6,14 +6,21 @@ services:
     env_file:
       - path: /etc/lisboa-publica/dashboard.env
         format: raw
+    environment:
+      STORAGE_FILESYSTEM_PATH: /app/postgres-filesystem
+      STORAGE_FILESYSTEM_MIN_FREE_BYTES: ${LISBOA_DATABASE_FS_MIN_FREE_BYTES:-1073741824}
+      STORAGE_FILESYSTEM_MIN_FREE_INODES: ${LISBOA_DATABASE_FS_MIN_FREE_INODES:-10000}
+      STORAGE_POSTGRES_DIRECT: "true"
     depends_on:
       lisboa-database:
         condition: service_healthy
     restart: unless-stopped
+    stop_grace_period: 60s
     mem_limit: 1280m
     cpus: 1.5
     volumes:
       - lisboa_transport_history:/app/transport-history
+      - lisboa_postgres_data:/app/postgres-filesystem:ro
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m

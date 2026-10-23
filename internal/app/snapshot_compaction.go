@@ -132,6 +132,9 @@ func (b *storageBudget) reserveOptional(ctx context.Context, bytes int64) (bool,
 	if err := b.refresh(ctx); err != nil {
 		return false, err
 	}
+	if err := b.checkFilesystem(bytes); err != nil {
+		return false, err
+	}
 	if bytes < 0 || bytes > maximumWriteBytes || b.bytes+b.reserved+bytes > operationalDatabaseBytes {
 		return false, nil
 	}
