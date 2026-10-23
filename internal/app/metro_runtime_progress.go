@@ -54,6 +54,7 @@ func (r *metroRuntime) retractArrivals(t *metroTrack, current map[string]metroPo
 		c := &t.Train.Calls[n]
 		p, found := current[t.Codes[n]]
 		if found && metroArrivalContradicted(*c, p) {
+			markMetroRetraction(t)
 			withdrawMetroDeparture(t, n, p.Clock, "Chegada de suporte retirada por correção da mesma visita")
 			delete(t.ModelStops, c.Id)
 			c.Arrival = missingCallTime("Chegada inferida retirada: previsão posterior incompatível")
@@ -78,11 +79,15 @@ func (r *metroRuntime) projectPoints(t *metroTrack, current map[string]metroPoin
 	t.Train.Association = "supported"
 	t.Train.Reason = "Associação inferida; referência não identifica a unidade física"
 	prior := t.Train.NextIndex
+	var previous *api.CallTimeEvidence
+	if prior != nil && *prior >= 0 && *prior < len(t.Train.Calls) {
+		previous = t.Train.Calls[*prior].Arrival.Prediction
+	}
 	t.Train.CurrentIndex, t.Train.NextIndex = nil, nil
 	if !r.projectCurrentMetroVisits(t, current, now) {
 		return
 	}
-	normalizeMetroNextIndex(t, prior, now)
+	normalizeMetroNextIndex(t, prior, previous, current, now)
 	if metroRegressiveIndex(prior, t.Train.NextIndex) {
 		regressMetroTrack(t, now)
 		return
@@ -106,32 +111,44 @@ func (r *metroRuntime) projectCurrentMetroVisits(t *metroTrack, current map[stri
 	}
 	return true
 }
-func normalizeMetroNextIndex(t *metroTrack, prior *int, now time.Time) {
-	if t.Train.NextIndex == nil && t.Train.SourceUpdatedAt.Add(sourceFreshness).After(now) {
-		t.Train.NextIndex = prior
-	}
-	if t.Train.CurrentIndex == nil {
+
+// A missing row is not proof that a station was passed. Retain a still-fresh
+// earlier estimate with its original clock, unless a later arrival was observed.
+func normalizeMetroNextIndex(t *metroTrack, prior *int, previous *api.CallTimeEvidence, current map[string]metroPoint, now time.Time) {
+	if t.Train.CurrentIndex != nil {
+		next := *t.Train.CurrentIndex + 1
+		t.Train.NextIndex = nil
+		if next < len(t.Train.Calls) {
+			t.Train.NextIndex = &next
+		}
 		return
 	}
-	next := *t.Train.CurrentIndex + 1
-	t.Train.NextIndex = nil
-	if next < len(t.Train.Calls) {
-		t.Train.NextIndex = &next
+	if prior == nil || *prior < 0 || *prior >= len(t.Train.Calls) || *prior >= len(t.Codes) || previous == nil || !metroCallPredictionFresh(previous, t.Train.Association, now) {
+		return
 	}
+	if _, exists := current[t.Codes[*prior]]; exists {
+		return
+	}
+	if t.Train.NextIndex != nil && *t.Train.NextIndex <= *prior {
+		return
+	}
+	at := previous.At
+	t.Train.Calls[*prior].Arrival = api.CallTime{Kind: "prediction", At: &at, Prediction: previous}
+	t.Train.NextIndex = ptr(*prior)
 }
 
 func metroCallPhases(t *api.MetroTrain) {
-	if t.NextIndex == nil {
-		return
-	}
 	for n := range t.Calls {
 		c := &t.Calls[n]
-		if n < *t.NextIndex && (c.Arrival.Inferred != nil || c.Arrival.Actual != nil) {
+		c.Phase = "unknown"
+		if t.NextIndex != nil {
+			if n < *t.NextIndex && (c.Arrival.Inferred != nil || c.Arrival.Actual != nil) {
+				c.Phase = "previous"
+			} else if n >= *t.NextIndex {
+				c.Phase = "future"
+			}
+		} else if t.CurrentIndex != nil && n < *t.CurrentIndex && (c.Arrival.Inferred != nil || c.Arrival.Actual != nil) {
 			c.Phase = "previous"
-		} else if n >= *t.NextIndex {
-			c.Phase = "future"
-		} else {
-			c.Phase = "unknown"
 		}
 		if t.CurrentIndex != nil && n == *t.CurrentIndex {
 			c.Phase = "current"

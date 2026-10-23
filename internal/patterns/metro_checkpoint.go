@@ -148,7 +148,9 @@ func metroCheckpointKey(journey string) string { return "metro-popup-checkpoint:
 // Missing records are unavailable: absence alone cannot distinguish eviction
 // from a journey that was never committed.
 func (s *Service) MetroJourneyCheckpoint(ctx context.Context, journey string, now time.Time) (MetroJourneyCheckpoint, string, error) {
-	s.mu.Lock()
+	if err := s.lockMetroCheckpoint(ctx); err != nil {
+		return MetroJourneyCheckpoint{}, "unavailable", err
+	}
 	defer s.mu.Unlock()
 	if err := ctx.Err(); err != nil {
 		return MetroJourneyCheckpoint{}, "unavailable", err
@@ -157,6 +159,29 @@ func (s *Service) MetroJourneyCheckpoint(ctx context.Context, journey string, no
 		return MetroJourneyCheckpoint{}, "unavailable", fmt.Errorf("archive closed")
 	}
 	return s.metroJourneyCheckpoint(journey, now)
+}
+
+// Unlike sync.Mutex.Lock, this bounded wait can release a cancelled reader
+// without leaving a goroutine queued behind the archive owner.
+func (s *Service) lockMetroCheckpoint(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if s.mu.TryLock() {
+		return nil
+	}
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			if s.mu.TryLock() {
+				return nil
+			}
+		}
+	}
 }
 
 func (s *Service) metroJourneyCheckpoint(journey string, now time.Time) (MetroJourneyCheckpoint, string, error) {

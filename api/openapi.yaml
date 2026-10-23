@@ -5608,6 +5608,9 @@
           },
           "association_reason": {
             "type": "string"
+          },
+          "predecessor": {
+            "$ref": "#/components/schemas/MetroPredecessorHistory"
           }
         },
         "required": [
@@ -6041,6 +6044,36 @@
           }
         },
         "description": "Forecast identity and provenance, separate from current vehicle/journey linkage. Order association requires a unique supported continuous cohort; anonymous forecasts never mint a source reference or physical train."
+      },
+      "MetroPredecessorHistory": {
+        "type": "object",
+        "description": "A linked prior estimated episode, not proof of the same physical train. The complete retained visit sequence is separate from the selected journey.",
+        "required": [
+          "journey_id",
+          "status",
+          "reason"
+        ],
+        "properties": {
+          "journey_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "available",
+              "unavailable",
+              "expired",
+              "corrupt"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "train": {
+            "$ref": "#/components/schemas/MetroTrain"
+          }
+        }
       }
     }
   }

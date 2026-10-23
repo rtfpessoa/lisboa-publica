@@ -5,6 +5,12 @@ import (
 	"time"
 )
 
+// Retraction generations are runtime-only and fence in-flight acknowledgements.
+func markMetroRetraction(t *metroTrack) {
+	t.UncommittedRetraction = true
+	t.RetractionGeneration++
+}
+
 func (r *metroRuntime) prune(now time.Time) {
 	r.expireLifecycleGroups(now)
 	pruneMetroContexts(r.active, r.tracks, now)
@@ -95,7 +101,7 @@ func (r *metroRuntime) evictRetired() {
 	}
 	var oldest *metroTrack
 	for _, t := range r.tracks {
-		if active[t.Train.JourneyId] || t.LifecycleGroup != "" {
+		if active[t.Train.JourneyId] || t.LifecycleGroup != "" || t.UncommittedRetraction {
 			continue
 		}
 		if oldest == nil || t.Train.SourceUpdatedAt.Before(oldest.Train.SourceUpdatedAt) {

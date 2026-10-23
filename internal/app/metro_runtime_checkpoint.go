@@ -72,6 +72,7 @@ func (r *metroRuntime) queueEligibleCheckpoint(t *metroTrack) {
 		return
 	}
 	if hash == t.CheckpointHash {
+		coverMetroRetractionWithCheckpoint(t)
 		return
 	}
 	old := r.dirty[t.Train.JourneyId]
@@ -81,11 +82,21 @@ func (r *metroRuntime) queueEligibleCheckpoint(t *metroTrack) {
 		return
 	}
 
+	r.invalidateMetroPredecessor(t.Train.JourneyId)
 	t.Revision++
+	t.CheckpointRetractionGeneration = t.RetractionGeneration
 	t.CheckpointUnavailable = false
 	t.CheckpointHash = hash
 	r.dirtyBytes += size - pendingMetroCheckpointBytes(old)
 	r.dirty[t.Train.JourneyId] = patterns.MetroJourneyCheckpoint{Journey: t.Train.JourneyId, Revision: t.Revision, SourceAt: t.Train.SourceUpdatedAt, Payload: raw}
+}
+
+// The queued or committed payload already represents this exact state.
+func coverMetroRetractionWithCheckpoint(t *metroTrack) {
+	t.CheckpointRetractionGeneration = t.RetractionGeneration
+	if t.CommittedRevision == t.Revision && t.CommittedRevision > 0 {
+		t.UncommittedRetraction = false
+	}
 }
 
 func (r *metroRuntime) encodeCheckpoint(t *metroTrack) ([]byte, string, bool) {
@@ -149,6 +160,10 @@ func (r *metroRuntime) commitCheckpointBatch(batch []patterns.MetroJourneyCheckp
 			delete(r.dirty, v.Journey)
 		}
 		if t := r.tracks[v.Journey]; t != nil && v.Revision > t.CommittedRevision {
+			if v.Revision == t.Revision && t.CheckpointRetractionGeneration == t.RetractionGeneration {
+				t.UncommittedRetraction = false
+			}
+			r.invalidateMetroPredecessor(v.Journey)
 			t.CommittedRevision, t.Generation, t.CommittedAt = v.Revision, generation, now.UTC()
 			r.commitLifecycle(t, v.Revision)
 			commitMetroDepartureEvidence(t, v.Payload)
