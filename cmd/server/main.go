@@ -60,20 +60,15 @@ func main() {
 	defer log.Sync()
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	database := os.Getenv("DATABASE_URL")
-	if database == "" {
-		log.Fatal("DATABASE_URL is required")
-	}
-	store, err := openConfiguredStore(ctx, database)
+	store, err := openConfiguredStore(ctx, requiredDatabaseURL(log))
 	if err != nil {
 		log.Fatal("database initialization failed", zap.Error(err))
 	}
 	defer store.DB.Close()
-	if err := configureHistory(store); err != nil {
-		log.Fatal("history configuration failed", zap.Error(err))
-	}
+	stopMaintenance := initializeHistory(ctx, store, log)
+	defer stopMaintenance()
 	cache := app.NewCache()
-	if err = store.Restore(ctx, cache); err != nil {
+	if err := store.Restore(ctx, cache); err != nil {
 		log.Fatal("cache restoration failed", zap.Error(err))
 	}
 	server := configuredServer(store, cache, log)
@@ -87,6 +82,28 @@ func main() {
 		log.Fatal("API initialization failed", zap.Error(err))
 	}
 	serveHTTP(ctx, handler, log)
+}
+
+func requiredDatabaseURL(log *zap.Logger) string {
+	database := os.Getenv("DATABASE_URL")
+	if database == "" {
+		log.Fatal("DATABASE_URL is required")
+	}
+	if env("STORAGE_GUARD", "false") == "true" && os.Getenv("STORAGE_FILESYSTEM_PATH") == "" {
+		log.Warn("database filesystem free space is unverified")
+	}
+	return database
+}
+
+func initializeHistory(ctx context.Context, store *app.Store, log *zap.Logger) func() {
+	if err := configureHistory(store); err != nil {
+		log.Fatal("history configuration failed", zap.Error(err))
+	}
+	stopMaintenance, err := store.StartMaintenance(ctx, log)
+	if err != nil {
+		log.Fatal("maintenance initialization failed", zap.Error(err))
+	}
+	return stopMaintenance
 }
 func runtimeOptions() app.Options {
 	limit, _ := strconv.Atoi(env("RATE_LIMIT_PER_MINUTE", "300"))

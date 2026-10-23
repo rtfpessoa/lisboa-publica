@@ -90,6 +90,31 @@ environment against protected container inspections before cutover. Include
 interpolation can also be overridden by the calling shell or shared project's
 environment; check those sources and the resolved image without exposing secrets.
 
+The shared fragment also mounts the existing PostgreSQL data volume read-only at
+`/app/postgres-filesystem` and enables its filesystem probe. `STORAGE_GUARD=true`
+is required in the protected dashboard environment. Before deployment, verify
+that PGDATA has mode `0700`, is owned by a different UID from the non-root
+dashboard, and cannot be opened by the dashboard user; verify that the mount is
+the live PGDATA volume. The probe rejects readable directories and paths whose
+filesystem cannot be measured, and fails guarded writes closed. Confirm that
+`pg_wal` and every tablespace use the
+same filesystem, or monitor their separate filesystems independently. Compose
+variables `LISBOA_DATABASE_FS_MIN_FREE_BYTES` and
+`LISBOA_DATABASE_FS_MIN_FREE_INODES` default to 1,073,741,824 bytes and 10,000
+inodes. The reserve is operational headroom, not a quota or a guarantee against
+other processes filling the filesystem.
+
+The fragment sets `STORAGE_POSTGRES_DIRECT=true`. Verify that the dashboard's
+database URL resolves to the dedicated PostgreSQL server directly, without a
+proxy, connection pooler or load balancer; verify the role and database are
+dedicated to this single dashboard. This setting enables activity-based
+recovery and a startup check before migrations. A still-present session using
+that role, even an idle session, blocks startup. The check is a snapshot, not a
+distributed fence; run only one collector and stop the previous owner before
+starting a replacement. Do not enable it for an unverified endpoint. The
+dashboard has a 60-second stop grace period for maintenance and database
+cancellation before Docker forces termination.
+
 Plain `docker compose` in `/root/dev/server` loads the shared project's existing
 settings through `.env`, a symlink to `/etc/bufin/sandbox.env`, and resolves both
 Lisboa services. Preserve the protected target and symlink. The Caddy image is
@@ -158,11 +183,61 @@ History targets the configured retention, 30 days by default, with one hour of p
 
 Vehicle position display uses a fixed ten-minute lifetime from the original source clock for all operators, with an immediate marker warning for backend `not_reporting` state and an independent age warning at five minutes. This is independent of historical retention and the live request interval. The frontend ages cached positions every second even when requests fail; restoring positions or polling the same report cannot renew the deadline.
 
-The app measures all tables in its database using table-scoped CockroachDB range statistics (Postgres uses database size). Writes reserve conservative byte estimates between measurements. History normally stops at 4,000,000,000 bytes and operational writes at 4,500,000,000; measurement failures block writes. Cleanup deletes at most 10,000 expired rows every five minutes. Startup budgets schema work before DDL and rejects large unbounded backfills. Reservations remain locked through each write; cache/history share one measurement, and unchanged cache parts are retained.
+The app measures all tables in its database using table-scoped CockroachDB range statistics (Postgres uses database size). Writes reserve conservative byte estimates between measurements. History normally stops at 4,000,000,000 bytes and operational writes at 4,500,000,000; measurement failures block writes. Cleanup deletes at most 10,000 expired rows per table at startup and per independent one-minute pass. Startup budgets schema work before DDL and rejects large unbounded backfills. Reservations remain locked through each write; cache/history share one measurement, and unchanged cache parts are retained. On verified direct PostgreSQL, maintenance can reconcile completed reservations after a fresh measurement while holding the write lock and only when no pressure vacuum is running.
 
-On PostgreSQL 17 or later, a role with table `MAINTAIN` privilege can recover some history collection under pressure by deleting oldest snapshots in batches of up to 10,000, strictly older than seven days. The seven-day minimum applies only to pressure cleanup; a shorter configured retention still applies. A persistent initial allowance of 300,000 deletions is replenished only by committed recent snapshot inserts. Each deleted snapshot earns one insert credit, and another deletion batch waits until at most 1,000 credits remain. A pending ordinary `VACUUM` blocks pressure admissions and is retried by the five-minute maintenance job, including after restart. Pressure admissions require a fresh database measurement and outstanding reservations below 4,200,000,000 bytes. Failures and insufficient headroom block admission. Other backends do not use this pressure cleanup. Vacuum makes space available for reuse but does not guarantee smaller database files. Once a pressure cutoff has advanced, an older executable cannot enforce it safely; plan rollback accordingly. See [history retention and limits](../docs/data/history.md#retention-and-storage-guards).
+On PostgreSQL 17 or later, a role with table `MAINTAIN` privilege can recover some history collection under pressure by deleting oldest snapshots in batches of up to 10,000, strictly older than seven days. The seven-day minimum applies only to pressure cleanup; a shorter configured retention still applies. A persistent initial allowance of 300,000 deletions is replenished only by committed recent snapshot inserts. Each deleted snapshot earns one insert credit, and another deletion batch waits until at most 1,000 credits remain. A pending ordinary `VACUUM` blocks pressure admissions and is retried by the one-minute maintenance job, including after restart. Vacuum has a separate 15-minute deadline and is canceled and joined at shutdown; pending work remains durable. Pressure admissions require a fresh database measurement and outstanding reservations below 4,200,000,000 bytes. Failures and insufficient headroom block admission. Other backends do not use this pressure cleanup. Vacuum makes space available for reuse but does not guarantee smaller database files. Once a pressure cutoff has advanced, an older executable cannot enforce it safely; plan rollback accordingly. See [history retention and limits](../docs/data/history.md#retention-and-storage-guards).
 
-These application thresholds do not impose a filesystem quota on PostgreSQL WAL, logs, temporary files or the host. Monitor free disk space and keep protected backups on the server. Run one collector and use a dedicated database. Local PostgreSQL has no Cloud monthly RU quota; no Cloud spending caps are changed.
+The optional filesystem probe uses `STORAGE_FILESYSTEM_PATH`, `STORAGE_FILESYSTEM_MIN_FREE_BYTES` and `STORAGE_FILESYSTEM_MIN_FREE_INODES`; the path must be an absolute, inaccessible read-only mount of PGDATA and the process must run as non-root. If enabled, a missing/unsafe mount, failed measurement, or insufficient available blocks/inodes fails guarded writes closed. The shared-server fragment enables it; deployments without it preserve existing behavior and log that PostgreSQL host free space is unverified. These application thresholds do not impose a filesystem quota on PostgreSQL WAL, logs, temporary files or the host. Monitor free disk space and keep protected backups. Run one collector and use a dedicated database. Local PostgreSQL has no Cloud monthly RU quota; no Cloud spending caps are changed.
+
+For the shared server, an error mentioning prior sessions or an uncertain
+write means the guard could not establish that earlier database work finished.
+Stop the old dashboard and inspect same-role sessions on the verified server;
+from `/root/dev/server`, the following query is read-only and excludes itself:
+
+```sh
+docker compose exec -T lisboa-database sh -c 'exec psql -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+SELECT pid,datname,usename,application_name,state,backend_type
+FROM pg_catalog.pg_stat_activity
+WHERE pid <> pg_backend_pid()
+  AND (datname=current_database() OR datname IS NULL)
+  AND (usename=current_user OR usename IS NULL)
+  AND (backend_type='client backend' OR backend_type IS NULL);
+SQL
+```
+
+Wait for old sessions to end or investigate them with the database operator
+before retrying startup. Do not assume an idle session has no queued command.
+If the activity view or server identity is unavailable, correct access or the
+endpoint before retrying. For unverified proxy/remote connections, an ambiguous
+write fails guarded writes for the current process, but that in-memory reason
+is lost at restart. Confirm through the provider that prior work has ended
+before restarting; the application cannot verify it through an untrusted proxy.
+The periodic reservation guard for those deployments retains its previous
+behavior and does not gain a crash-safe fence.
+
+If guarded startup refuses migrations near the 4,500,000,000-byte operational
+ceiling, inspect the existing database without starting the application or
+changing its schema. From `/root/dev/server`, the following reads the current
+measurement, migration-guard prerequisites and pressure state in a read-only
+transaction; keep its output private:
+
+```sh
+docker compose exec -T lisboa-database sh -c 'exec psql -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+BEGIN READ ONLY;
+SELECT pg_database_size(current_database()) AS database_bytes;
+SELECT (SELECT count(*) FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='snapshots' AND column_name IN ('first_observed_at','speed_sample_count'))=2
+   AND (SELECT count(*) FROM pg_indexes WHERE schemaname=current_schema() AND indexname IN ('snapshots_time','snapshots_route','keys_owner'))=3 AS migration_guard_schema_complete;
+SELECT enabled,delete_credit,insert_credit,epoch,cutoff,vacuum_pending FROM history_pressure WHERE id=1;
+ROLLBACK;
+SQL
+```
+
+Also check free bytes and inodes on PGDATA and WAL. Above the guarded startup
+ceiling, ordinary vacuum does not shrink relation files, and automatic recovery
+may be impossible. Preserve a verified backup and use an independently reviewed
+offline restore or rewrite procedure with sufficient temporary space, preserving
+the most recent seven days and pressure metadata. Do not bypass pressure credits,
+cutoffs or revision bookkeeping with direct deletes.
 
 The image uses a 1280 MiB memory limit, bounded Go memory and serialized frontend/backend compilation. Logs rotate at 10 MB × 3 files. Metro currently omits its TLS intermediate; the public Sectigo OV R36 intermediate is verified against the standard CA bundle during the image build. TLS chain and hostname verification stay enabled. Certificate provenance: http://crt.sectigo.com/SectigoPublicServerAuthenticationCAOVR36.crt; DER SHA-256 `6542d176bed50f193c0ce297ae44ecd8a0a86bec2ede682769344059b4e78530`.
 

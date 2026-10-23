@@ -36,11 +36,11 @@ The proxy represents the configured production deployment; local development can
 
 ## Startup and shutdown
 
-[The entry point](../cmd/server/main.go) requires `DATABASE_URL`, opens the store, initializes the schema, applies [history settings](../cmd/server/config.go), creates a cache and restores persisted state. Configuration, initialization or restoration errors stop startup. The API validates origin/environment configuration and constructs its generated handler before serving requests.
+[The entry point](../cmd/server/main.go) requires `DATABASE_URL`, opens the store, initializes the schema, applies [history settings](../cmd/server/config.go), runs an initial bounded maintenance pass, then creates a cache and restores persisted state before starting writers and serving requests. With verified direct PostgreSQL, a prior-session check precedes migrations; the check and its one-owner assumptions are described in [storage recovery](data/history.md#retention-and-storage-guards). Configuration, initialization or restoration errors stop startup. The API validates origin/environment configuration and constructs its generated handler before serving requests.
 
 One shared `http.Client` has a 45-second timeout and a `BudgetTransport` capped at 900 provider attempts per rolling minute. General ingestion starts when `INGEST_ENABLED=true` (the default). The direct Metro loop starts when both Metro credentials exist, independently of `INGEST_ENABLED`. CP predictions wait for static CP data; additional TML arrivals require a requested stop with eligible static data. A cold start can show loading/unavailable data until collection succeeds.
 
-SIGINT/SIGTERM cancels the shared context and initiates HTTP shutdown with a ten-second timeout. The entry point does not explicitly join every collector or perform a final flush of unfinished history buckets. Restart can lose transient predictions, unpublished writes and unfinished aggregates.
+SIGINT/SIGTERM cancels the shared context and initiates HTTP shutdown with a ten-second timeout. Storage maintenance and its asynchronous vacuum are canceled and joined before closing the database; unfinished vacuum remains durably pending for retry. The entry point does not explicitly join every collector or perform a final flush of unfinished history buckets. Restart can lose transient predictions, unpublished writes and unfinished aggregates.
 
 ## Collection and normalization
 
@@ -51,7 +51,7 @@ SIGINT/SIGTERM cancels the shared context and initiates HTTP shutdown with a ten
 | Shared ETA | Nominal five-second loop when CP static data or additional-stop demand exists; serialized five-second attempt | CP predictions plus demanded TML stop arrivals from one decode |
 | CM arrivals | Separate nominal five-second loop; bounded requested-stop demand | Ephemeral direct arrivals independent of CP latency |
 | Direct Metro | Initial collection, then dedicated 500 ms minimum start interval with credentials; serialized with no overlap/catch-up | OAuth token reuse, line status, waits and station metadata |
-| Cleanup/archival | Five-minute ticker in the position loop | Bounded retention cleanup, PostgreSQL snapshot pressure cleanup and optional PostgreSQL payload archival |
+| Cleanup/archival | Initial pass, independent one-minute maintenance ticker; optional archival at most every five minutes | Bounded retention cleanup, PostgreSQL snapshot pressure cleanup and optional PostgreSQL payload archival |
 
 These are local schedules, not guarantees of exact completion intervals or new source observations. Filters in the UI affect enabled queries and returned entities, not which operators the position/static collectors ingest. Stop arrival reads additionally register bounded30-second demand; they never perform an upstream fetch in the HTTP reader.
 
@@ -147,6 +147,10 @@ These defaults come from [main.go](../cmd/server/main.go), [config.go](../cmd/se
 | `SNAPSHOT_RETENTION_DAYS` | 30; accepts 1–30 | Public history window |
 | `HISTORY_INTERVAL_SECONDS` | 0; accepts 0 or 300 | Raw versus aggregate collection |
 | `STORAGE_GUARD` | `false` | Guarded startup/writes; enabled in production |
+| `STORAGE_FILESYSTEM_PATH` | unset | Optional private read-only PGDATA mount to measure local PostgreSQL disk headroom |
+| `STORAGE_FILESYSTEM_MIN_FREE_BYTES` | `1073741824` | Minimum available bytes retained on the configured filesystem, before a write reservation |
+| `STORAGE_FILESYSTEM_MIN_FREE_INODES` | `10000` | Minimum available inodes retained on the configured filesystem |
+| `STORAGE_POSTGRES_DIRECT` | `false` | Operator assertion of a direct, stable PostgreSQL connection, enabling prior-session and uncertain-backend checks |
 
 ## Code navigation and evidence
 

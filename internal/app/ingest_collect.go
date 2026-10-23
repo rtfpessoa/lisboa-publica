@@ -44,8 +44,6 @@ func (f *Fetcher) sharedLiveLoop(ctx context.Context, ready <-chan struct{}) {
 	}
 	ticker := time.NewTicker(providerRefreshInterval)
 	defer ticker.Stop()
-	prune := time.NewTicker(staticRefreshInterval)
-	defer prune.Stop()
 	f.refreshLive(ctx)
 	for {
 		select {
@@ -53,13 +51,6 @@ func (f *Fetcher) sharedLiveLoop(ctx context.Context, ready <-chan struct{}) {
 			return
 		case <-ticker.C:
 			f.refreshLive(ctx)
-		case <-prune.C:
-			if e := f.Store.prune(ctx); e != nil {
-				f.Log.Warn("retention cleanup failed", zap.Error(e))
-			}
-			if e := f.Store.compactSnapshots(ctx); e != nil {
-				f.Log.Warn("optional snapshot compaction skipped")
-			}
 		}
 	}
 }
