@@ -1,8 +1,10 @@
 package patterns
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -17,7 +19,11 @@ type MetroEventRecord struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-// RecordMetroEvents shares archive ownership, manifest checksums, TTL and allocated-byte FIFO.
+// ErrMetroEventExpired means a batch contained a proof older than the retention window.
+var ErrMetroEventExpired = errors.New("Metro event proof expired")
+
+// RecordMetroEvents rejects a batch containing expired proofs before publishing
+// any of it. Other failures can follow a partial multi-hour publication.
 func (s *Service) RecordMetroEvents(records []MetroEventRecord, now time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -30,7 +36,7 @@ func (s *Service) RecordMetroEvents(records []MetroEventRecord, now time.Time) e
 	}
 	for key, values := range groups {
 		if err = s.publishMetroEventHour(key, values, now); err != nil {
-			break
+			return s.markPaused(err)
 		}
 	}
 	return err
@@ -40,21 +46,29 @@ func groupMetroEvents(records []MetroEventRecord, now time.Time) (map[string][]M
 		return nil, fmt.Errorf("event batch limit")
 	}
 	groups := map[string][]MetroEventRecord{}
+	seen := map[string]MetroEventRecord{}
 	size := 0
+	cutoff := now.AddDate(0, 0, -7)
 	for _, r := range records {
 		size += len(r.Payload)
 		if err := validateMetroEvent(r, size); err != nil {
 			return nil, err
 		}
-		if !r.At.Before(now.AddDate(0, 0, -7)) {
-			key := "metro-popup-events:" + r.At.UTC().Truncate(time.Hour).Format(time.RFC3339)
-			groups[key] = append(groups[key], r)
+		if r.At.Before(cutoff) {
+			return nil, ErrMetroEventExpired
 		}
+		if prior, exists := seen[r.ID]; exists && !sameMetroEvent(prior, r) {
+			return nil, fmt.Errorf("conflicting event proof identity")
+		}
+		seen[r.ID] = r
+		key := "metro-popup-events:" + r.At.UTC().Truncate(time.Hour).Format(time.RFC3339)
+		groups[key] = append(groups[key], r)
 	}
 	return groups, nil
 }
 func validateMetroEvent(r MetroEventRecord, size int) error {
-	valid := len(r.Payload) <= 64<<10 && json.Valid(r.Payload)
+	encoded, err := json.Marshal(r.Payload)
+	valid := len(r.Payload) <= 64<<10 && err == nil && bytes.Equal(encoded, r.Payload)
 	identity := r.ID != "" && r.Journey != "" && !r.At.IsZero()
 	if !valid || !identity {
 		return fmt.Errorf("invalid event proof")
@@ -87,6 +101,9 @@ func (s *Service) retainedMetroEvents(key string) (map[string]MetroEventRecord, 
 			return nil, err
 		}
 		for _, v := range values {
+			if prior, exists := retained[v.ID]; exists && !sameMetroEvent(prior, v) {
+				return nil, fmt.Errorf("conflicting retained event proof identity")
+			}
 			retained[v.ID] = v
 		}
 	}
@@ -98,6 +115,9 @@ func (s *Service) publishMetroEventHour(key string, values []MetroEventRecord, n
 		return err
 	}
 	for _, v := range values {
+		if prior, exists := retained[v.ID]; exists && !sameMetroEvent(prior, v) {
+			return fmt.Errorf("conflicting event proof identity")
+		}
 		retained[v.ID] = v
 	}
 	blob, err := s.encodeMetroEvents(retained)
@@ -107,6 +127,10 @@ func (s *Service) publishMetroEventHour(key string, values []MetroEventRecord, n
 	at := values[0].At.UTC().Truncate(time.Hour)
 	return s.publish(block{Key: key, Kind: "popup-events", Operator: "metro", Age: at, Closed: at.Before(now.UTC().Truncate(time.Hour))}, blob, now)
 }
+func sameMetroEvent(a, b MetroEventRecord) bool {
+	return a.ID == b.ID && a.Journey == b.Journey && a.At.Equal(b.At) && bytes.Equal(a.Payload, b.Payload)
+}
+
 func (s *Service) encodeMetroEvents(retained map[string]MetroEventRecord) ([]byte, error) {
 	all := make([]MetroEventRecord, 0, len(retained))
 	for _, v := range retained {

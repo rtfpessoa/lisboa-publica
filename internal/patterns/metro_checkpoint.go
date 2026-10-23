@@ -22,21 +22,46 @@ type MetroJourneyCheckpoint struct {
 	Payload     json.RawMessage `json:"payload"`
 }
 
-// CommitMetroJourneys commits all records through one manifest generation. A
-// successor and its predecessor must be submitted together. Ordinary progress
-// may be coalesced by the caller, but a stale revision never overwrites history.
+// CommitMetroJourneys preserves the standalone API with owner-enforced retry checks.
 func (s *Service) CommitMetroJourneys(ctx context.Context, records []MetroJourneyCheckpoint, now time.Time) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.lock == nil {
-		return "", fmt.Errorf("archive closed")
-	}
-	if err := validateMetroCheckpoints(records, now); err != nil {
-		return "", err
-	}
-	return s.publishMetroCheckpoints(ctx, records, now)
+	result, err := s.commitMetroJourneysGuarded(ctx, records, now, s.checkpointRetry)
+	return result.Generation, err
 }
-func (s *Service) publishMetroCheckpoints(ctx context.Context, records []MetroJourneyCheckpoint, now time.Time) (string, error) {
+
+// CommitMetroJourneysGuarded retains a proven pre-rename retry ticket.
+// A fresh transaction clock is required on every call.
+func (s *Service) CommitMetroJourneysGuarded(ctx context.Context, records []MetroJourneyCheckpoint, now time.Time, retry *MetroCheckpointAttempt) (MetroCheckpointCommit, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.commitMetroJourneysGuarded(ctx, records, now, retry)
+}
+
+func (s *Service) publishGuardedCheckpoints(ctx context.Context, records []MetroJourneyCheckpoint, now time.Time, attempt *MetroCheckpointAttempt) (string, bool, error) {
+	if err := s.verifyCheckpointPredecessors(attempt, now); err != nil {
+		return "", true, err
+	}
+	values, generation, err := checkpointBatchGeneration(records, now)
+	if err != nil {
+		return "", true, err
+	}
+	prepared, err := s.prepareMetroCheckpoints(ctx, values, generation, now)
+	if err != nil {
+		return "", true, err
+	}
+	transaction, err := s.prepareTransaction(prepared, nil, now)
+	if err != nil {
+		return "", !s.manifestUncertain, err
+	}
+	defer transaction.rollback()
+	if preRename, err := s.finishGuardedCheckpoints(ctx, transaction, prepared, now, attempt); err != nil {
+		return "", preRename, err
+	}
+	return generation, false, nil
+}
+
+func checkpointBatchGeneration(records []MetroJourneyCheckpoint, now time.Time) ([]MetroJourneyCheckpoint, string, error) {
 	values := append([]MetroJourneyCheckpoint{}, records...)
 	sort.Slice(values, func(i, j int) bool { return values[i].Journey < values[j].Journey })
 	identity, err := json.Marshal(struct {
@@ -44,19 +69,25 @@ func (s *Service) publishMetroCheckpoints(ctx context.Context, records []MetroJo
 		Records []MetroJourneyCheckpoint
 	}{now, values})
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
-	generation := digestBytes(identity)
-	prepared, err := s.prepareMetroCheckpoints(ctx, values, generation, now)
-	if err != nil {
-		return "", err
-	}
+	return values, digestBytes(identity), nil
+}
 
-	err = s.publishTransaction(ctx, prepared, nil, now)
-	if err != nil {
-		generation = ""
+func (s *Service) finishGuardedCheckpoints(ctx context.Context, transaction *archiveTransaction, prepared []preparedBlock, now time.Time, attempt *MetroCheckpointAttempt) (bool, error) {
+	if err := s.verifyCheckpointPredecessors(attempt, now); err != nil {
+		return true, err
 	}
-	return generation, err
+	if err := transaction.write(ctx, prepared); err != nil {
+		return !s.manifestUncertain, err
+	}
+	if err := s.verifyCheckpointPredecessors(attempt, now); err != nil {
+		return true, err
+	}
+	if err := transaction.commit(); err != nil {
+		return !transaction.committed && !s.manifestUncertain, err
+	}
+	return false, nil
 }
 
 func (s *Service) prepareMetroCheckpoints(ctx context.Context, values []MetroJourneyCheckpoint, generation string, now time.Time) ([]preparedBlock, error) {
@@ -74,28 +105,12 @@ func (s *Service) prepareMetroCheckpoints(ctx context.Context, values []MetroJou
 	return prepared, nil
 }
 func (s *Service) prepareMetroCheckpoint(value MetroJourneyCheckpoint, generation string, now time.Time) (preparedBlock, error) {
-	if err := s.validateMetroCheckpointPredecessor(value, now); err != nil {
-		return preparedBlock{}, err
-	}
 	value.Generation, value.CommittedAt = generation, now.UTC()
 	blob, err := s.encodeMetroCheckpoint(value)
 	if err != nil {
 		return preparedBlock{}, err
 	}
 	return preparedBlock{block: block{Key: metroCheckpointKey(value.Journey), Kind: "popup-checkpoint", Operator: "metro", Age: value.SourceAt.UTC(), Closed: value.SourceAt.Before(now.UTC().Truncate(time.Hour))}, blob: blob}, nil
-}
-func (s *Service) validateMetroCheckpointPredecessor(value MetroJourneyCheckpoint, now time.Time) error {
-	prior, state, err := s.metroJourneyCheckpoint(value.Journey, now)
-	if err != nil || state == "corrupt" {
-		return fmt.Errorf("checkpoint predecessor unavailable: %w", err)
-	}
-	if state == "restored" && value.Revision <= prior.Revision {
-		return fmt.Errorf("checkpoint revision did not advance")
-	}
-	if state == "restored" && value.SourceAt.Before(prior.SourceAt) {
-		return fmt.Errorf("checkpoint source clock regressed")
-	}
-	return nil
 }
 func (s *Service) encodeMetroCheckpoint(value MetroJourneyCheckpoint) ([]byte, error) {
 	raw, err := json.Marshal(value)

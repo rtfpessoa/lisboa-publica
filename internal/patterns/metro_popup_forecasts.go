@@ -19,10 +19,19 @@ type MetroPopupForecastQuery struct {
 	Now                              time.Time
 }
 
-func (s *Service) MetroPopupForecasts(q MetroPopupForecastQuery) []Forecast {
+func (s *Service) MetroPopupForecasts(q MetroPopupForecastQuery) (out []Forecast) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	out := []Forecast{}
+	out = []Forecast{}
+	cut := s.metroCut.Snapshot()
+	if !cut.Valid || cut.Pending {
+		return out
+	}
+	defer func() {
+		if !s.metroCut.Claim(cut) {
+			out = []Forecast{}
+		}
+	}()
 	if s.lock == nil || s.status != "collecting" || s.maintenanceError != nil || s.detailFence != nil || !freshSourceReceipt(s.engine.LastReceipt, q.Now) {
 		return out
 	}

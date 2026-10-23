@@ -190,7 +190,7 @@ func fixtureCheckpoint(t *testing.T, hour time.Time, rows []Receipt) []byte {
 	return data
 }
 
-func TestRecoveryUsesCompleteDetailWithOrWithoutCheckpoint(t *testing.T) {
+func TestRecoveryPreservesUnsequencedDetailWithOrWithoutCheckpoint(t *testing.T) {
 	for _, checkpointPresent := range []bool{false, true} {
 		t.Run(fmt.Sprintf("checkpoint_%t", checkpointPresent), func(t *testing.T) {
 			config := DefaultConfig(t.TempDir())
@@ -206,6 +206,23 @@ func TestRecoveryUsesCompleteDetailWithOrWithoutCheckpoint(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer s.Close()
+			if checkpointPresent {
+				if s.detailFence == nil {
+					t.Fatal("unsequenced post-checkpoint tail was replayed")
+				}
+				for _, b := range readFixtureManifest(t, config.Directory).Blocks {
+					if (b.Kind == "detail" || b.Kind == "state") && !s.protectedGenerations[retentionKey(b)] {
+						t.Fatalf("tail source was not protected: %s", b.Key)
+					}
+				}
+				if err = s.Record(durabilityReceipt(base.Add(62*time.Second), "third"), testTopology()); err == nil {
+					t.Fatal("unverified tail accepted new input")
+				}
+				if err = s.Close(); err == nil {
+					t.Fatal("unverified tail published a checkpoint")
+				}
+				return
+			}
 			if s.detailFence != nil {
 				t.Fatal(s.detailFence)
 			}

@@ -123,7 +123,7 @@ func TestEvaluationDurableHistogramsAndDistinctAssociations(t *testing.T) {
 	}
 }
 
-func TestReprocessCorrectsRetainedInputsAndKeepsIssuedValues(t *testing.T) {
+func TestReprocessRejectsUnprovenLegacyOrderWithoutMutation(t *testing.T) {
 	c := DefaultConfig(t.TempDir())
 	s, err := Open(c)
 	if err != nil {
@@ -156,35 +156,15 @@ func TestReprocessCorrectsRetainedInputsAndKeepsIssuedValues(t *testing.T) {
 	control.Count = 1
 	control.Sum = 42
 	s.engine.add(control)
-	result, err := s.Reprocess(context.Background(), []Correction{{ReceivedAt: s.detail[3].ReceivedAt, ExpectedHash: digest(original), Row: changed, Evidence: "synthetic verified source revision"}}, base.Add(4*time.Minute))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.Corrections != 1 || !result.PartialCoverage || digest(s.detail) != before {
-		t.Fatal("reprocessing changed original detail/emissions")
-	}
-	for _, a := range s.engine.Aggregates {
-		if a.Route == "line" && (a.Kind == "signals" || a.Kind == "component") {
-			t.Fatal("invalid triple survived source correction")
-		}
-	}
-	found := false
-	for _, a := range s.engine.Aggregates {
-		if a.Route == "other" && a.Sum == 42 {
-			found = true
-		}
-	}
-	if !found {
-		t.Fatal("unaffected metric erased")
-	}
-	_, err = s.Reprocess(context.Background(), []Correction{{ReceivedAt: s.detail[3].ReceivedAt, ExpectedHash: digest(original), Row: changed, Evidence: "stale synthetic revision"}}, base.Add(5*time.Minute))
+	beforeIndex, beforeEngine := digest(s.index), digest(s.engine)
+	_, err = s.Reprocess(context.Background(), []Correction{{ReceivedAt: s.detail[3].ReceivedAt, ExpectedHash: digest(original), Row: changed, Evidence: "synthetic verified source revision"}}, base.Add(4*time.Minute))
 	if err == nil {
-		t.Fatal("stale expected row hash accepted after prior correction")
+		t.Fatal("unproven legacy order accepted")
 	}
-	_, err = s.Reprocess(context.Background(), []Correction{{ReceivedAt: base.Add(-time.Hour), ExpectedHash: digest(original), Row: changed, Evidence: "synthetic revision without retained data"}}, base.Add(5*time.Minute))
-	if err == nil {
-		t.Fatal("reconstructed expired input")
+	if digest(s.detail) != before || digest(s.index) != beforeIndex || digest(s.engine) != beforeEngine {
+		t.Fatal("rejected reprocessing mutated archive state")
 	}
+
 }
 
 func TestCompatibleResolutionCalibrationAndConfigRestart(t *testing.T) {

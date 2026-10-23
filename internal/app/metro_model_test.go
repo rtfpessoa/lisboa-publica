@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -45,10 +46,24 @@ func TestMetroQualifiedWaitAdapterFirstMovementCorrectionAndRecovery(t *testing.
 		t.Fatal("withdrawal lost", c)
 	}
 	id := tack.Train.JourneyId
+	before, state, err := s.Patterns.MetroJourneyCheckpoint(context.Background(), id, now.Add(3*time.Second))
+	if err != nil || state != "restored" {
+		t.Fatal("original checkpoint unavailable", state, err)
+	}
 	s.Cache.metroRuntime = newMetroRuntime()
 	f, _, err := s.metroFrame(context.Background(), metroInterest{Journey: id})
-	if err != nil || f.Trains[0].Calls[0].Departure.Reason != "Estimativa retirada" || len(*f.Trains[0].Calls[0].DepartureRevisions) != 2 || f.Trains[0].ModelProjection != nil {
+	if err != nil || len(f.Trains) == 0 || f.Trains[0].Calls[0].Departure.Reason != "Estimativa retirada" || f.Trains[0].Calls[0].DepartureRevisions != nil || f.Trains[0].ModelProjection != nil {
 		t.Fatal("correction recovery failed", f, err)
+	}
+	restored := s.Cache.metroRuntime.tracks[id]
+	restored.HistoricalCorrection = true
+	restored.Train.SourceUpdatedAt = restored.Train.SourceUpdatedAt.Add(time.Second)
+	s.Cache.metroRuntime.archiveAvailable = true
+	s.Cache.metroRuntime.queueCheckpoint(restored)
+	s.Cache.metroRuntime.flushCheckpoints(context.Background(), s.Patterns, now.Add(4*time.Second))
+	after, state, err := s.Patterns.MetroJourneyCheckpoint(context.Background(), id, now.Add(4*time.Second))
+	if err != nil || state != "restored" || !bytes.Equal(before.Payload, after.Payload) || before.Revision != after.Revision {
+		t.Fatal("restored track replaced original evidence", state, err)
 	}
 }
 func TestMetroWaitAdapterRequiresSupportAndOriginalClock(t *testing.T) {

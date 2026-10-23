@@ -35,6 +35,7 @@ func (s *Service) saveManifest(next manifest) error {
 		s.trimRetentionClocks()
 		if err != nil {
 			s.manifestUncertain = true
+			err = s.markPaused(err)
 		}
 	}
 	return err

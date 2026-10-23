@@ -59,32 +59,19 @@ func TestMaintenanceReservesBlockRealCorrection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	zone, err := time.LoadLocation("Europe/Lisbon")
-	if err != nil {
+	if err = service.ConfigureOperators([]string{"metro", "cm"}); err != nil {
 		t.Fatal(err)
 	}
-	base := time.Now().UTC().Add(-5 * time.Minute).Truncate(time.Second)
-	stops := []string{"A", "B", "C", "D", "E", "F"}
-	topology := patterns.Topology{Profile: "synthetic", Patterns: []patterns.Pattern{{Route: "line", Direction: "d", Destination: "F", Stops: stops, Sequences: []int{1, 2, 3, 4, 5, 6}}}}
-	var original patterns.Row
-	var received time.Time
-	for i := 0; i < 6; i++ {
-		at := base.Add(time.Duration(i) * 30 * time.Second)
-		rows := make([]patterns.Row, 0, len(stops))
-		for j, stop := range stops {
-			seconds := 600
-			if i >= 2*j+1 {
-				seconds = 0
-			}
-			row := patterns.Row{Stop: stop, Platform: "1", Destination: "d", Clock: at.In(zone).Format("20060102150405"), Train: "x", ETA: json.RawMessage(strconv.Itoa(seconds))}
-			rows = append(rows, row)
-			if i == 3 && j == 1 {
-				original, received = row, at.Add(time.Second)
-			}
-		}
-		if err = service.Record(patterns.Receipt{ReceivedAt: at.Add(time.Second), Rows: rows, ServiceCondition: "reported_normal"}, topology); err != nil {
-			t.Fatal(err)
-		}
+	received := time.Now().UTC().Add(-5 * time.Minute).Truncate(time.Second)
+	path := patterns.ProviderJourney{Route: "cm:route", Direction: "0", Plan: "plan", Pattern: "published", Headsign: "B", Visits: []patterns.ProviderVisit{
+		{Stop: "cm:A", Name: "A", Sequence: 1, Lat: 38.7, Lon: -9.1},
+		{Stop: "cm:B", Name: "B", Sequence: 2, Lat: 38.701, Lon: -9.1},
+	}}
+	pathID := patterns.ProviderJourneyID(path)
+	original := patterns.Observation{ID: "cm:vehicle", SourceID: "vehicle", SourceURL: "https://synthetic.invalid/positions", Journey: pathID, ObservedAt: received, Route: path.Route, Trip: "cm:trip", Plan: path.Plan, Pattern: path.Pattern, OperationalDate: received.Format("2006-01-02"), Stop: "cm:A", Status: "INCOMING_AT", PositionKind: "reported", Lat: 38.7, Lon: -9.1}
+	receipt := patterns.ProviderReceipt{Operator: "cm", ReceivedAt: received, Journeys: map[string]patterns.ProviderJourney{pathID: path}, Rows: []patterns.Observation{original}}
+	if err = service.RecordProvider(receipt); err != nil {
+		t.Fatal(err)
 	}
 	if err = service.Close(); err != nil {
 		t.Fatal(err)
@@ -95,8 +82,8 @@ func TestMaintenanceReservesBlockRealCorrection(t *testing.T) {
 	}
 	hash := sha256.Sum256(raw)
 	changed := original
-	changed.ETA = json.RawMessage("300")
-	changes, err := json.Marshal([]patterns.Correction{{ReceivedAt: received, ExpectedHash: fmt.Sprintf("%x", hash), Row: changed, Evidence: "synthetic source revision"}})
+	changed.PositionKind = "estimated"
+	changes, err := json.Marshal([]patterns.ProviderCorrection{{ReceivedAt: received, ExpectedHash: fmt.Sprintf("%x", hash), Row: changed, Evidence: "synthetic source revision"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +99,7 @@ func TestMaintenanceReservesBlockRealCorrection(t *testing.T) {
 	for _, setting := range []string{"-min-free-bytes", "-min-free-inodes"} {
 		flags := flag.NewFlagSet("patterns-maintenance", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)
-		options, err := parseMaintenanceOptions(flags, []string{"-archive", directory, "-corrections", correctionFile, setting, strconv.FormatInt(math.MaxInt64, 10)})
+		options, err := parseMaintenanceOptions(flags, []string{"-archive", directory, "-corrections", correctionFile, "-operator", "cm", setting, strconv.FormatInt(math.MaxInt64, 10)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -126,11 +113,107 @@ func TestMaintenanceReservesBlockRealCorrection(t *testing.T) {
 	}
 	flags := flag.NewFlagSet("patterns-maintenance", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	options, err := parseMaintenanceOptions(flags, []string{"-archive", directory, "-corrections", correctionFile})
+	options, err := parseMaintenanceOptions(flags, []string{"-archive", directory, "-corrections", correctionFile, "-operator", "cm"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err = maintainArchive(options); err != nil {
 		t.Fatalf("control correction with sufficient headroom failed: %v", err)
 	}
+}
+
+func TestMetroMaintenanceRejectsUnsequencedCorrections(t *testing.T) {
+	directory := t.TempDir()
+	service, err := patterns.Open(patterns.DefaultConfig(directory))
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC().Add(-time.Minute).Truncate(time.Second)
+	row := patterns.Row{Stop: "A", Train: "synthetic", ETA: json.RawMessage("60")}
+	if err = service.Record(patterns.Receipt{ReceivedAt: now, Rows: []patterns.Row{row}}, patterns.Topology{Profile: "synthetic"}); err != nil {
+		t.Fatal(err)
+	}
+	if err = service.Close(); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(row)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash := sha256.Sum256(raw)
+	changes, err := json.Marshal([]patterns.Correction{{ReceivedAt: now, ExpectedHash: fmt.Sprintf("%x", hash), Row: row, Evidence: "synthetic source revision"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	corrections := filepath.Join(t.TempDir(), "corrections.json")
+	if err = os.WriteFile(corrections, changes, 0600); err != nil {
+		t.Fatal(err)
+	}
+	before := maintenanceArchiveBytes(t, directory)
+	flags := flag.NewFlagSet("patterns-maintenance", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	options, err := parseMaintenanceOptions(flags, []string{"-archive", directory, "-corrections", corrections})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = maintainArchive(options); err == nil || !strings.Contains(err.Error(), "retained input order and restart boundaries cannot be verified") {
+		t.Fatalf("unsequenced Metro correction was not rejected: %v", err)
+	}
+	after := maintenanceArchiveBytes(t, directory)
+	if len(before) != len(after) {
+		t.Fatal("rejected Metro correction changed the archive generation set")
+	}
+	for name, blob := range before {
+		if !bytes.Equal(blob, after[name]) {
+			t.Fatalf("rejected Metro correction changed %s", name)
+		}
+	}
+}
+
+func TestMetroMaintenanceValidatesInputBeforeOpeningArchive(t *testing.T) {
+	for _, tc := range []struct {
+		name, payload, want string
+	}{
+		{"not_array", `{}`, "cannot unmarshal"},
+		{"null", `null`, "invalid reprocessing request"},
+		{"empty", `[]`, "invalid reprocessing request"},
+		{"too_many", `[` + strings.Repeat(`{},`, 1000) + `{}` + `]`, "invalid reprocessing request"},
+		{"valid_count", `[{}]`, "retained input order and restart boundaries cannot be verified"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			directory := filepath.Join(root, "archive")
+			corrections := filepath.Join(root, "corrections.json")
+			if err := os.WriteFile(corrections, []byte(tc.payload), 0600); err != nil {
+				t.Fatal(err)
+			}
+			options := maintenanceOptions{operator: "metro", corrections: corrections, config: patterns.DefaultConfig(directory)}
+			if err := maintainArchive(options); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("unexpected validation result: %v", err)
+			}
+			if _, err := os.Stat(directory); !os.IsNotExist(err) {
+				t.Fatalf("validation opened or created the archive: %v", err)
+			}
+		})
+	}
+}
+
+func maintenanceArchiveBytes(t *testing.T, directory string) map[string][]byte {
+	t.Helper()
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := map[string][]byte{}
+	for _, entry := range entries {
+		if entry.Name() == ".lock" {
+			continue
+		}
+		blob, err := os.ReadFile(filepath.Join(directory, entry.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		result[entry.Name()] = blob
+	}
+	return result
 }

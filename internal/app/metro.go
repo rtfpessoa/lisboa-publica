@@ -209,12 +209,7 @@ func (m *MetroClient) Run(ctx context.Context) {
 	m.metadataMu.Lock()
 	m.metadataStarted = true
 	m.metadataMu.Unlock()
-	if m.History != nil {
-		m.historyMu.Lock()
-		m.historyQueue = make(chan metroHistoryTask, 64)
-		m.historyMu.Unlock()
-		go m.historyLoop(ctx)
-	}
+	m.startHistoryDelivery(ctx)
 	go m.metadataLoop(ctx)
 	go m.Cache.metroRuntime.runJournal(ctx, m.History)
 	m.Refresh(ctx)

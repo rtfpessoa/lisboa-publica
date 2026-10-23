@@ -109,7 +109,7 @@ func (s *Service) maintenancePass(now time.Time) bool {
 }
 
 func (s *Service) maintenanceFailure(err error) bool {
-	s.maintenanceError = err
+	s.maintenanceError = s.markPaused(err)
 	return !s.manifestUncertain && errors.Is(err, errMaintenancePending)
 }
 

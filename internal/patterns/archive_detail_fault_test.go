@@ -224,9 +224,12 @@ func TestMetroManifestSyncUncertaintyPreservesBothGenerations(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
-	if s.detailFence != nil || s.manifestUncertain {
-		t.Fatalf("verified reopen failed: %v", s.detailFence)
+	if s.detailFence == nil || s.manifestUncertain {
+		t.Fatalf("unsequenced tail was not fenced after reopen: %v", s.detailFence)
 	}
 	rows, _ := detailForHour(t, s, base.Truncate(time.Hour))
 	assertReceiptIdentities(t, rows, "first", "second")
+	if _, err = os.Stat(filepath.Join(config.Directory, prior.File)); err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
 }

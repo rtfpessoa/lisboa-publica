@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -14,6 +15,7 @@ import (
 // The checkpoint retains topology interpretation and all event proofs, but its
 // point samples are history only. They are never installed into live continuity.
 type metroCheckpointPayload struct {
+	ForecastCut           *metroCutProvenance                        `json:"forecast_cut,omitempty"`
 	ModelDepartureSupport map[string]map[int64]metroModelPublication `json:"model_departure_support,omitempty"`
 	Model                 *metroCheckpointModel                      `json:"model,omitempty"`
 	Version               int                                        `json:"version"`
@@ -45,7 +47,7 @@ func (r *metroRuntime) queueCurrentCheckpoints() {
 	}
 }
 func (r *metroRuntime) queueCheckpoint(t *metroTrack) {
-	if t.HistoricalOnly && !t.HistoricalCorrection || t.BarrierRevision != 0 || t.LifecycleGroup != "" {
+	if t.HistoricalOnly || t.BarrierRevision != 0 || t.LifecycleGroup != "" {
 		return
 	}
 	if !r.checkpointEligible(t) {
@@ -65,6 +67,14 @@ func (r *metroRuntime) checkpointEligible(t *metroTrack) bool {
 	return !t.Train.SourceUpdatedAt.IsZero()
 }
 func (r *metroRuntime) queueEligibleCheckpoint(t *metroTrack) {
+	if t.HistoricalOnly {
+		t.CheckpointUnavailable = true
+		return
+	}
+	if r.checkpointFrozen(t.Train.JourneyId) {
+		t.CheckpointPending = true
+		return
+	}
 
 	raw, hash, ok := r.encodeCheckpoint(t)
 	if !ok {
@@ -72,6 +82,7 @@ func (r *metroRuntime) queueEligibleCheckpoint(t *metroTrack) {
 		return
 	}
 	if hash == t.CheckpointHash {
+		t.CheckpointPending = false
 		coverMetroRetractionWithCheckpoint(t)
 		return
 	}
@@ -86,6 +97,7 @@ func (r *metroRuntime) queueEligibleCheckpoint(t *metroTrack) {
 	t.Revision++
 	t.CheckpointRetractionGeneration = t.RetractionGeneration
 	t.CheckpointUnavailable = false
+	t.CheckpointPending = false
 	t.CheckpointHash = hash
 	r.dirtyBytes += size - pendingMetroCheckpointBytes(old)
 	r.dirty[t.Train.JourneyId] = patterns.MetroJourneyCheckpoint{Journey: t.Train.JourneyId, Revision: t.Revision, SourceAt: t.Train.SourceUpdatedAt, Payload: raw}
@@ -100,13 +112,20 @@ func coverMetroRetractionWithCheckpoint(t *metroTrack) {
 }
 
 func (r *metroRuntime) encodeCheckpoint(t *metroTrack) ([]byte, string, bool) {
-	copy := cloneMetroTrain(t.Train)
-	copy.Persistence, copy.VehicleId = nil, nil
-	raw, err := json.Marshal(metroCheckpointPayload{Version: 1, Train: copy, Profile: t.Profile, ProviderDirection: t.ProviderDirection, Codes: t.Codes, Points: t.Points, Proofs: t.Proofs, ModelDepartureSupport: t.ModelDepartureSupport, Model: r.checkpointModel(t)})
+	cut := r.historySnapshot()
+	raw, err := r.marshalMetroCheckpoint(t, cut, false)
+	if err == nil && !r.claimMetroSnapshot(cut) {
+		raw, err = r.marshalMetroCheckpoint(t, patterns.MetroCutSnapshot{}, true)
+	}
 	if err != nil || len(raw) > (256<<10)-metroCheckpointMetadataReserve {
 		return nil, "", false
 	}
 	return raw, fmt.Sprintf("%x", sha256.Sum256(raw)), true
+}
+func (r *metroRuntime) marshalMetroCheckpoint(t *metroTrack, cut patterns.MetroCutSnapshot, safe bool) ([]byte, error) {
+	copy := r.snapshotMetroTrack(t, cut, safe, time.Now().UTC()).Train
+	copy.Persistence, copy.VehicleId = nil, nil
+	return json.Marshal(metroCheckpointPayload{ForecastCut: metroCutOrigin(cut), Version: 1, Train: copy, Profile: t.Profile, ProviderDirection: t.ProviderDirection, Codes: t.Codes, Points: t.Points, Proofs: t.Proofs, ModelDepartureSupport: t.ModelDepartureSupport, Model: r.checkpointModel(t)})
 }
 func (r *metroRuntime) checkpointCapacity(old patterns.MetroJourneyCheckpoint, size int) bool {
 	if len(r.dirty) >= 1024 && old.Journey == "" {
@@ -123,29 +142,117 @@ func (r *metroRuntime) flushCheckpoints(ctx context.Context, history *patterns.S
 	if history == nil {
 		return
 	}
+	r.flushCheckpointsWithCommit(ctx, history, now, history.CommitMetroJourneysGuarded)
+}
+
+func (r *metroRuntime) flushCheckpointsWithCommit(ctx context.Context, history *patterns.Service, now time.Time, commit func(context.Context, []patterns.MetroJourneyCheckpoint, time.Time, *patterns.MetroCheckpointAttempt) (patterns.MetroCheckpointCommit, error)) {
 	r.writer.Lock()
 	defer r.writer.Unlock()
-	r.mu.Lock()
-	batch := r.checkpointBatch(now)
-
-	r.mu.Unlock()
+	batch, retry := r.checkpointBatchForFlush(now)
 	if len(batch) == 0 {
 		return
 	}
-	generation, err := history.CommitMetroJourneys(ctx, batch, now)
+	if retry != nil && metroCheckpointBatchExpired(batch, now) {
+		r.abandonExpiredCheckpoint(history, batch, retry, now)
+		return
+	}
+	result, err := commit(ctx, batch, now, retry)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if err != nil {
+		r.failCheckpointBatch(batch, result)
+		return
+	}
+	r.commitCheckpointBatch(batch, result.Generation, now)
+	r.checkpointPending, r.checkpointRetry = nil, nil
+	r.historyCollecting(now)
+}
+
+func (r *metroRuntime) checkpointBatchForFlush(now time.Time) ([]patterns.MetroJourneyCheckpoint, *patterns.MetroCheckpointAttempt) {
+	r.mu.Lock()
+	if r.checkpointFenced {
+		r.mu.Unlock()
+		return nil, nil
+	}
+	if r.checkpointPending == nil {
+		r.checkpointPending = r.checkpointBatch(now)
+	}
+	batch, retry := r.checkpointPending, r.checkpointRetry
+	r.mu.Unlock()
+	if len(batch) == 0 {
+		r.mu.Lock()
+		r.checkpointPending = nil
+		r.mu.Unlock()
+	}
+	return batch, retry
+}
+
+func (r *metroRuntime) abandonExpiredCheckpoint(history *patterns.Service, batch []patterns.MetroJourneyCheckpoint, retry *patterns.MetroCheckpointAttempt, now time.Time) {
+	err := history.AbandonMetroCheckpointAttempt(retry)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if err != nil {
+		r.checkpointFenced = true
 		r.historyStatus = "paused"
 		return
 	}
-	r.historyCollecting(now)
-	r.commitCheckpointBatch(batch, generation, now)
+	r.checkpointPending, r.checkpointRetry = nil, nil
+	r.expireCheckpointAttempt(batch, now)
+}
+
+func (r *metroRuntime) failCheckpointBatch(batch []patterns.MetroJourneyCheckpoint, result patterns.MetroCheckpointCommit) {
+	r.historyStatus = "paused"
+	if result.Retryable && result.Retry != nil {
+		r.checkpointRetry = result.Retry
+		return
+	}
+	r.checkpointFenced = true
+	for _, record := range batch {
+		if t := r.tracks[record.Journey]; t != nil {
+			t.CheckpointUnavailable = true
+		}
+	}
+}
+func metroCheckpointBatchExpired(batch []patterns.MetroJourneyCheckpoint, now time.Time) bool {
+	for _, record := range batch {
+		if record.SourceAt.Before(now.AddDate(0, 0, -7)) {
+			return true
+		}
+	}
+	return false
+}
+func (r *metroRuntime) expireCheckpointAttempt(batch []patterns.MetroJourneyCheckpoint, now time.Time) {
+	for _, record := range batch {
+		if !record.SourceAt.Before(now.AddDate(0, 0, -7)) {
+			continue
+		}
+		if latest, ok := r.dirty[record.Journey]; ok && latest.Revision == record.Revision && latest.SourceAt.Equal(record.SourceAt) && bytes.Equal(latest.Payload, record.Payload) {
+			r.dirtyBytes -= pendingMetroCheckpointBytes(latest)
+			delete(r.dirty, record.Journey)
+		}
+		if t := r.tracks[record.Journey]; t != nil {
+			t.CheckpointUnavailable, t.CheckpointHash = true, ""
+		}
+	}
+	r.historyStatus = "paused"
+	r.markCaptureGap()
+	r.expireLifecycleGroups(now)
+}
+func (r *metroRuntime) checkpointFrozen(id string) bool {
+	for _, record := range r.checkpointPending {
+		if record.Journey == id {
+			return true
+		}
+	}
+	return false
 }
 func (r *metroRuntime) checkpointBatch(now time.Time) []patterns.MetroJourneyCheckpoint {
 	r.expireLifecycleGroups(now)
 	batch := make([]patterns.MetroJourneyCheckpoint, 0, len(r.dirty))
 	for _, v := range r.dirty {
+		if t := r.tracks[v.Journey]; t != nil && (t.HistoricalOnly || r.fencedLifecycleGroup(t.LifecycleGroup)) {
+			continue
+		}
 		if !v.SourceAt.Before(now.AddDate(0, 0, -7)) {
 			batch = append(batch, v)
 		}
@@ -154,27 +261,59 @@ func (r *metroRuntime) checkpointBatch(now time.Time) []patterns.MetroJourneyChe
 	return batch
 }
 func (r *metroRuntime) commitCheckpointBatch(batch []patterns.MetroJourneyCheckpoint, generation string, now time.Time) {
-	for _, v := range batch {
-		if latest, exists := r.dirty[v.Journey]; exists && latest.Revision == v.Revision {
-			r.dirtyBytes -= pendingMetroCheckpointBytes(latest)
-			delete(r.dirty, v.Journey)
-		}
-		if t := r.tracks[v.Journey]; t != nil && v.Revision > t.CommittedRevision {
-			if v.Revision == t.Revision && t.CheckpointRetractionGeneration == t.RetractionGeneration {
-				t.UncommittedRetraction = false
-			}
-			r.invalidateMetroPredecessor(v.Journey)
-			t.CommittedRevision, t.Generation, t.CommittedAt = v.Revision, generation, now.UTC()
-			r.commitLifecycle(t, v.Revision)
-			commitMetroDepartureEvidence(t, v.Payload)
+	for _, record := range batch {
+		r.commitCheckpoint(record, generation, now)
+	}
+	r.acknowledgeLifecycleGroups(batch, generation)
+}
+
+func sameMetroCheckpoint(a, b patterns.MetroJourneyCheckpoint) bool {
+	return a.Revision == b.Revision && a.SourceAt.Equal(b.SourceAt) && bytes.Equal(a.Payload, b.Payload)
+}
+
+func (r *metroRuntime) commitCheckpoint(record patterns.MetroJourneyCheckpoint, generation string, now time.Time) {
+	t := r.tracks[record.Journey]
+	if t != nil && t.HistoricalOnly {
+		return
+	}
+	if !r.removeMatchingDirtyCheckpoint(record) || t == nil || record.Revision <= t.CommittedRevision {
+		return
+	}
+	r.markCheckpointCommitted(t, record, generation, now)
+}
+
+// A newer dirty revision remains queued; a conflicting same-revision payload
+// must never be acknowledged as the committed batch.
+func (r *metroRuntime) removeMatchingDirtyCheckpoint(record patterns.MetroJourneyCheckpoint) bool {
+	latest, exists := r.dirty[record.Journey]
+	if !exists || latest.Revision != record.Revision {
+		return true
+	}
+	if !sameMetroCheckpoint(latest, record) {
+		return false
+	}
+	r.dirtyBytes -= pendingMetroCheckpointBytes(latest)
+	delete(r.dirty, record.Journey)
+	return true
+}
+
+func (r *metroRuntime) markCheckpointCommitted(t *metroTrack, record patterns.MetroJourneyCheckpoint, generation string, now time.Time) {
+	if record.Revision == t.Revision {
+		_, hash, ok := r.encodeCheckpoint(t)
+		t.CheckpointPending = !ok || hash != t.CheckpointHash
+		if t.CheckpointRetractionGeneration == t.RetractionGeneration {
+			t.UncommittedRetraction = false
 		}
 	}
-	r.acknowledgeLifecycleGroups(generation)
+	r.invalidateMetroPredecessor(record.Journey)
+	t.CommittedRevision, t.Generation, t.CommittedAt = record.Revision, generation, now.UTC()
+	r.commitLifecycle(t, record.Revision)
+	commitMetroDepartureEvidence(t, record.Payload)
 }
 
 func metroTrainPersistence(t *metroTrack) *api.MetroJourneyPersistence {
 	state := api.MetroJourneyPersistenceStatePending
-	if t.CommittedRevision > 0 && t.CommittedRevision == t.Revision {
+	if t.CommittedRevision > 0 && t.CommittedRevision == t.Revision && !t.CheckpointPending && t.LifecycleGroup == "" {
 		state = api.MetroJourneyPersistenceStateCommitted
 	}
 	if t.CheckpointUnavailable {

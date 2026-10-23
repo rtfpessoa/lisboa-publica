@@ -17,7 +17,7 @@ func (r *metroRuntime) correctHubModel(key string, p hubPosition) bool {
 	stamp := metroPublicationStamp(p)
 	corrected := metroKnownPublicationChanged(r.operational[key], p.At, stamp)
 	for _, track := range r.tracks {
-		if track.Train.RouteId+"|"+track.Train.Reference != key {
+		if track.HistoricalOnly || track.Train.RouteId+"|"+track.Train.Reference != key {
 			continue
 		}
 		if withdrawCorrectedMetroDepartures(track, p.At, stamp) {
@@ -37,6 +37,9 @@ func metroKnownPublicationChanged(m *metroOperationalMotion, clock int64, stamp 
 	return known && original != stamp
 }
 func withdrawCorrectedMetroDepartures(t *metroTrack, clock int64, stamp metroModelPublication) bool {
+	if t.HistoricalOnly {
+		return false
+	}
 	corrected := false
 	for n := range t.Train.Calls {
 		call := &t.Train.Calls[n]

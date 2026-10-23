@@ -88,8 +88,14 @@ func TestMetroDeliveryBarrierPersistsDespiteSamplingAndCutsReplay(t *testing.T) 
 	if err := s.Record(Receipt{ReceivedAt: now.Add(time.Second), Rows: []Row{}}, topology); err != nil {
 		t.Fatal(err)
 	}
+	if len(s.detail) != 1 || !s.pendingMetroDeliveryGap {
+		t.Fatal("unsampled receipt did not retain the ordered barrier", s.detail)
+	}
+	if err := s.Record(Receipt{ReceivedAt: now.Add(config.SampleInterval), Rows: []Row{}}, topology); err != nil {
+		t.Fatal(err)
+	}
 	if len(s.detail) != 2 || !s.detail[1].DeliveryGap || s.pendingMetroDeliveryGap {
-		t.Fatal("unsampled receipt lost ordered barrier", s.detail)
+		t.Fatal("due receipt did not persist the ordered barrier", s.detail)
 	}
 	raw, err := json.Marshal(s.detail[1])
 	if err != nil {

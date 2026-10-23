@@ -161,5 +161,8 @@ func configuredServer(store *app.Store, cache *app.Cache, log *zap.Logger) *app.
 	if err != nil {
 		log.Fatal("transport archive initialization failed", zap.Error(err))
 	}
+	if err = cache.BindMetroHistory(server.Patterns); err != nil {
+		log.Error("Metro history binding failed", zap.Error(err))
+	}
 	return server
 }

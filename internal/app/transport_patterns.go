@@ -46,7 +46,18 @@ func selectedPatternStop(value *string) string {
 }
 
 func (s *Server) metroTransportPatterns(ctx context.Context, request api.GetTransportPatternsRequestObject) (api.GetTransportPatternsResponseObject, error) {
-	response, err := s.GetMetroPatterns(ctx, api.GetMetroPatternsRequestObject{Params: api.GetMetroPatternsParams{StopId: request.Params.StopId, Episode: request.Params.Episode}})
+	return s.metroTransportPatternsWithClaim(ctx, request, s.claimMetroPublication)
+}
+func (s *Server) metroTransportPatternsWithClaim(ctx context.Context, request api.GetTransportPatternsRequestObject, claim func(patterns.MetroCutSnapshot, bool) bool) (api.GetTransportPatternsResponseObject, error) {
+	return s.metroTransportPatternsWith(ctx, request, s.GetMetroPatterns, claim)
+}
+func (s *Server) metroTransportPatternsWith(ctx context.Context, request api.GetTransportPatternsRequestObject, get func(context.Context, api.GetMetroPatternsRequestObject) (api.GetMetroPatternsResponseObject, error), claim func(patterns.MetroCutSnapshot, bool) bool) (api.GetTransportPatternsResponseObject, error) {
+	owner, matched := s.serverMetroCut()
+	var cut patterns.MetroCutSnapshot
+	if owner != nil {
+		cut = owner.Snapshot()
+	}
+	response, err := get(ctx, api.GetMetroPatternsRequestObject{Params: api.GetMetroPatternsParams{StopId: request.Params.StopId, Episode: request.Params.Episode}})
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +65,12 @@ func (s *Server) metroTransportPatterns(ctx context.Context, request api.GetTran
 	if !ok {
 		return nil, fail(500, "patterns", "Resposta de padrões indisponível.")
 	}
-	return api.GetTransportPatterns200JSONResponse(value), nil
+	result := api.MetroPatterns(value)
+	if !matched || !claim(cut, false) {
+		fenceMetroPatternResponse(&result)
+		_ = claim(cut, true)
+	}
+	return api.GetTransportPatterns200JSONResponse(result), nil
 }
 
 func (s *Server) validateProviderPatternStop(state *State, operator, stop string) error {

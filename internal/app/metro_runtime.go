@@ -53,10 +53,13 @@ type metroTrack struct {
 	CommittedAt                    time.Time
 	CheckpointHash                 string
 	CheckpointUnavailable          bool
+	CheckpointPending              bool
+	ForecastCut                    patterns.MetroCutSnapshot
 }
 type metroEventProof struct {
-	Train         api.MetroTrain `json:"train"`
-	CallID        string         `json:"call_id"`
+	ForecastCut   *metroCutProvenance `json:"forecast_cut,omitempty"`
+	Train         api.MetroTrain      `json:"train"`
+	CallID        string              `json:"call_id"`
 	Before, After metroPoint
 }
 
@@ -107,16 +110,30 @@ type metroRuntimeTracks struct {
 	inventoryOverflow bool
 }
 type metroRuntimeJournal struct {
-	capture            metroInputCapture
-	lifecycleGroups    map[string]map[string]bool
-	writer             sync.Mutex
-	pending            map[string]patterns.MetroEventRecord
-	pendingBytes       int
-	historyDeliveryGap bool
-	historyStatus      string
-	archiveAvailable   bool
-	dirty              map[string]patterns.MetroJourneyCheckpoint
-	dirtyBytes         int
+	capture             metroInputCapture
+	lifecycleGroups     map[string]map[string]bool
+	lifecycleAdmissions map[string]map[string]patterns.MetroJourneyCheckpoint
+	writer              sync.Mutex
+	pending             map[string]patterns.MetroEventRecord
+	failedEvents        map[string]metroEventFailure
+	eventWriteSequence  uint64
+	eventWriteExhausted bool
+	eventAdmissionLost  bool
+	eventLossUnknown    bool
+	eventAdmissionAt    time.Time
+	pendingBytes        int
+	historyDeliveryGap  bool
+	historyStatus       string
+	archiveAvailable    bool
+	dirty               map[string]patterns.MetroJourneyCheckpoint
+	checkpointPending   []patterns.MetroJourneyCheckpoint
+	checkpointRetry     *patterns.MetroCheckpointAttempt
+	checkpointFenced    bool
+	dirtyBytes          int
+	historyCut          *patterns.MetroCut
+	historyCutBound     bool
+	historyCutMismatch  bool
+	forecastCut         patterns.MetroCutSnapshot
 }
 
 func newMetroRuntime() *metroRuntime {
@@ -138,13 +155,15 @@ func metroTrackKey(i metroTrackIdentity) string { return i.route + "|" + i.direc
 func (r *metroRuntime) observe(data *MetroData, static *StaticData, history *patterns.Service, now time.Time) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.bindMetroHistory(history)
+	r.fenceMetroForecasts(now)
 	defer func() { data.InventoryOverflow = r.inventoryOverflow }()
-	r.archiveAvailable = history != nil
+	r.archiveAvailable = history != nil && !r.historyCutMismatch
 	copy := *data
 	r.publication = &copy
 	r.forecastCacheUntil = time.Time{}
 	r.inventoryOverflow = false
-	if history != nil && r.historyStatus == "unavailable" {
+	if r.archiveAvailable && (r.historyCut == nil || r.historyCut.Snapshot().Valid) && r.historyStatus == "unavailable" {
 		r.historyStatus = "pending"
 	}
 	if data.Status.Status != "ok" || static == nil || static.Schedule == nil {

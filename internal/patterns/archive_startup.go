@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -42,7 +43,12 @@ func (s *Service) restoreMetroCheckpoint() error {
 		return s.fenceDetail(err, found)
 	}
 	s.applyCheckpoint(cp, *found)
+	s.checkpointRecovered = checkpointHasMetroEvidence(cp)
 	return nil
+}
+
+func checkpointHasMetroEvidence(cp checkpoint) bool {
+	return !cp.Hour.IsZero() || len(cp.Detail) > 0 || !cp.Engine.LastReceipt.IsZero() || len(cp.Engine.Aggregates) > 0 || len(cp.Engine.Cases) > 0
 }
 
 func (s *Service) metroCheckpointBlock() (*block, error) {
@@ -119,50 +125,86 @@ func (s *Service) setRecoveredMetroHour(hour time.Time, receipts []Receipt) {
 	}
 }
 
-// Replay only the checkpoint hour and latest detail; older generations are not
-// rewritten by recovery and remain independently retained in the manifest.
+// A legacy tail has no durable restart or global insertion order. Retain it
+// without inference when it extends a recovered checkpoint.
 func (s *Service) replayMetroDetails() error {
 	checkpointHour, checkpointRows := s.hour, s.detail
-	if err := s.checkMetroRecoveryTail(checkpointHour); err != nil {
+	if err := s.validateRecoveryDetailIdentities(); err != nil {
 		return err
 	}
 	latest := s.latestMetroDetail(checkpointHour)
-	if !checkpointHour.IsZero() && latest != nil && latest.Age.After(checkpointHour) && len(checkpointRows) > 0 {
-		if err := s.verifyCheckpointHour(checkpointHour, checkpointRows); err != nil {
-			return err
-		}
-	}
 	if latest == nil {
 		return nil
+	}
+	if s.checkpointRecovered && latest.Age.After(checkpointHour) {
+		return s.fenceMetroRecoveryTail()
 	}
 	receipts, err := s.recoverMetroDetail(latest, checkpointHour, checkpointRows)
 	if err != nil {
 		return err
 	}
-	s.replayRecoveredMetroRows(receipts)
+	if s.checkpointRecovered && len(receipts) > len(checkpointRows) {
+		return s.fenceMetroRecoveryTail()
+	}
+	// With no checkpoint, verified detail is retained as raw evidence only.
+	// Its timestamps form the append watermark, not recovered inference.
 	s.setRecoveredMetroHour(latest.Age, receipts)
 	return nil
 }
 
-// A multi-hour tail needs a separately bounded recovery strategy. Do not
-// replace the checkpoint after replaying only its newest hour.
-func (s *Service) checkMetroRecoveryTail(checkpointHour time.Time) error {
-	hours := map[time.Time]bool{}
+// Check reserved identities before choosing a tail or starting maintenance.
+// Invalid or duplicate keys cannot be treated as an absent detail generation.
+func (s *Service) validateRecoveryDetailIdentities() error {
+	counts := make(map[string]int, len(s.index.Blocks))
 	for _, b := range s.index.Blocks {
-		if b.Kind == "detail" && b.Operator == "metro" && b.Age.After(checkpointHour) {
-			hours[b.Age.UTC()] = true
+		counts[b.Key]++
+	}
+	invalid := map[string]bool{}
+	for _, b := range s.index.Blocks {
+		if (b.Kind == "detail" && b.Operator == "metro") || strings.HasPrefix(b.Key, "metro:detail:") {
+			if counts[b.Key] > 1 || !validRecoveryDetailIdentity(b) {
+				invalid[b.Key] = true
+			}
 		}
 	}
-	if len(hours) <= 1 {
+	if len(invalid) == 0 {
 		return nil
 	}
 	for i := range s.index.Blocks {
 		b := &s.index.Blocks[i]
-		if b.Kind == "detail" && b.Operator == "metro" && !b.Age.Before(checkpointHour) {
-			s.fenceDetail(fmt.Errorf("multiple post-checkpoint detail hours require recovery"), b)
+		if invalid[b.Key] {
+			s.fenceDetail(fmt.Errorf("ambiguous detail generation"), b)
 		}
 	}
-	return s.detailFence
+	return s.fenceMetroRecoveryTail()
+}
+
+func validRecoveryDetailIdentity(b block) bool {
+	const prefix = "metro:detail:"
+	if b.Kind != "detail" || b.Operator != "metro" || !strings.HasPrefix(b.Key, prefix) {
+		return false
+	}
+	hour, err := time.Parse(time.RFC3339, strings.TrimPrefix(b.Key, prefix))
+	return err == nil && hour.Equal(hour.UTC().Truncate(time.Hour)) && b.Age.Equal(hour) && b.Key == prefix+hour.UTC().Format(time.RFC3339)
+}
+
+func (s *Service) fenceMetroRecoveryTail() error {
+	err := fmt.Errorf("unproven post-checkpoint Metro detail order requires recovery")
+	for i := range s.index.Blocks {
+		b := &s.index.Blocks[i]
+		if b.Kind == "state" || b.Key == "metro:state" || s.recoveryTailBlock(*b) {
+			s.fenceDetail(err, b)
+		}
+	}
+	return s.fenceDetail(err, nil)
+}
+
+func (s *Service) recoveryTailBlock(b block) bool {
+	if !(b.Kind == "detail" && b.Operator == "metro") && !strings.HasPrefix(b.Key, "metro:detail:") {
+		return false
+	}
+	hour, err := time.Parse(time.RFC3339, strings.TrimPrefix(b.Key, "metro:detail:"))
+	return err != nil || !hour.Before(s.hour) || !b.Age.Before(s.hour)
 }
 
 func (s *Service) latestMetroDetail(checkpointHour time.Time) *block {
@@ -199,14 +241,6 @@ func (s *Service) recoverMetroDetail(latest *block, checkpointHour time.Time, ch
 		}
 	}
 	return receipts, nil
-}
-
-func (s *Service) replayRecoveredMetroRows(receipts []Receipt) {
-	for _, r := range receipts {
-		if r.ReceivedAt.After(s.engine.LastReceipt) && r.Profile == s.topology.Profile && s.topology.Profile != "" {
-			s.engine.step(r, s.topology, s.config)
-		}
-	}
 }
 
 func (s *Service) verifyCheckpointHour(hour time.Time, rows []Receipt) error {
@@ -261,7 +295,9 @@ func (s *Service) resetRecoveredContinuity() {
 		p.reset()
 	}
 	s.engine.resetContinuity()
-	if !s.engine.LastReceipt.IsZero() {
+	if !s.lastSample.IsZero() || !s.engine.LastReceipt.IsZero() || len(s.engine.Aggregates) > 0 || len(s.engine.Cases) > 0 {
 		s.engine.Gaps++
+		s.pendingMetroDeliveryGap = true
+		s.metroCut.MarkPending()
 	}
 }

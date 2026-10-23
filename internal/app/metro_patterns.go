@@ -32,6 +32,29 @@ func (m *MetroClient) reportMetroSampleError(message string) {
 }
 
 func (m *MetroClient) recordPatterns(data *MetroData, static *StaticData, now time.Time) error {
+	return m.recordPatternsWith(data, static, now, m.History.RecordMetro)
+}
+func (m *MetroClient) recordPatternsWith(data *MetroData, static *StaticData, now time.Time, record func(patterns.Receipt, patterns.Topology) (patterns.MetroRecordResult, error)) error {
+	receipt, t := m.patternReceipt(data, static, now)
+	result, err := record(receipt, t)
+	if err == nil {
+		if result.Acknowledged && m.Cache != nil {
+			r := m.Cache.metroRuntime
+			r.mu.Lock()
+			cut := result.Cut
+			cut.Pending = false
+			if !r.historyCutMismatch && r.historyCut == m.History.MetroCut() && r.historyCut.Claim(cut) {
+				r.historyDeliveryGap = false
+				r.historyCollecting(now)
+			}
+			r.mu.Unlock()
+		}
+		m.logMetroSample()
+	}
+	return err
+}
+
+func (m *MetroClient) patternReceipt(data *MetroData, static *StaticData, now time.Time) (patterns.Receipt, patterns.Topology) {
 	t := metroTopology(data, static)
 	raw, _ := json.Marshal(data.Waits)
 	var rows []patterns.Row
@@ -46,12 +69,7 @@ func (m *MetroClient) recordPatterns(data *MetroData, static *StaticData, now ti
 	} else {
 		m.lastSampleError = ""
 	}
-	// Archive failure is visible in its status; it cannot suppress official live data.
-	if err := m.History.Record(receipt, t); err != nil {
-		return err
-	}
-	m.logMetroSample()
-	return nil
+	return receipt, t
 }
 
 // logMetroSample emits the bounded per-sample diagnostic counters at debug level.
@@ -88,22 +106,53 @@ func (m *MetroClient) logMetroSample() {
 }
 
 func (s *Server) GetMetroPatterns(ctx context.Context, request api.GetMetroPatternsRequestObject) (api.GetMetroPatternsResponseObject, error) {
+	return s.getMetroPatternsWith(ctx, request, s.buildMetroPatternResponse, s.claimMetroPublication)
+}
+
+func (s *Server) getMetroPatternsWith(ctx context.Context, request api.GetMetroPatternsRequestObject, build func(context.Context, api.GetMetroPatternsRequestObject) (api.MetroPatterns, error), claim func(patterns.MetroCutSnapshot, bool) bool) (api.GetMetroPatternsResponseObject, error) {
+	owner, matched := s.serverMetroCut()
+	var cut patterns.MetroCutSnapshot
+	if owner != nil {
+		cut = owner.Snapshot()
+	}
+	response, err := build(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+	if !matched || !claim(cut, false) {
+		fenceMetroPatternResponse(&response)
+		_ = claim(cut, true)
+	}
+	return api.GetMetroPatterns200JSONResponse(response), nil
+}
+
+func (s *Server) buildMetroPatternResponse(ctx context.Context, request api.GetMetroPatternsRequestObject) (api.MetroPatterns, error) {
 	view := patterns.View{Operator: "metro", Operators: []patterns.OperatorHistory{}, Status: "disabled", Message: "Recolha experimental ainda não configurada.", Experimental: true, Patterns: []patterns.HourPattern{}, Forecasts: []patterns.Forecast{}, Evaluation: []patterns.EvaluationReport{}}
 	state, err := s.Cache.state("")
 	if err != nil {
-		return nil, err
+		return api.MetroPatterns{}, err
 	}
 	stop, err := metroPatternStop(state, request.Params.StopId)
 	if err != nil {
-		return nil, err
+		return api.MetroPatterns{}, err
 	}
 	s.readMetroPatternView(ctx, &view, request, stop)
 	appendOfficialCache(&view, metroOfficialCache(state, stop, time.Now().UTC()))
-	response, err := patternAPIResponse(view)
-	if err != nil {
-		return nil, err
+	return patternAPIResponse(view)
+}
+
+func fenceMetroPatternResponse(response *api.MetroPatterns) {
+	response.Status, response.Message = "paused", "Histórico do Metro temporariamente indisponível; existem lacunas."
+	response.Pending = 0
+	for n := range response.Forecasts {
+		f := &response.Forecasts[n]
+		f.Unavailable = "history_interrupted"
+		f.OwnAt, f.LowerAt, f.UpperAt = nil, nil, nil
+		f.Components = []api.MetroPatternComponent{}
+		f.CalibrationSamples = 0
+		f.ReferenceLower, f.ReferenceUpper, f.ErrorLower, f.ErrorUpper = nil, nil, nil, nil
+		f.Selected, f.Evaluated, f.Result = false, false, "lost_support"
 	}
-	return api.GetMetroPatterns200JSONResponse(response), nil
 }
 
 func metroPatternStop(state *State, selection *string) (string, error) {

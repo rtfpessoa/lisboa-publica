@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -122,19 +123,28 @@ func (r *metroRuntime) flushInputs(ctx context.Context, history *patterns.Servic
 	if history == nil {
 		return
 	}
+	r.flushInputsWithWrite(ctx, history.RecordMetroInputs, now)
+}
+func (r *metroRuntime) flushInputsWithWrite(ctx context.Context, write func(context.Context, []patterns.MetroEventRecord, time.Time) error, now time.Time) {
 	batch := r.pendingCaptureBatch(now)
 	if len(batch) == 0 {
 		return
 	}
-	err := history.RecordMetroInputs(ctx, batch, now)
+	err := write(ctx, batch, now)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if err != nil && r.retryCaptureWrite(now) {
 		return
 	}
 	r.capture.Failures = 0
+	recovered := false
 	for _, record := range batch {
-		r.acknowledgeCapturedInput(record, err == nil)
+		if r.acknowledgeCapturedInput(record, err == nil) {
+			recovered = true
+		}
+	}
+	if recovered {
+		r.historyCollecting(now)
 	}
 }
 func (r *metroRuntime) pendingCaptureBatch(now time.Time) []patterns.MetroEventRecord {
@@ -152,20 +162,26 @@ func (r *metroRuntime) retryCaptureWrite(now time.Time) bool {
 	r.historyStatus = "paused"
 	return r.capture.Failures < 3
 }
-func (r *metroRuntime) acknowledgeCapturedInput(record patterns.MetroEventRecord, written bool) {
-	if written {
-		r.acknowledgeCaptureGap(record.Payload)
+func (r *metroRuntime) acknowledgeCapturedInput(record patterns.MetroEventRecord, written bool) bool {
+	if len(r.capture.Queue) == 0 {
+		return false
 	}
-	if len(r.capture.Queue) > 0 && r.capture.Queue[0].ID == record.ID {
-		r.capture.Bytes -= len(record.Payload)
-		r.capture.Queue = r.capture.Queue[1:]
+	queued := r.capture.Queue[0]
+	if queued.ID != record.ID || queued.Journey != record.Journey || !queued.At.Equal(record.At) || !bytes.Equal(queued.Payload, record.Payload) {
+		return false
 	}
+	recovered := written && r.acknowledgeCaptureGap(record.Payload)
+	r.capture.Bytes -= len(record.Payload)
+	r.capture.Queue = r.capture.Queue[1:]
+	return recovered
 }
-func (r *metroRuntime) acknowledgeCaptureGap(payload []byte) {
+func (r *metroRuntime) acknowledgeCaptureGap(payload []byte) bool {
 	var input metroCapturedInput
-	if json.Unmarshal(payload, &input) == nil && input.GapBefore && input.GapVersion == r.capture.GapVersion {
+	if json.Unmarshal(payload, &input) == nil && input.GapBefore && r.capture.Gap && input.GapVersion == r.capture.GapVersion {
 		r.capture.Gap = false
+		return true
 	}
+	return false
 }
 
 func (r *metroRuntime) markCaptureGap() { r.capture.Gap = true; r.capture.GapVersion++ }

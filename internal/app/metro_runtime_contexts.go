@@ -154,6 +154,7 @@ func (s metroContextSelection) suspend(scope string, count int) {
 }
 
 func (r *metroRuntime) forecastContexts(now time.Time) []api.MetroForecastContext {
+	r.fenceMetroForecasts(now)
 	if now.Before(r.forecastCacheUntil) {
 		return cloneMetroForecastContexts(r.forecastCache)
 	}
@@ -365,10 +366,37 @@ func (l metroLocalContexts) sorted() []api.MetroForecastContext {
 func (r *metroRuntime) view(now time.Time) (*MetroData, *StaticData, []api.MetroForecastContext, string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	return r.viewLocked(now)
+}
+func (r *metroRuntime) viewLocked(now time.Time) (*MetroData, *StaticData, []api.MetroForecastContext, string) {
 	if r.publication == nil {
 		return nil, r.plan, []api.MetroForecastContext{}, r.historyStatus
 	}
 	data := *r.publication
 	data.Topology, data.Trains, data.InventoryOverflow = r.topology, r.current(now), r.inventoryOverflow
 	return &data, r.plan, r.forecastContexts(now), r.historyStatus
+}
+
+// safeView builds from independent source facts from the outset, so station
+// sorting and context identities cannot inherit an unstable history result.
+func (r *metroRuntime) safeView(now time.Time) (*MetroData, *StaticData, []api.MetroForecastContext, string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	tracks, cache, until, forecastTracks, cut, status := r.tracks, r.forecastCache, r.forecastCacheUntil, r.forecastTracks, r.forecastCut, r.historyStatus
+	r.tracks = make(map[string]*metroTrack, len(tracks))
+	for id, t := range tracks {
+		copy := r.snapshotMetroTrack(t, patterns.MetroCutSnapshot{}, true, now)
+		if t.BarrierBefore != nil {
+			before := copy
+			before.Train = cloneMetroTrain(*t.BarrierBefore)
+			clearMetroOwnPredictions(&before)
+			projectMetroScheduled(&before, now)
+			copy.BarrierBefore = &before.Train
+		}
+		r.tracks[id] = &copy
+	}
+	r.forecastCache, r.forecastCacheUntil, r.forecastTracks = nil, time.Time{}, map[string]metroForecastTrack{}
+	data, plan, contexts, _ := r.viewLocked(now)
+	r.tracks, r.forecastCache, r.forecastCacheUntil, r.forecastTracks, r.forecastCut, r.historyStatus = tracks, cache, until, forecastTracks, cut, status
+	return data, plan, contexts, "paused"
 }

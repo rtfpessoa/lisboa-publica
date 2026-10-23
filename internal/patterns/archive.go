@@ -48,9 +48,13 @@ type checkpoint struct {
 // Service owns one archive and inference engine. The lock bounds file reader lifetime:
 // FIFO cannot unlink until reads are closed. No file descriptors escape a query.
 type Service struct {
-	mu     sync.Mutex
-	config Config
-	index  manifest
+	mu                  sync.Mutex
+	metroCut            *MetroCut
+	metroFIFO           *MetroFIFO
+	checkpointRetry     *MetroCheckpointAttempt
+	checkpointUncertain bool
+	config              Config
+	index               manifest
 	archiveResources
 	metroArchiveState
 	providers map[string]*providerState
@@ -88,6 +92,7 @@ type archiveResources struct {
 
 // metroArchiveState is the inference and publication cursor for Metro receipts.
 type metroArchiveState struct {
+	checkpointRecovered        bool
 	pendingMetroDeliveryGap    bool
 	detailFence                error
 	protectedGenerations       map[retentionClockKey]bool
@@ -112,6 +117,8 @@ func (s *Service) Close() error {
 		return nil
 	}
 	err := s.flush(time.Now().UTC())
+	s.metroCut.MarkPending()
+	s.applyMetroCut()
 	if s.encoder != nil {
 		s.encoder.Close()
 	}

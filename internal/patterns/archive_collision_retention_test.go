@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -137,5 +138,71 @@ func TestUnreadableCheckpointProtectsWrongKindDetailKeys(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(config.Directory, b.File)); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func TestReservedWrongKindOnlyDetailSurvivesStartupMaintenance(t *testing.T) {
+	for _, identity := range []string{"checkpoint_hour", "later_hour", "malformed"} {
+		t.Run(identity, func(t *testing.T) {
+			config := DefaultConfig(t.TempDir())
+			config.DetailDays, config.AggregateMonths = 1, 1
+			base := time.Now().UTC().AddDate(0, -10, 0).Truncate(time.Hour).Add(5 * time.Minute)
+			rows := []Receipt{durabilityReceipt(base, "checkpoint")}
+			writeDurabilityFixture(t, config, rows, fixtureCheckpoint(t, base.Truncate(time.Hour), rows))
+			m := readFixtureManifest(t, config.Directory)
+			var retained []block
+			for _, b := range m.Blocks {
+				if b.Kind == "detail" {
+					if err := os.Remove(filepath.Join(config.Directory, b.File)); err != nil {
+						t.Fatal(err)
+					}
+				} else {
+					retained = append(retained, b)
+				}
+			}
+			key := "metro:detail:" + base.Truncate(time.Hour).Format(time.RFC3339)
+			if identity == "later_hour" {
+				key = "metro:detail:" + base.Truncate(time.Hour).Add(time.Hour).Format(time.RFC3339)
+			} else if identity == "malformed" {
+				key = "metro:detail:unknown"
+			}
+			conflict := collisionAggregate(t, config.Directory, key, base, 1)
+			generationPath := filepath.Join(config.Directory, conflict.File)
+			generation, err := os.ReadFile(generationPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			m.Blocks = append(retained, conflict)
+			raw, err := json.Marshal(m)
+			if err != nil {
+				t.Fatal(err)
+			}
+			manifestPath := filepath.Join(config.Directory, "manifest.json")
+			if err = os.WriteFile(manifestPath, raw, 0600); err != nil {
+				t.Fatal(err)
+			}
+			s, err := Open(config)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer s.Close()
+			s.mu.Lock()
+			now := time.Now().UTC()
+			if s.detailFence == nil || !s.protectedGenerations[retentionKey(conflict)] || !s.blockExpired(conflict, now) || !s.pressureEligible(conflict, now) {
+				s.mu.Unlock()
+				t.Fatal("startup did not fence and protect the otherwise eligible wrong-kind key")
+			}
+			_, _ = s.expireSome(now, &cleanupWork{})
+			_ = s.ensureSpaceFor(s.config.LimitBytes, 0, now, &cleanupWork{})
+			s.mu.Unlock()
+			after, err := os.ReadFile(manifestPath)
+			if err != nil || string(after) != string(raw) {
+				t.Fatalf("startup or maintenance changed the protected manifest: %v", err)
+			}
+			afterGeneration, err := os.ReadFile(generationPath)
+			if err != nil || !bytes.Equal(afterGeneration, generation) {
+				t.Fatalf("startup or maintenance changed the protected generation: %v", err)
+			}
+		})
 	}
 }

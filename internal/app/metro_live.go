@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"lisboapublica/internal/api"
+	"lisboapublica/internal/patterns"
 )
 
 // MetroStreamLimits bound encoded payloads and connection admission, not exact heap use.
@@ -109,32 +110,54 @@ func sameMetroRoute(d *StaticData, a, b string) bool {
 	return names[a] != "" && names[a] == names[b]
 }
 func (s *Server) metroFrame(ctx context.Context, i metroInterest) (api.MetroLiveFrame, []byte, error) {
+	f, raw, _, _, err := s.metroFrameWithCut(ctx, i, false)
+	return f, raw, err
+}
+func (s *Server) metroFrameWithCut(ctx context.Context, i metroInterest, safe bool) (api.MetroLiveFrame, []byte, patterns.MetroCutSnapshot, bool, error) {
 	release, err := s.admitRead()
 	if err != nil {
-		return api.MetroLiveFrame{}, nil, err
+		return api.MetroLiveFrame{}, nil, patterns.MetroCutSnapshot{}, false, err
 	}
 	defer release()
-	return s.projectMetroFrame(ctx, i)
+	return s.projectMetroFrameGuarded(ctx, i, safe)
 }
 
 // Initial reset admission can wait briefly within the existing bounded stream
 // inventory. Ordinary reads remain fail-fast; established ticks coalesce busy.
-func (s *Server) initialMetroFrame(ctx context.Context, i metroInterest) (api.MetroLiveFrame, []byte, error) {
+func (s *Server) initialMetroFrame(ctx context.Context, i metroInterest) (api.MetroLiveFrame, []byte, patterns.MetroCutSnapshot, bool, error) {
 	wait, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 	select {
 	case s.expensiveReads <- struct{}{}:
 		defer func() { <-s.expensiveReads }()
-		return s.projectMetroFrame(ctx, i)
+		return s.projectMetroFrameGuarded(ctx, i, false)
 	case <-wait.Done():
 		if ctx.Err() != nil {
-			return api.MetroLiveFrame{}, nil, ctx.Err()
+			return api.MetroLiveFrame{}, nil, patterns.MetroCutSnapshot{}, false, ctx.Err()
 		}
-		return api.MetroLiveFrame{}, nil, fail(http.StatusServiceUnavailable, "busy", "Pedidos em curso; tente novamente dentro de um segundo.")
+		return api.MetroLiveFrame{}, nil, patterns.MetroCutSnapshot{}, false, fail(http.StatusServiceUnavailable, "busy", "Pedidos em curso; tente novamente dentro de um segundo.")
 	}
 }
-func (s *Server) projectMetroFrame(ctx context.Context, i metroInterest) (api.MetroLiveFrame, []byte, error) {
-	b, err := s.newMetroFrameBuilder(ctx, i)
+func (s *Server) projectMetroFrameGuarded(ctx context.Context, i metroInterest, safe bool) (api.MetroLiveFrame, []byte, patterns.MetroCutSnapshot, bool, error) {
+	for attempt := 0; attempt < 2 && !safe; attempt++ {
+		owner, matched := s.serverMetroCut()
+		var cut patterns.MetroCutSnapshot
+		if owner != nil {
+			cut = owner.Snapshot()
+		}
+		if !matched || owner != nil && !cut.Valid {
+			break
+		}
+		f, raw, err := s.projectMetroFrame(ctx, i, false)
+		if err != nil || s.claimMetroPublication(cut, false) {
+			return f, raw, cut, false, err
+		}
+	}
+	f, raw, err := s.projectMetroFrame(ctx, i, true)
+	return f, raw, patterns.MetroCutSnapshot{}, true, err
+}
+func (s *Server) projectMetroFrame(ctx context.Context, i metroInterest, safe bool) (api.MetroLiveFrame, []byte, error) {
+	b, err := s.newMetroFrameBuilder(ctx, i, safe)
 	if err != nil {
 		return api.MetroLiveFrame{}, nil, err
 	}
@@ -148,25 +171,42 @@ func (s *Server) projectMetroFrame(ctx context.Context, i metroInterest) (api.Me
 	return encodeMetroFrame(b.frame, s.Options.MetroStreamLimits.defaults().FrameBytes)
 }
 func (s *Server) GetMetroLive(ctx context.Context, _ api.GetMetroLiveRequestObject) (api.GetMetroLiveResponseObject, error) {
+	return s.getMetroLiveWithClaim(ctx, s.claimMetroPublication)
+}
+func (s *Server) getMetroLiveWithClaim(ctx context.Context, claim func(patterns.MetroCutSnapshot, bool) bool) (api.GetMetroLiveResponseObject, error) {
 	ctx, cancel := context.WithTimeout(ctx, expensiveReadTimeout)
 	defer cancel()
 	i, err := readMetroInterest(ctx)
 	if err != nil {
 		return nil, err
 	}
-	f, _, err := s.metroFrame(ctx, i)
+	f, err := s.claimMetroLiveFrame(ctx, i, claim)
 	if err != nil {
 		return nil, err
 	}
-	w := writer(ctx)
 	etag := `"` + f.Revision + `"`
+	notModified := matchesMetroETag(request(ctx).Header.Get("If-None-Match"), etag)
+	w := writer(ctx)
 	w.Header().Set("ETag", etag)
 	w.Header().Set("Cache-Control", "private, no-cache")
-	if matchesMetroETag(request(ctx).Header.Get("If-None-Match"), etag) {
+	if notModified {
 		return api.GetMetroLive304Response{}, nil
 	}
 	return api.GetMetroLive200JSONResponse{Body: f, Headers: api.GetMetroLive200ResponseHeaders{ETag: &etag}}, nil
 }
+func (s *Server) claimMetroLiveFrame(ctx context.Context, interest metroInterest, claim func(patterns.MetroCutSnapshot, bool) bool) (api.MetroLiveFrame, error) {
+	frame, _, cut, safe, err := s.metroFrameWithCut(ctx, interest, false)
+	if err != nil || claim(cut, safe) {
+		return frame, err
+	}
+	frame, _, cut, safe, err = s.metroFrameWithCut(ctx, interest, true)
+	if err != nil {
+		return frame, err
+	}
+	_ = claim(cut, safe)
+	return frame, nil
+}
+
 func matchesMetroETag(header, etag string) bool {
 	for _, v := range strings.Split(header, ",") {
 		v = strings.TrimSpace(v)
@@ -184,6 +224,8 @@ type metroStreamResponse struct {
 	first    []byte
 	revision string
 	release  func()
+	cut      patterns.MetroCutSnapshot
+	safe     bool
 }
 
 func (s *Server) StreamMetroLive(ctx context.Context, _ api.StreamMetroLiveRequestObject) (api.StreamMetroLiveResponseObject, error) {
@@ -196,12 +238,12 @@ func (s *Server) StreamMetroLive(ctx context.Context, _ api.StreamMetroLiveReque
 	if err != nil {
 		return nil, err
 	}
-	f, raw, err := s.initialMetroFrame(ctx, i)
+	f, raw, cut, safe, err := s.initialMetroFrame(ctx, i)
 	if err != nil {
 		release()
 		return nil, err
 	}
-	return metroStreamResponse{s, ctx, i, raw, f.Revision, release}, nil
+	return metroStreamResponse{server: s, ctx: ctx, interest: i, first: raw, revision: f.Revision, release: release, cut: cut, safe: safe}, nil
 }
 func (r metroStreamResponse) VisitStreamMetroLiveResponse(w http.ResponseWriter) error {
 	defer r.release()
@@ -213,6 +255,14 @@ func (r metroStreamResponse) VisitStreamMetroLiveResponse(w http.ResponseWriter)
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-store, no-transform")
 	w.Header().Set("X-Accel-Buffering", "no")
+	if !r.server.claimMetroPublication(r.cut, r.safe) {
+		f, raw, cut, safe, err := r.server.metroFrameWithCut(r.ctx, r.interest, true)
+		if err != nil {
+			return err
+		}
+		r.first, r.revision, r.cut, r.safe = raw, f.Revision, cut, safe
+		_ = r.server.claimMetroPublication(r.cut, r.safe)
+	}
 	if stream.send("reset", r.first) {
 		r.runStream(&stream)
 	}
@@ -277,14 +327,24 @@ func (r metroStreamResponse) authorized() bool {
 	return err == nil && sameMetroPrincipal(actor, next)
 }
 func (r metroStreamResponse) publishFrame(stream *metroStreamWriter, revision *string) bool {
+	return r.publishFrameWithClaim(stream, revision, r.server.claimMetroPublication)
+}
+func (r metroStreamResponse) publishFrameWithClaim(stream *metroStreamWriter, revision *string, claim func(patterns.MetroCutSnapshot, bool) bool) bool {
 	if actor := principal(r.ctx); actor != nil && !time.Now().Before(actor.Expires) {
 		return false
 	}
-	f, raw, err := r.server.metroFrame(r.ctx, r.interest)
+	f, raw, cut, safe, err := r.server.metroFrameWithCut(r.ctx, r.interest, false)
 	if err != nil {
 		return metroStreamProjectionError(stream, err)
 	}
 	if f.Revision != *revision {
+		if !claim(cut, safe) {
+			f, raw, cut, safe, err = r.server.metroFrameWithCut(r.ctx, r.interest, true)
+			if err != nil {
+				return metroStreamProjectionError(stream, err)
+			}
+			_ = claim(cut, safe)
+		}
 		if !stream.send("frame", raw) {
 			return false
 		}

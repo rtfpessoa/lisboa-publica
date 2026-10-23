@@ -24,7 +24,7 @@ func (b *metroFrameBuilder) selectJourney() {
 			return
 		}
 	}
-	if t, ok := b.server.Cache.metroRuntime.retained(id, b.now); ok {
+	if t, ok := b.server.Cache.metroRuntime.retainedSnapshot(id, b.now, b.forceSafe); ok {
 		b.frame.Trains = append(b.frame.Trains, t)
 		b.frame.SelectedJourneyId = ptr(id)
 		b.frame.Recovery.Status, b.frame.Recovery.Reason = "historical", t.Reason
@@ -76,18 +76,19 @@ func (b *metroFrameBuilder) restoreCheckpoint(checkpoint patterns.MetroJourneyCh
 		b.frame.Recovery.Status, b.frame.Recovery.Reason = "corrupt", "Histórico selecionado incompatível"
 		return
 	}
-	t := p.Train
+	t := cloneMetroTrain(p.Train)
 	t.ModelProjection = nil
 	t.Association, t.NextIndex, t.CurrentIndex, t.VehicleId = "suspended", nil, nil, nil
 	t.Reason = "Último estado confirmado restaurado; continuidade atual não comprovada"
 	t.Persistence = &api.MetroJourneyPersistence{State: "committed", Revision: int64(checkpoint.Revision), CommittedRevision: int64(checkpoint.Revision), Generation: ptr(checkpoint.Generation), CommittedAt: ptr(checkpoint.CommittedAt)}
 	expireRestoredMetroCalls(&t, b.now)
 
+	p.Train = t
+	runtime.retainCheckpoint(p, checkpoint)
+	maskRestoredMetroDepartures(&t)
 	b.frame.Trains = append(b.frame.Trains, t)
 	b.frame.SelectedJourneyId = ptr(t.JourneyId)
 	b.frame.Recovery.Status, b.frame.Recovery.Reason = "historical", t.Reason
-	p.Train = t
-	runtime.retainCheckpoint(p, checkpoint)
 	return
 }
 func expireRestoredMetroCalls(t *api.MetroTrain, now time.Time) {
@@ -133,9 +134,34 @@ func (b *metroFrameBuilder) restoreLegacyRecords(records []patterns.MetroEventRe
 	restored.Association = "suspended"
 	restored.NextIndex = nil
 	restored.Reason = "Histórico parcial restaurado; sem continuidade atual"
+	expireRestoredMetroCalls(&restored, b.now)
+	maskRestoredMetroDepartures(&restored)
 	b.frame.Trains = append(b.frame.Trains, restored)
 	b.frame.SelectedJourneyId = ptr(restored.JourneyId)
 	b.frame.Recovery.Status, b.frame.Recovery.Reason = "partial", restored.Reason
+}
+
+const restoredMetroCorrectionReason = "Histórico restaurado; correções de partidas inferidas indisponíveis"
+
+// Recovered payloads may lack a later correction. Preserve them in the archive
+// while withholding their modeled departures and revisions from the live view.
+func maskRestoredMetroDepartures(t *api.MetroTrain) {
+	t.Reason = restoredMetroCorrectionReason
+	for i := range t.Calls {
+		call := &t.Calls[i]
+		call.DepartureRevisions = nil
+		if call.Departure.Inferred == nil {
+			continue
+		}
+		call.Departure.Inferred = nil
+		if call.Departure.Actual != nil {
+			call.Departure.Kind, call.Departure.At = "actual", ptr(call.Departure.Actual.At)
+		} else if call.Departure.Prediction != nil {
+			call.Departure.Kind, call.Departure.At = "prediction", ptr(call.Departure.Prediction.At)
+		} else {
+			call.Departure = missingCallTime(restoredMetroCorrectionReason)
+		}
+	}
 }
 func (b *metroFrameBuilder) latestJourneyProofs(records []patterns.MetroEventRecord) map[string]patterns.MetroEventRecord {
 	latest := map[string]patterns.MetroEventRecord{}
