@@ -3,3 +3,4 @@
 .transit-call.route-call{grid-template-columns:minmax(0,1fr)}
 
 .station-refresh-status{font-size:11px;color:#805918;margin:10px 0}.station-popup{overflow-anchor:none}
+.metro-predecessor{overflow-wrap:anywhere}

@@ -1,27 +1,27 @@
 import {createContext,useCallback,useEffect,useRef,useState} from 'react';
 import type {CallTime,MetroLiveFrame,MetroTrain,Stop,Vehicle} from './api';
 
-export type MetroDelivery={frame?:MetroLiveFrame;retainedJourney?:MetroTrain;selectJourney?:(id:string)=>void;error?:string;healthy:boolean;stops:Stop[];stopsPlanId?:string|null;onVehicle?:(v:Vehicle)=>void;onStop?:(s:Stop)=>void;followPaused:boolean;resumeFollow:()=>void;beforeFrame?:(listener:()=>void)=>()=>void};
-export const MetroLiveContext=createContext<MetroDelivery>({healthy:false,stops:[],followPaused:false,resumeFollow:()=>{}});
+export type MetroDelivery={frame?:MetroLiveFrame;retainedJourney?:MetroTrain;selectJourney?:(id:string)=>void;error?:string;healthy:boolean;available:boolean;stops:Stop[];stopsPlanId?:string|null;onVehicle?:(v:Vehicle)=>void;onStop?:(s:Stop)=>void;followPaused:boolean;followAvailable:boolean;resumeFollow:()=>void;beforeFrame?:(listener:()=>void)=>()=>void};
+export const MetroLiveContext=createContext<MetroDelivery>({healthy:false,available:false,stops:[],followPaused:false,followAvailable:false,resumeFollow:()=>{}});
 type Interest={selectionEpoch?:number;enabled:boolean;routeId?:string;vehicleId?:string;stopId?:string};
 
 function historicalTime(value:CallTime):CallTime{
  return value.kind==='prediction'?{kind:'unavailable',at:null,reason:'Sem previsão atual',actual:null,prediction:null,schedule:null}:{...value,prediction:null};
 }
 function suspendedHistory(train:MetroTrain,reason:string):MetroTrain{
- return {...train,model_projection:undefined,association:'suspended',next_index:null,current_index:null,vehicle_id:null,reason,calls:train.calls.map(call=>({...call,phase:'unknown',own_prediction:null,arrival:historicalTime(call.arrival),departure:historicalTime(call.departure)}))};
+ return {...train,model_projection:undefined,association:'suspended',next_index:null,current_index:null,vehicle_id:null,reason,calls:train.calls.map(call=>({...call,phase:'unknown',own_prediction:null,own_departure_prediction:undefined,arrival:historicalTime(call.arrival),departure:historicalTime(call.departure)}))};
 }
 
 // One owner for map and popup: each accepted complete frame replaces both atomically.
 export function useMetroLive(interest:Interest){
- const [frame,setFrame]=useState<MetroLiveFrame>(),[error,setError]=useState<string>(),[healthy,setHealthy]=useState(false);
+ const [frame,setFrame]=useState<MetroLiveFrame>(),[error,setError]=useState<string>(),[healthy,setHealthy]=useState(false),[available,setAvailable]=useState(false),[lossCount,setLossCount]=useState(0);
  const [retainedJourney,setRetainedJourney]=useState<MetroTrain>(),[manualPin,setManualPin]=useState<{scope:string,id:string}>();
  const readers=useRef(new Set<()=>void>());
  const beforeFrame=useCallback((listener:()=>void)=>{readers.current.add(listener);return()=>{readers.current.delete(listener)}},[]);
  const pinned=useRef<string|undefined>(undefined),scope=JSON.stringify(interest),explicitPin=manualPin?.scope===scope?manualPin.id:undefined,key=JSON.stringify([scope,explicitPin]),generation=useRef(0);
  const selectJourney=useCallback((id:string)=>setManualPin({scope,id}),[scope]);
  useEffect(()=>{
-  const epoch=++generation.current;pinned.current=explicitPin;setFrame(undefined);setRetainedJourney(undefined);setHealthy(false);setError(undefined);
+  const epoch=++generation.current;pinned.current=explicitPin;setFrame(undefined);setRetainedJourney(undefined);setHealthy(false);setAvailable(false);setError(undefined);
   if(!interest.enabled)return;
   let source:EventSource|undefined,fallbackTimer:ReturnType<typeof setTimeout>|undefined,reconnectTimer:ReturnType<typeof setTimeout>|undefined,resetTimer:ReturnType<typeof setTimeout>|undefined,controller:AbortController|undefined;
   let active=true,streamReady=false,lastCursor=0,retryDelay=1000,notBefore=0,etag='',accepted:MetroLiveFrame|undefined;
@@ -37,7 +37,7 @@ export function useMetroLive(interest:Interest){
    if(selected)setRetainedJourney(selected);
    else setRetainedJourney(previous=>previous?suspendedHistory(previous,next.recovery?.reason??'A recuperar a viagem selecionada'):undefined);
    for(const listener of readers.current)listener();
-   accepted=next;etag=`"${next.revision}"`;setFrame(previous=>previous?.revision===next.revision?previous:next);setError(undefined);
+   accepted=next;etag=`"${next.revision}"`;setFrame(previous=>previous?.revision===next.revision?previous:next);setError(undefined);setAvailable(true);
   };
   const delayFrom=(response:Response)=>{const raw=response.headers.get('Retry-After');if(!raw)return 5000;const seconds=Number(raw);return Number.isFinite(seconds)?Math.max(5000,seconds*1000):Math.max(5000,Date.parse(raw)-Date.now())};
   async function fallback(){
@@ -48,12 +48,14 @@ export function useMetroLive(interest:Interest){
    const request=new AbortController();controller=request;const requestTimer=setTimeout(()=>request.abort(),10000);
    try{
     const response=await fetch(`/api/v1/metro/live?${params()}`,{credentials:'same-origin',signal:request.signal,headers:accepted?{'If-None-Match':etag}:{}});
-    if(!current()||streamReady||request.signal.aborted)return;
-    if(response.status===304){if(!accepted)throw new Error('Quadro Metro em falta.');return}
+    if(!current()||streamReady||request.signal.aborted||controller!==request)return;
+    if(response.status===304){if(!accepted)throw new Error('Quadro Metro em falta.');setError(undefined);setAvailable(true);return}
     if(!response.ok){notBefore=Math.max(notBefore,Date.now()+delayFrom(response));throw new Error('Metro temporariamente indisponível.');}
-    apply(await response.json() as MetroLiveFrame);
-   }catch(cause){if(current()&&!streamReady&&!request.signal.aborted)setError(cause instanceof Error?cause.message:'Atualização Metro indisponível.')}
-   finally{clearTimeout(requestTimer);if(controller===request)controller=undefined;if(current()&&!streamReady)fallbackTimer=setTimeout(fallback,Math.max(5000,notBefore-Date.now()))}
+    const next=await response.json() as MetroLiveFrame;
+    if(!current()||streamReady||request.signal.aborted||controller!==request)return;
+    apply(next);
+   }catch(cause){if(current()&&!streamReady&&controller===request){setAvailable(false);setLossCount(n=>n+1);setError(!request.signal.aborted&&cause instanceof Error?cause.message:'Atualização Metro indisponível.')}}
+   finally{clearTimeout(requestTimer);if(controller===request){controller=undefined;if(current()&&!streamReady)fallbackTimer=setTimeout(fallback,Math.max(5000,notBefore-Date.now()))}}
   }
   function connect(){
    if(!current())return;
@@ -70,7 +72,7 @@ export function useMetroLive(interest:Interest){
     }catch{stream.close();failed(stream)}
    };
    const failed=(stream:EventSource)=>{
-    if(!current()||source!==stream)return;clearTimeout(resetTimer);stream.close();source=undefined;streamReady=false;setHealthy(false);
+    if(!current()||source!==stream)return;clearTimeout(resetTimer);stream.close();source=undefined;streamReady=false;setHealthy(false);setAvailable(false);setLossCount(n=>n+1);
     clearTimeout(fallbackTimer);void fallback();clearTimeout(reconnectTimer);
     reconnectTimer=setTimeout(connect,Math.max(retryDelay,notBefore-Date.now()));retryDelay=Math.min(30000,retryDelay*2);
    };
@@ -78,12 +80,12 @@ export function useMetroLive(interest:Interest){
    stream.addEventListener('reset',receive);stream.addEventListener('frame',receive);stream.addEventListener('unavailable',()=>failed(stream));stream.onerror=()=>failed(stream);
   }
   const visibility=()=>{
-   source?.close();source=undefined;controller?.abort();controller=undefined;clearTimeout(fallbackTimer);clearTimeout(reconnectTimer);clearTimeout(resetTimer);streamReady=false;setHealthy(false);
+   source?.close();source=undefined;controller?.abort();controller=undefined;clearTimeout(fallbackTimer);clearTimeout(reconnectTimer);clearTimeout(resetTimer);streamReady=false;setHealthy(false);setAvailable(false);setLossCount(n=>n+1);
    if(!document.hidden){connect();void fallback()}
   };
   connect(); // Fallback starts on a stream failure; healthy streams never duplicate snapshot reads.
   document.addEventListener('visibilitychange',visibility);
   return()=>{active=false;source?.close();controller?.abort();clearTimeout(fallbackTimer);clearTimeout(reconnectTimer);clearTimeout(resetTimer);document.removeEventListener('visibilitychange',visibility)};
  },[key]);
- return {frame,retainedJourney,selectJourney,error,healthy,beforeFrame};
+ return {frame,retainedJourney,selectJourney,error,healthy,available,lossCount,beforeFrame};
 }

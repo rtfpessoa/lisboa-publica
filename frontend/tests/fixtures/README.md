@@ -1,0 +1,3 @@
+# Metro 005A presentation replay
+
+`metro-005a-public-frames.json` contains seven trimmed public response frames captured on 2026-10-22 between 22:53:35 and 22:59:13 UTC. Each `sampled_at` and retained source timestamp is unchanged. The selected train, first six calls, and the 005A vehicle are retained; unrelated trains, vehicles and forecast groups are removed. These are estimator outputs, not provider inputs or independent physical measurements. Tests supply synthetic static coordinates solely for map lookup. The sampled predecessor/successor relationship does not establish physical continuity.
