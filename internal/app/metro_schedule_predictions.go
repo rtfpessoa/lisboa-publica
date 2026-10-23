@@ -78,13 +78,13 @@ func projectMetroScheduled(t *metroTrack, now time.Time) {
 		return
 	}
 	resetMetroPriorPredictions(t.Train.Calls)
-	var anchor *time.Time
+	var anchor *metroPriorAnchor
 	for n := range t.Train.Calls {
 		if n >= len(t.Priors) {
 			anchor = nil
 			continue
 		}
-		anchor = projectMetroPriorVisit(t, &t.Train.Calls[n], t.Priors[n], anchor, now)
+		anchor = projectMetroPriorVisit(t, &t.Train.Calls[n], n, t.Priors[n], anchor, now)
 	}
 }
 func resetMetroPriorPredictions(calls []api.StopCall) {
@@ -99,26 +99,40 @@ func resetMetroPriorPredictions(calls []api.StopCall) {
 		}
 	}
 }
-func metroPriorArrival(t *metroTrack, c *api.StopCall, anchor *time.Time, now time.Time) *time.Time {
-	independent := c.Arrival.Inferred != nil || c.OwnPrediction != nil
-	if independent || anchor == nil || anchor.Before(now) {
-		if at := metroVisitArrivalAnchor(*c); at != nil {
-			anchor = at
-		}
-	} else {
-		c.OwnPrediction = metroPriorEvidence(t, *anchor)
-	}
-	return anchor
+
+// A schedule estimate inherits the clock and expiry of its actual anchor, not
+// the newest unrelated station publication in the same train episode.
+type metroPriorAnchor struct {
+	At              time.Time
+	SourceUpdatedAt *time.Time
+	ValidUntil      time.Time
 }
-func projectMetroPriorVisit(t *metroTrack, c *api.StopCall, prior metroVisitPrior, anchor *time.Time, now time.Time) *time.Time {
-	anchor = metroPriorArrival(t, c, anchor, now)
+
+func metroPriorArrival(t *metroTrack, c *api.StopCall, n int, anchor *metroPriorAnchor, now time.Time) *metroPriorAnchor {
+	if c.Arrival.Inferred != nil {
+		return metroPriorEventAnchor(t, n, c.Arrival.Inferred, true, now)
+	}
+	if c.OwnPrediction != nil {
+		if own := metroPriorForecastAnchor(c.OwnPrediction, t.Train.ValidUntil, now); own != nil {
+			return own
+		}
+		c.OwnPrediction = nil
+	}
+	if metroPriorAnchorFresh(anchor, now) && !anchor.At.Before(now) {
+		c.OwnPrediction = metroPriorEvidence(t, *anchor)
+		return anchor
+	}
+	return metroPriorForecastAnchor(c.Arrival.Prediction, t.Train.ValidUntil, now)
+}
+func projectMetroPriorVisit(t *metroTrack, c *api.StopCall, n int, prior metroVisitPrior, anchor *metroPriorAnchor, now time.Time) *metroPriorAnchor {
+	anchor = metroPriorArrival(t, c, n, anchor, now)
 	if c.Departure.Inferred != nil {
-		return metroAfterRun(c.Departure.Inferred.At, prior.Run)
+		return metroAfterRun(metroPriorEventAnchor(t, n, c.Departure.Inferred, false, now), prior.Run)
 	}
 	if anchor == nil {
 		return nil
 	}
-	if metroPriorNeedsArrival(*c, *anchor, now) {
+	if metroPriorNeedsArrival(*c, anchor.At, now) {
 		c.OwnPrediction = metroPriorEvidence(t, *anchor)
 	}
 	return projectMetroPriorDeparture(t, c, prior, *anchor, now)
@@ -126,39 +140,67 @@ func projectMetroPriorVisit(t *metroTrack, c *api.StopCall, prior metroVisitPrio
 func metroPriorNeedsArrival(c api.StopCall, anchor, now time.Time) bool {
 	return c.OwnPrediction == nil && c.Arrival.Inferred == nil && c.Arrival.Prediction == nil && !anchor.Before(now)
 }
-func projectMetroPriorDeparture(t *metroTrack, c *api.StopCall, prior metroVisitPrior, anchor, now time.Time) *time.Time {
+func projectMetroPriorDeparture(t *metroTrack, c *api.StopCall, prior metroVisitPrior, anchor metroPriorAnchor, now time.Time) *metroPriorAnchor {
 	dwell := prior.Dwell
 	if c.Arrival.Inferred != nil {
-		dwell = metroConditionalDwell(prior, now.Sub(anchor))
+		dwell = metroConditionalDwell(prior, now.Sub(anchor.At))
 	}
 	if dwell <= 0 {
 		return nil
 	}
-	departure := anchor.Add(time.Duration(dwell) * time.Second)
+	departure := anchor.At.Add(time.Duration(dwell) * time.Second)
 	if departure.Before(now) {
 		return nil
 	}
-	c.OwnDeparturePrediction = metroPriorEvidence(t, departure)
-	return metroAfterRun(departure, prior.Run)
+	anchor.At = departure
+	c.OwnDeparturePrediction = metroPriorEvidence(t, anchor)
+	return metroAfterRun(&anchor, prior.Run)
 }
 
-func metroVisitArrivalAnchor(c api.StopCall) *time.Time {
-	if c.Arrival.Inferred != nil {
-		return ptr(c.Arrival.Inferred.At)
-	}
-	if c.OwnPrediction != nil {
-		return ptr(c.OwnPrediction.At)
-	}
-	if c.Arrival.Prediction != nil {
-		return ptr(c.Arrival.Prediction.At)
-	}
-	return nil
+func metroPriorAnchorFresh(anchor *metroPriorAnchor, now time.Time) bool {
+	return anchor != nil && now.Before(anchor.ValidUntil)
 }
-func metroAfterRun(at time.Time, seconds int) *time.Time {
-	if seconds <= 0 {
+func metroPriorForecastAnchor(e *api.CallTimeEvidence, episodeExpiry, now time.Time) *metroPriorAnchor {
+	if e == nil || e.ValidUntil == nil || !now.Before(*e.ValidUntil) || e.At.Before(now) {
 		return nil
 	}
-	return ptr(at.Add(time.Duration(seconds) * time.Second))
+	return &metroPriorAnchor{At: e.At, SourceUpdatedAt: e.SourceUpdatedAt, ValidUntil: minTime(*e.ValidUntil, episodeExpiry)}
+}
+func metroPriorEventAnchor(t *metroTrack, n int, e *api.MetroEventEvidence, arrival bool, now time.Time) *metroPriorAnchor {
+	clock := e.WindowEnd
+	if !arrival && e.ConfirmedAt != nil && e.ConfirmedAt.After(clock) {
+		clock = *e.ConfirmedAt
+	}
+	if arrival {
+		clock = metroPriorArrivalClock(t, n, clock, now)
+	}
+	if clock.IsZero() || clock.After(now) {
+		return nil
+	}
+	anchor := &metroPriorAnchor{At: e.At, SourceUpdatedAt: &clock, ValidUntil: minTime(clock.Add(sourceFreshness), t.Train.ValidUntil)}
+	if !metroPriorAnchorFresh(anchor, now) {
+		return nil
+	}
+	return anchor
+}
+
+func metroPriorArrivalClock(t *metroTrack, n int, clock, now time.Time) time.Time {
+	if n >= len(t.Codes) {
+		return clock
+	}
+	point, exists := t.Points[t.Codes[n]]
+	if exists && point.Seconds != nil && *point.Seconds == 0 && point.Clock.After(clock) && !point.Clock.After(now) {
+		return point.Clock
+	}
+	return clock
+}
+func metroAfterRun(anchor *metroPriorAnchor, seconds int) *metroPriorAnchor {
+	if seconds <= 0 || anchor == nil {
+		return nil
+	}
+	next := *anchor
+	next.At = next.At.Add(time.Duration(seconds) * time.Second)
+	return &next
 }
 func metroConditionalDwell(prior metroVisitPrior, elapsed time.Duration) int {
 	remaining := []int{}
@@ -169,10 +211,10 @@ func metroConditionalDwell(prior metroVisitPrior, elapsed time.Duration) int {
 	}
 	return metroPriorMedian(remaining)
 }
-func metroPriorEvidence(t *metroTrack, at time.Time) *api.CallTimeEvidence {
-	source, expiry, episode := t.Train.SourceUpdatedAt, t.Train.ValidUntil, t.Train.JourneyId
+func metroPriorEvidence(t *metroTrack, anchor metroPriorAnchor) *api.CallTimeEvidence {
+	expiry, episode := anchor.ValidUntil, t.Train.JourneyId
 	version := "metro-schedule-prior-v1:" + t.Profile
-	return &api.CallTimeEvidence{At: at, SourceUpdatedAt: &source, ValidUntil: &expiry, SourceUrl: "/api/v1/operators/metro", ModelVersion: &version, AssociationEpisode: &episode}
+	return &api.CallTimeEvidence{At: anchor.At, SourceUpdatedAt: anchor.SourceUpdatedAt, ValidUntil: &expiry, SourceUrl: "/api/v1/operators/metro", ModelVersion: &version, AssociationEpisode: &episode}
 }
 
 func (r *metroRuntime) visitPriors(path patterns.Pattern, now time.Time) []metroVisitPrior {
@@ -226,11 +268,11 @@ func (r *metroRuntime) contextDwellPriors(path patterns.Pattern, now time.Time) 
 }
 func metroContextOwnAnchor(c api.StopCall, now time.Time) *api.CallTimeEvidence {
 	p := c.OwnPrediction
-	if p == nil || p.ValidUntil == nil {
-		return c.Arrival.Prediction
+	if p == nil || p.ValidUntil == nil || !now.Before(*p.ValidUntil) || p.At.Before(now) {
+		p = c.Arrival.Prediction
 	}
-	if !now.Before(*p.ValidUntil) || p.At.Before(now) {
-		return c.Arrival.Prediction
+	if p == nil || p.ValidUntil == nil || !now.Before(*p.ValidUntil) || p.At.Before(now) {
+		return nil
 	}
 	return p
 }

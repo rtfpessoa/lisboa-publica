@@ -47,6 +47,8 @@ func cloneMetroTrain(t api.MetroTrain) api.MetroTrain {
 	t.Calls = append([]api.StopCall{}, t.Calls...)
 	for n := range t.Calls {
 		c := &t.Calls[n]
+		c.Arrival.Prediction = cloneMetroTimeEvidence(c.Arrival.Prediction)
+		c.Departure.Prediction = cloneMetroTimeEvidence(c.Departure.Prediction)
 		if c.DepartureRevisions != nil {
 			copy := append([]api.MetroDepartureRevision{}, (*c.DepartureRevisions)...)
 			for k := range copy {
@@ -67,6 +69,14 @@ func cloneMetroTrain(t api.MetroTrain) api.MetroTrain {
 		}
 	}
 	return t
+}
+
+func cloneMetroTimeEvidence(e *api.CallTimeEvidence) *api.CallTimeEvidence {
+	if e == nil {
+		return nil
+	}
+	copy := *e
+	return &copy
 }
 
 func (r *metroRuntime) evictRetired() {

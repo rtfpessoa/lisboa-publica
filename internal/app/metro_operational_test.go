@@ -81,13 +81,13 @@ func TestMetroConditionalDwellAndDepartureAnchors(t *testing.T) {
 	prior := metroVisitPrior{Dwell: 20, Run: 60, DwellSamples: []int{15, 20, 40}}
 	arrival := now.Add(-25 * time.Second)
 	expiry := now.Add(time.Minute)
-	track := &metroTrack{Profile: "synthetic", Priors: []metroVisitPrior{prior, {Dwell: 20, DwellSamples: []int{20}}}, Train: api.MetroTrain{Association: "supported", ValidUntil: expiry, SourceUpdatedAt: now, Calls: []api.StopCall{{Id: "first", Arrival: api.CallTime{Kind: "inferred", Inferred: &api.MetroEventEvidence{At: arrival}}}, {Id: "next"}}}}
+	track := &metroTrack{Profile: "synthetic", Priors: []metroVisitPrior{prior, {Dwell: 20, DwellSamples: []int{20}}}, Train: api.MetroTrain{Association: "supported", ValidUntil: expiry, SourceUpdatedAt: now, Calls: []api.StopCall{{Id: "first", Arrival: api.CallTime{Kind: "inferred", Inferred: &api.MetroEventEvidence{At: arrival, WindowEnd: arrival}}}, {Id: "next"}}}}
 	projectMetroScheduled(track, now)
 	if track.Train.Calls[0].OwnDeparturePrediction == nil || !track.Train.Calls[0].OwnDeparturePrediction.At.Equal(arrival.Add(40*time.Second)) {
 		t.Fatal("elapsed dwell not conditioned", track.Train.Calls[0])
 	}
 	departed := now.Add(-5 * time.Second)
-	track.Train.Calls[0].Departure = api.CallTime{Kind: "inferred", Inferred: &api.MetroEventEvidence{At: departed}}
+	track.Train.Calls[0].Departure = api.CallTime{Kind: "inferred", Inferred: &api.MetroEventEvidence{At: departed, WindowEnd: departed}}
 	projectMetroScheduled(track, now)
 	if track.Train.Calls[0].OwnDeparturePrediction != nil || track.Train.Calls[1].OwnPrediction == nil || !track.Train.Calls[1].OwnPrediction.At.Equal(departed.Add(time.Minute)) {
 		t.Fatal("departure occurrence ignored", track.Train.Calls)
@@ -433,7 +433,7 @@ func TestMetroCorrectedModelPublicationWithdrawsOnlyItsOccurrence(t *testing.T) 
 
 func TestMetroHistoricalOwnArrivalAnchorsOwnDepartureBeforeOfficial(t *testing.T) {
 	now := time.Now().UTC()
-	track := &metroTrack{Profile: "synthetic", Priors: []metroVisitPrior{{Dwell: 30, Run: 60, DwellSamples: []int{30}}}, Train: api.MetroTrain{Association: "supported", ValidUntil: now.Add(time.Minute), SourceUpdatedAt: now, Calls: []api.StopCall{{Arrival: api.CallTime{Prediction: &api.CallTimeEvidence{At: now.Add(20 * time.Second)}}, OwnPrediction: &api.CallTimeEvidence{At: now.Add(80 * time.Second), ModelVersion: ptr("historical-supported")}}}}}
+	track := &metroTrack{Profile: "synthetic", Priors: []metroVisitPrior{{Dwell: 30, Run: 60, DwellSamples: []int{30}}}, Train: api.MetroTrain{Association: "supported", ValidUntil: now.Add(time.Minute), SourceUpdatedAt: now, Calls: []api.StopCall{{Arrival: api.CallTime{Prediction: &api.CallTimeEvidence{At: now.Add(20 * time.Second), ValidUntil: ptr(now.Add(time.Minute)), SourceUpdatedAt: &now}}, OwnPrediction: &api.CallTimeEvidence{At: now.Add(80 * time.Second), ValidUntil: ptr(now.Add(time.Minute)), SourceUpdatedAt: &now, ModelVersion: ptr("historical-supported")}}}}}
 	projectMetroScheduled(track, now)
 	c := track.Train.Calls[0]
 	if c.OwnDeparturePrediction == nil || !c.OwnDeparturePrediction.At.Equal(now.Add(110*time.Second)) || !c.Arrival.Prediction.At.Equal(now.Add(20*time.Second)) {
