@@ -131,7 +131,7 @@ func TestMaintenanceShutdownLeavesInterruptedVacuumPending(t *testing.T) {
 	if _, err := s.DB.Exec(ctx, `UPDATE history_pressure SET vacuum_pending=TRUE WHERE id=1`); err != nil {
 		t.Fatal(err)
 	}
-	s.budget = &storageBudget{now: time.Now, measure: func(context.Context) (int64, error) { return historyDatabaseBytes + 1, nil }}
+	s.budget = &storageBudget{now: time.Now, measure: func(context.Context) (int64, error) { return historyDatabaseBytes + 1, nil }, vacuumActive: &s.pressureVacuum}
 	holder, err := s.DB.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -161,6 +161,7 @@ func TestMaintenanceShutdownLeavesInterruptedVacuumPending(t *testing.T) {
 		}
 		runtime.Gosched()
 	}
+	assertVacuumSavePreservesReservation(t, s)
 	done := make(chan struct{})
 	go func() { stop(); close(done) }()
 	select {
@@ -173,15 +174,7 @@ func TestMaintenanceShutdownLeavesInterruptedVacuumPending(t *testing.T) {
 	if err := s.DB.QueryRow(ctx, `SELECT vacuum_pending FROM history_pressure WHERE id=1`).Scan(&pending); err != nil || !pending {
 		t.Fatalf("interrupted vacuum not pending: %v %v", pending, err)
 	}
-	s.budget.mu.Lock()
-	var interrupted databaseBackend
-	for backend := range s.budget.uncertainBackends {
-		interrupted = backend
-	}
-	s.budget.mu.Unlock()
-	if interrupted.pid == 0 {
-		t.Fatal("interrupted vacuum backend was not retained")
-	}
+	interrupted := assertInterruptedVacuumReservation(t, s)
 	if err := holder.Rollback(ctx); err != nil {
 		t.Fatal(err)
 	}

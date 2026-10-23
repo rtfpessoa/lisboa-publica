@@ -490,7 +490,18 @@ func (s *Store) pruneWithVacuumContext(ctx, vacuumParent context.Context) (press
 	if err != nil {
 		return pressureMaintenanceResult{reason: "ordinary_cleanup_failed"}, err
 	}
-	return s.pressurePrune(ctx, vacuumParent)
+	return s.finishPressureMaintenance(ctx, vacuumParent)
+}
+
+func (s *Store) finishPressureMaintenance(ctx, vacuumParent context.Context) (pressureMaintenanceResult, error) {
+	result, err := s.pressurePrune(ctx, vacuumParent)
+	if err != nil || result.deleted > 0 {
+		return result, err
+	}
+	if err := s.reconcileCompletedReservations(ctx); err != nil {
+		return result, fmt.Errorf("pressure maintenance completed; measurement failed: %w", err)
+	}
+	return result, nil
 }
 func (s *Store) generation(ctx context.Context) (int64, error) {
 	var n int64
