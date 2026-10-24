@@ -17,6 +17,12 @@ type metroPlanBuilder struct {
 	mapping, routes map[string]string
 	seen            map[string]bool
 	unmapped        []string
+	names           *metroPlanNames
+}
+
+type metroPlanNames struct {
+	stations     []string
+	destinations []string
 }
 
 func metroTopology(data *MetroData, static *StaticData) patterns.Topology {
@@ -33,11 +39,39 @@ func metroTopologyReport(data *MetroData, static *StaticData) (patterns.Topology
 		return b.topology, b.unmapped
 	}
 	b.mapStaticPlan()
+	if len(static.Schedule.Trips) > 0 {
+		b.prepareNames()
+	}
 	for _, trip := range static.Schedule.Trips {
 		b.addTrip(trip)
 	}
 	b.finish()
 	return b.topology, b.unmapped
+}
+
+func (b *metroPlanBuilder) prepareNames() {
+	names := &metroPlanNames{stations: make([]string, len(b.data.Stations)), destinations: make([]string, len(b.data.Destinations))}
+	for i, station := range b.data.Stations {
+		names.stations[i] = normalizeName(station.Name)
+	}
+	for i, destination := range b.data.Destinations {
+		names.destinations[i] = normalizeName(destination.Name)
+	}
+	b.names = names
+}
+
+func (b *metroPlanBuilder) stationName(i int, name string) string {
+	if b.names != nil {
+		return b.names.stations[i]
+	}
+	return normalizeName(name)
+}
+
+func (b *metroPlanBuilder) destinationName(i int, name string) string {
+	if b.names != nil {
+		return b.names.destinations[i]
+	}
+	return normalizeName(name)
 }
 
 func (b *metroPlanBuilder) addStations() {
@@ -78,8 +112,9 @@ func (b *metroPlanBuilder) mapStaticPlan() {
 
 func (b *metroPlanBuilder) tripDestination(trip ScheduledTrip) (string, string) {
 	headsign, matches := "", 0
-	for _, station := range b.data.Stations {
-		if normalizeName(trip.Headsign) == normalizeName(station.Name) {
+	normalized := normalizeName(trip.Headsign)
+	for i, station := range b.data.Stations {
+		if normalized == b.stationName(i, station.Name) {
 			headsign = station.ID
 			matches++
 		}
@@ -88,8 +123,8 @@ func (b *metroPlanBuilder) tripDestination(trip ScheduledTrip) (string, string) 
 		return "", ""
 	}
 	direction := ""
-	for _, d := range b.data.Destinations {
-		if normalizeName(d.Name) == normalizeName(trip.Headsign) {
+	for i, d := range b.data.Destinations {
+		if b.destinationName(i, d.Name) == normalized {
 			if direction != "" && direction != d.ID {
 				return "", ""
 			}
