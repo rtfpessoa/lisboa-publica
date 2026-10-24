@@ -259,33 +259,44 @@ test('Metro interpolation follows published vertices by arc length',async({page}
  expect(value.lat).toBeCloseTo(0);expect(value.lon).toBeCloseTo(.5,2);
 });
 
-test('Metro behind visits never count down and keep their last official estimate',async({page})=>{
+test('Metro behind visits label retained arrival and departure forecasts as last estimates',async({page})=>{
  await fixture(page);const panel=page.locator('.detail-panel');
- await page.evaluate(()=>{
+ const clocks=await page.evaluate(()=>{
   const w=window as any,f=w.metroFrame,train=f.trains[0],call=train.calls[0],now=Date.now();
   const at=new Date(now+60000).toISOString(),source=new Date(now-5000).toISOString(),valid=new Date(now+240000).toISOString();
   const evidence={at,source_url:'https://official.example',source_updated_at:source,collected_at:null,valid_until:valid};
   train.next_index=2;train.current_index=null;train.revision='behind';f.revision='behind';
   train.calls=[
-   {...call,id:'behind-official',stop_sequence:0,stop_name:'Passada com previsão',phase:'unknown',arrival:{kind:'prediction',at,prediction:evidence},last_official_estimate:evidence},
+   {...call,id:'behind-official',stop_sequence:0,stop_name:'Passada com previsão',phase:'unknown',arrival:{kind:'prediction',at,prediction:evidence},last_official_estimate:evidence,own_prediction:{...evidence,model_version:'synthetic'},own_departure_prediction:{...evidence,model_version:'metro-schedule-prior-v1:synthetic'}},
    {...call,id:'behind-own',stop_sequence:1,stop_name:'Passada com nossa',phase:'unknown',arrival:{kind:'unavailable',at:null,reason:'',actual:null,prediction:null,schedule:null},own_prediction:{...evidence,model_version:'metro-schedule-prior-v1:synthetic'}},
    {...call,id:'next-visit',stop_sequence:3,stop_name:'Próxima',phase:'future',arrival:{kind:'prediction',at,prediction:evidence},last_official_estimate:null}
   ];
-  w.emitMetro('frame');
+  w.emitMetro('frame');return {at,source};
  });
  await expect(panel.locator('[data-call-id="metro:run:one"]')).toContainText('Posição anterior; passagem por confirmar');
  const stationRow=panel.locator('[data-call-id="metro:run:one"]');
+ await expect(stationRow).toContainText('Última previsão histórica nossa (experimental)');
+ await expect(stationRow).toContainText('Última estimativa por horário (experimental)');
+ await expect(stationRow).not.toContainText('Chegada inferida');
+ const stationOwn=stationRow.locator('small').filter({hasText:'Última previsão histórica nossa'});
+ await expect(stationOwn).toHaveAttribute('title',`Fonte: ${clocks.source}`);
+ await expect(stationOwn.locator('time')).toHaveAttribute('datetime',clocks.at);
  await expect(stationRow.locator(':scope > div').nth(1)).not.toContainText('min');
  await expect(stationRow.locator(':scope > div').nth(2)).toContainText('Sem dados de partida');
  await expect(stationRow.locator(':scope > div').nth(2)).not.toContainText('Última previsão oficial');
+ await expect(stationRow.locator(':scope > div').nth(2)).not.toContainText('min');
  await panel.getByRole('button',{name:'Abrir comboio',exact:true}).click();
  const behind=panel.locator('[data-call-id="behind-official"]');
  await expect(behind).toContainText('Última previsão oficial');
+ await expect(behind).toContainText('Última previsão histórica nossa (experimental)');
+ await expect(behind).toContainText('Última estimativa por horário (experimental)');
  await expect(behind).not.toContainText('min');
  await expect(behind.locator('.transit-call > div').nth(2)).toContainText('Sem dados de partida');
  await expect(behind.locator('.transit-call > div').nth(2)).not.toContainText('Última previsão oficial');
  const ownBehind=panel.locator('[data-call-id="behind-own"]');
- await expect(ownBehind).toContainText('Estimativa por horário (experimental)');
+ await expect(ownBehind).toContainText('Última estimativa por horário (experimental)');
+ await expect(ownBehind).toContainText('Sem hora registada');
+ await expect(ownBehind).not.toContainText('Chegada inferida');
  await expect(ownBehind).not.toContainText('min');
  await expect(panel.locator('[data-call-id="next-visit"]')).toContainText('min');
 });
@@ -298,11 +309,53 @@ test('Metro retained own forecast expires without another stream frame',async({p
   w.metroFrame.revision='expiry';w.emitMetro('frame');
  });
  const panel=page.locator('.detail-panel');await panel.getByRole('button',{name:'Abrir comboio',exact:true}).click();
- const row=panel.locator('[data-call-id="expired-own"]');await expect(row).toContainText('Nossa previsão histórica (experimental)');
+ const row=panel.locator('[data-call-id="expired-own"]');await expect(row).toContainText('Última previsão histórica nossa (experimental)');
  await page.clock.fastForward(5000);
  await expect(row).toContainText('Última previsão nossa expirada (experimental)');await expect(row).not.toContainText('min');
  await page.evaluate(()=>{const w=window as any;w.holdMetro=true;w.failMetro()});
  await expect(row).not.toContainText('Última previsão nossa expirada');
+});
+
+test('Metro behind own forecast becomes past without manufacturing a passage',async({page})=>{
+ await page.clock.install();await fixture(page);
+ const clocks=await page.evaluate(()=>{
+  const w=window as any,t=w.metroFrame.trains[0],c=t.calls[0],now=Date.now();
+  const at=new Date(now+3000).toISOString(),source=new Date(now-5000).toISOString();
+  t.next_index=1;t.current_index=null;t.calls=[{...c,id:'past-own',phase:'previous',arrival:{kind:'unavailable',at:null,reason:''},own_prediction:{at,valid_until:new Date(now+60000).toISOString(),source_updated_at:source,source_url:'https://official.example',model_version:'synthetic'}}];
+  w.metroFrame.revision='past-own';w.emitMetro('frame');return {at,source};
+ });
+ const panel=page.locator('.detail-panel');await panel.getByRole('button',{name:'Abrir comboio',exact:true}).click();
+ const row=panel.locator('[data-call-id="past-own"]');
+ await expect(row).toContainText('Última previsão histórica nossa (experimental)');
+ await page.clock.fastForward(5000);
+ const own=row.locator('small').filter({hasText:'Última previsão nossa já passada'});
+ await expect(own).toHaveAttribute('title',`Fonte: ${clocks.source}`);
+ await expect(own.locator('time')).toHaveAttribute('datetime',clocks.at);
+ await expect(row).toContainText('Sem hora registada');
+ await expect(row).not.toContainText('Chegada inferida');await expect(row).not.toContainText('min');
+});
+
+test('Metro behind estimates remain separate from published and inferred passages',async({page})=>{
+ await fixture(page);await page.getByRole('button',{name:'Abrir comboio',exact:true}).click();
+ const clocks=await page.evaluate(()=>{
+  const w=window as any,t=w.metroFrame.trains[0],c=t.calls[0],now=Date.now();
+  const passage=new Date(now-30000).toISOString(),at=new Date(now+60000).toISOString();
+  const own={at,valid_until:new Date(now+120000).toISOString(),source_updated_at:new Date(now-5000).toISOString(),model_version:'synthetic'};
+  const inferred={at:passage,window_start:passage,window_end:passage,mode:'inferred_arrival',model_version:'synthetic',persistence:'committed',reason:'Synthetic publication evidence'};
+  t.next_index=2;t.current_index=null;t.calls=[
+   {...c,id:'published-passage',stop_sequence:0,phase:'previous',arrival:{kind:'actual',at:passage,actual:{at:passage}},own_prediction:own},
+   {...c,id:'inferred-passage',stop_sequence:1,phase:'previous',arrival:{kind:'inferred',at:passage,inferred},own_prediction:own}
+  ];w.metroFrame.revision='passage-evidence';w.emitMetro('frame');return {passage,at};
+ });
+ const panel=page.locator('.detail-panel');
+ for(const [id,label] of [['published-passage','Hora publicada'],['inferred-passage','Chegada inferida']]){
+  const row=panel.locator(`[data-call-id="${id}"]`),arrival=row.locator('.transit-call > div').nth(1);
+  await expect(arrival.locator('.call-time')).toContainText(label);
+  await expect(arrival.locator('.call-time time')).toHaveAttribute('datetime',clocks.passage);
+  const own=arrival.locator('small').filter({hasText:'Última previsão histórica nossa'});
+  await expect(own.locator('time')).toHaveAttribute('datetime',clocks.at);
+  await expect(arrival).not.toContainText('min');
+ }
 });
 
 test('Metro forecast groups render in published stop order',async({page})=>{
