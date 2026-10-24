@@ -21,8 +21,8 @@ func latestMetroPublications(waits []MetroWait, stationID string, asOf time.Time
 		if wait.Stop != stationID {
 			continue
 		}
-		clock, err := time.ParseInLocation("20060102150405", wait.At, lisbon)
-		if err != nil || asOf.Sub(clock) > sourceFreshness || clock.After(asOf.Add(providerClockSkew)) {
+		clock, ok := patterns.MetroSourceClock(wait.At)
+		if !ok || asOf.Sub(clock) > sourceFreshness || clock.After(asOf.Add(providerClockSkew)) {
 			continue
 		}
 		mergeMetroPublication(latest, wait, clock)

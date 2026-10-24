@@ -29,6 +29,16 @@ func sourceClock(value string) (time.Time, bool) {
 	return at.UTC(), true
 }
 
+// MetroSourceClock parses an offset-free Metro wait clock only when it has a
+// unique Lisbon instant. The returned time retains the Lisbon location.
+func MetroSourceClock(value string) (time.Time, bool) {
+	at, ok := sourceClock(value)
+	if !ok {
+		return time.Time{}, false
+	}
+	return at.In(lisbon), true
+}
+
 func eta(value json.RawMessage) (float64, bool) {
 	var number json.Number
 	if len(value) == 0 || json.Unmarshal(value, &number) != nil {

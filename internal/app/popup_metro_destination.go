@@ -2,6 +2,7 @@ package app
 
 import (
 	"lisboapublica/internal/api"
+	"lisboapublica/internal/patterns"
 	"time"
 )
 
@@ -15,8 +16,8 @@ func metroVehicleDestination(state *State, vehicle *api.Vehicle, now time.Time) 
 		if wait.Train != vehicle.SourceId && wait.Train2 != vehicle.SourceId && wait.Train3 != vehicle.SourceId {
 			continue
 		}
-		at, err := time.ParseInLocation("20060102150405", wait.At, lisbon)
-		if err != nil || now.Sub(at) > sourceFreshness || at.After(now.Add(providerClockSkew)) {
+		at, ok := patterns.MetroSourceClock(wait.At)
+		if !ok || now.Sub(at) > sourceFreshness || at.After(now.Add(providerClockSkew)) {
 			continue
 		}
 		if destination := resolver.resolve(wait.Destination); destination.named {

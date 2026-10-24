@@ -61,12 +61,14 @@ The direct station records are held in the Metro cache, not substituted wholesal
 |---|---|---|
 | `stop_id` | String | Match the selected direct station |
 | `cais` | String | Decoded as `Platform`, retained in direct cache; not used to construct public arrivals |
-| `hora` | String `YYYYMMDDHHMMSS`, Europe/Lisbon | Original `observed_at`; must be fresh within 90 seconds and not over 30 seconds ahead |
+| `hora` | String `YYYYMMDDHHMMSS`, Europe/Lisbon, without an offset | Original `observed_at`; must identify a unique instant, be fresh within 90 seconds and not over 30 seconds ahead |
 | `comboio`, `comboio2`, `comboio3` | Train-reference strings | Nonempty reference required for generic arrival `trip_id`; missing references remain anonymous forecasts in Metro live frames |
 | `tempoChegada1`, `tempoChegada2`, `tempoChegada3` | Raw JSON decoded into an integer and bounded to 0–7,200 seconds | `expected_at=hora+wait`; JSON `null`, omitted fields, `"--"`, malformed values, fractions and numeric strings are rejected |
 | `destino` | String published destination code | Terminal/line lookup, headsign and prediction identity |
 
 Prediction IDs combine station, train and destination, qualified under `metro`. Source URL and `kind=prediction` stay explicit. A unique current destination-code entry supplies the headsign. A legacy code can supply a name only when current metadata neither assigns that code nor reassigns its named station; duplicate or conflicting entries remain unresolved. A unique admitted topology route from the current schedule, compatible published station memberships, or an uncontradicted legacy code can establish the line; disjoint valid origin and destination memberships veto older route evidence. A missing or replaced schedule cannot contribute a retained route. Ambiguous or contradictory route evidence remains unknown. Empty or unknown destination codes do not prevent prediction admission; an unmatched destination uses a published-code fallback label. Duplicate prediction identities retain the newer source observation. Results honor query time/route/stop filters and sort by expected time then ID.
+
+The repeated Lisbon hour during the autumn clock change has two possible instants, and a spring-forward clock can name no instant. Such waits are retained as source data but cannot supply current arrivals, live journey support, or a vehicle destination; the observation time is not guessed from the receipt clock. Other direct service status remains independent.
 
 ## Usage and storage
 

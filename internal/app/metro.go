@@ -388,8 +388,8 @@ func platformLine(wait MetroWait, station MetroStation) string {
 
 func platformArrivals(wait MetroWait, routeIDs map[string]string, resolver *metroDestinationResolver, asOf, from, to time.Time, route, stop string) []api.Arrival {
 	out := []api.Arrival{}
-	observed, err := time.ParseInLocation("20060102150405", wait.At, lisbon)
-	if err != nil || asOf.Sub(observed) > sourceFreshness || observed.After(asOf.Add(providerClockSkew)) {
+	observed, ok := patterns.MetroSourceClock(wait.At)
+	if !ok || asOf.Sub(observed) > sourceFreshness || observed.After(asOf.Add(providerClockSkew)) {
 		return out
 	}
 	base := metroArrival(wait, routeIDs, resolver, stop)
