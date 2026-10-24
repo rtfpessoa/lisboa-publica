@@ -62,7 +62,7 @@ func TestMetroDestinationMetadataRefreshRevisesLiveStream(t *testing.T) {
 	if updated.Revision == initial.Revision {
 		t.Fatal("destination-only change did not revise the live frame")
 	}
-	if len(updated.Directions) != 1 || textValue(updated.Directions[0].DirectionKey) != "changed" {
+	if len(updated.Directions) != 1 || textValue(updated.Directions[0].DirectionKey) != "changed" || updated.Directions[0].Label != "Cais do Sodré" {
 		t.Fatal("live station directions did not reflect the new topology")
 	}
 	for _, train := range updated.Trains {
@@ -71,7 +71,7 @@ func TestMetroDestinationMetadataRefreshRevisesLiveStream(t *testing.T) {
 		}
 	}
 	assertMetroDestinationRetained(t, s, evidence)
-	if len(updated.UnassociatedForecasts) != 1 || updated.UnassociatedForecasts[0].JourneyId != nil || updated.UnassociatedForecasts[0].Arrival.Prediction == nil || updated.UnassociatedForecasts[0].Arrival.Prediction.SourceUpdatedAt == nil || !updated.UnassociatedForecasts[0].Arrival.Prediction.SourceUpdatedAt.Equal(now.Add(time.Second)) || !updated.UnassociatedForecasts[0].Arrival.Prediction.At.Equal(now.Add(120*time.Second)) {
+	if len(updated.UnassociatedForecasts) != 1 || updated.UnassociatedForecasts[0].Destination != "Destino publicado: 54" || updated.UnassociatedForecasts[0].JourneyId != nil || updated.UnassociatedForecasts[0].Arrival.Prediction == nil || updated.UnassociatedForecasts[0].Arrival.Prediction.SourceUpdatedAt == nil || !updated.UnassociatedForecasts[0].Arrival.Prediction.SourceUpdatedAt.Equal(now.Add(time.Second)) || !updated.UnassociatedForecasts[0].Arrival.Prediction.At.Equal(now.Add(120*time.Second)) {
 		t.Fatal("metadata refresh discarded the independently published official forecast")
 	}
 

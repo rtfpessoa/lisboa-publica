@@ -158,9 +158,9 @@ func TestMetroUnavailableTopologyUsesCurrentDestinationCatalogue(t *testing.T) {
 		{"unknown code", "[Verde]", "[Verde]", nil, "Destino publicado: 54", "metro:r"},
 		{"duplicate code", "[Verde]", "[Verde]", []MetroDestination{{ID: "54", Name: "Roma"}, {ID: "54", Name: "Cais do Sodré"}}, "Destino publicado: 54", "metro:r"},
 		{"cross line", "[Verde, Azul]", "[Azul]", []MetroDestination{{ID: "54", Name: "Roma"}}, "Roma", "metro:blue"},
-		{"conflicting lines", "[Verde]", "[Azul]", []MetroDestination{{ID: "54", Name: "Roma"}}, "", ""},
-		{"ambiguous line", "[Verde, Azul]", "[Azul]", nil, "", ""},
-		{"ambiguous destination and line", "[Verde, Azul]", "[Azul]", []MetroDestination{{ID: "54", Name: "Roma"}, {ID: "54", Name: "Cais do Sodré"}}, "", ""},
+		{"conflicting lines", "[Verde]", "[Azul]", []MetroDestination{{ID: "54", Name: "Roma"}}, "Roma", ""},
+		{"ambiguous line", "[Verde, Azul]", "[Azul]", nil, "Destino publicado: 54", ""},
+		{"ambiguous destination and line", "[Verde, Azul]", "[Azul]", []MetroDestination{{ID: "54", Name: "Roma"}, {ID: "54", Name: "Cais do Sodré"}}, "Destino publicado: 54", ""},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -186,12 +186,6 @@ func testMetroUnavailableDestination(t *testing.T, originLines, targetLines stri
 		t.Fatal(err)
 	}
 	frame := unavailableTopologyHTTP(t, handler)
-	if wantLine == "" {
-		if len(frame.UnassociatedForecasts) != 0 {
-			t.Fatal("ambiguous catalogue invented a line", frame.UnassociatedForecasts)
-		}
-		return
-	}
 	assertCurrentLocalMetroForecast(t, frame, now.Add(time.Second))
 	call := frame.UnassociatedForecasts[0]
 	if call.Destination != wantName || call.LineKey != wantLine {
@@ -250,7 +244,8 @@ func TestMetroUnavailableTopologyRejectsConflictingStaticRouteID(t *testing.T) {
 		t.Fatal(err)
 	}
 	frame := unavailableTopologyHTTP(t, handler)
-	if len(frame.UnassociatedForecasts) != 0 {
+	assertCurrentLocalMetroForecast(t, frame, now.Add(time.Second))
+	if frame.UnassociatedForecasts[0].LineKey != "" {
 		t.Fatal("conflicting static route ID invented a line", frame.UnassociatedForecasts)
 	}
 }

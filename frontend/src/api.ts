@@ -574,6 +574,7 @@ export type StopCall = {
     stop_name: string;
     /** Position of this visit in the published path used for the call; a per-context path index, 0 when the position is unknown (local-only forecasts). */
     stop_sequence: number;
+    /** May be empty when a source forecast cannot be safely assigned to a line. */
     line_key: string;
     direction_key: string | null;
     destination: string;

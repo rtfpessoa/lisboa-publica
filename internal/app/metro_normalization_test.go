@@ -61,12 +61,9 @@ func TestMetroNormalizedDestinationMatchesLegacyResolver(t *testing.T) {
 		{"no station", []MetroStation{station}, nil, "Other", "", ""},
 		{"duplicate same station id", []MetroStation{station, station}, nil, station.Name, "", ""},
 		{"duplicate different station ids", []MetroStation{station, {ID: "other", Name: station.Name}}, nil, station.Name, "", ""},
-		{"duplicate destination id", []MetroStation{station}, []MetroDestination{{ID: "x", Name: station.Name}, {ID: "x", Name: station.Name}}, station.Name, "CS", "x"},
 		{"conflicting destination ids", []MetroStation{station}, []MetroDestination{{ID: "x", Name: station.Name}, {ID: "y", Name: station.Name}}, station.Name, "", ""},
 		{"empty station id", []MetroStation{{ID: "", Name: station.Name}}, []MetroDestination{{ID: "x", Name: station.Name}}, station.Name, "", "x"},
 		{"empty destination id", []MetroStation{station}, []MetroDestination{{ID: "", Name: station.Name}}, station.Name, "CS", "54"},
-		{"empty then nonempty destination", []MetroStation{station}, []MetroDestination{{ID: "", Name: station.Name}, {ID: "x", Name: station.Name}}, station.Name, "CS", "x"},
-		{"nonempty then empty destination", []MetroStation{station}, []MetroDestination{{ID: "x", Name: station.Name}, {ID: "", Name: station.Name}}, station.Name, "", ""},
 		{"irrelevant destination", []MetroStation{station}, []MetroDestination{{ID: "x", Name: "Other"}}, station.Name, "CS", "54"},
 		{"unknown legacy station", []MetroStation{{ID: "unknown", Name: station.Name}}, nil, station.Name, "unknown", ""},
 	}

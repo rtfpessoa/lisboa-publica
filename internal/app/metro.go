@@ -52,9 +52,12 @@ type MetroData struct {
 	InventoryOverflow bool               `json:"-"`
 	Trains            []api.MetroTrain   `json:"-"`
 	Topology          patterns.Topology  `json:"-"`
-	Status            api.MetroStatus    `json:"status"`
-	Waits             []MetroWait        `json:"waits"`
-	Stations          []MetroStation     `json:"stations"`
+	topologyPlan      *StaticData
+	directionTopology patterns.Topology
+	directionsReady   bool
+	Status            api.MetroStatus `json:"status"`
+	Waits             []MetroWait     `json:"waits"`
+	Stations          []MetroStation  `json:"stations"`
 	// Original wait JSON preserves fields whose meaning is not yet known.
 	RawWaits json.RawMessage `json:"raw_waits,omitempty"`
 }
@@ -315,7 +318,12 @@ func predictedArrivals(state *State, from, to time.Time, route, stop string) []a
 	stationID := metroStationID(state.Static["metro"], data.Stations, stations, stop)
 	routeIDs := metroRouteIDs(state.Static["metro"])
 	latest := latestMetroPublications(data.Waits, stationID, asOf)
-	seen := currentMetroArrivals(metroArrivalSelection{data: data, stations: stations, routeIDs: routeIDs, asOf: asOf, from: from, to: to, route: route, stop: stop, stationID: stationID, latest: latest})
+	topology := patterns.Topology{}
+	static := state.Static["metro"]
+	if static != nil && static.Schedule != nil && data.topologyPlan == static {
+		topology = data.Topology
+	}
+	seen := currentMetroArrivals(metroArrivalSelection{data: data, topology: topology, routeIDs: routeIDs, asOf: asOf, from: from, to: to, route: route, stop: stop, stationID: stationID, latest: latest})
 	for _, arrival := range seen {
 		out = append(out, arrival)
 	}
@@ -359,7 +367,7 @@ func metroRouteIDs(static *StaticData) map[string]string {
 	names := map[string]string{"Az": "azul", "Am": "amarela", "Vd": "verde", "Vm": "vermelha"}
 	for _, route := range static.Routes {
 		line, exists := names[route.ShortName]
-		if exists && (line != "amarela" || ids[line] == "") {
+		if exists && validMetroRoute(static.Routes, route.Id, line) && (line != "amarela" || ids[line] == "") {
 			ids[line] = route.Id
 		}
 	}
@@ -378,13 +386,13 @@ func platformLine(wait MetroWait, station MetroStation) string {
 	return ""
 }
 
-func platformArrivals(wait MetroWait, stations map[string]MetroStation, routeIDs map[string]string, asOf, from, to time.Time, route, stop string) []api.Arrival {
+func platformArrivals(wait MetroWait, routeIDs map[string]string, resolver *metroDestinationResolver, asOf, from, to time.Time, route, stop string) []api.Arrival {
 	out := []api.Arrival{}
 	observed, err := time.ParseInLocation("20060102150405", wait.At, lisbon)
 	if err != nil || asOf.Sub(observed) > sourceFreshness || observed.After(asOf.Add(providerClockSkew)) {
 		return out
 	}
-	base := metroArrival(wait, stations, routeIDs, stop)
+	base := metroArrival(wait, routeIDs, resolver, stop)
 	if route != "" && route != base.RouteId {
 		return out
 	}
@@ -392,15 +400,85 @@ func platformArrivals(wait MetroWait, stations map[string]MetroStation, routeIDs
 	return metroUpcoming(wait, base, from, to)
 }
 
-func metroArrival(wait MetroWait, stations map[string]MetroStation, routeIDs map[string]string, stop string) api.Arrival {
-	line := platformLine(wait, stations[wait.Stop])
-	routeID := routeIDs[line]
+func metroArrival(wait MetroWait, routeIDs map[string]string, resolver *metroDestinationResolver, stop string) api.Arrival {
+	destination := resolver.resolve(wait.Destination)
+	line, routeID := metroArrivalRoute(wait, routeIDs, resolver, destination)
 	lineName := map[string]string{"azul": "Linha Azul", "amarela": "Linha Amarela", "verde": "Linha Verde", "vermelha": "Linha Vermelha"}[line]
-	headsign := stations[destinations[wait.Destination]].Name
-	if headsign == "" {
+	headsign := destination.name
+	if !destination.named {
 		headsign = "Destino publicado: " + wait.Destination
 	}
 	return api.Arrival{OperatorId: "metro", StopId: stop, RouteId: routeID, RouteName: optional(lineName), Headsign: headsign, Kind: api.ArrivalKindPrediction, SourceUrl: metroBase + "/tempoEspera/Estacao/todos"}
+}
+
+func metroArrivalRoute(wait MetroWait, routeIDs map[string]string, resolver *metroDestinationResolver, destination metroDestinationResolution) (string, string) {
+	station, originUnique := uniqueMetroStation(resolver.data.Stations, func(s MetroStation) bool { return s.ID == wait.Stop })
+	membershipLine, routeID := "", ""
+	membershipConflict := false
+	if originUnique {
+		membershipLine, membershipConflict = metroStationLineEvidence(station, destination.name, destination.named, resolver.data.Stations)
+		routeID = resolver.route(wait, destination)
+	}
+	legacyLine := ""
+	if originUnique && destination.legacy {
+		legacyLine = platformLine(wait, station)
+	}
+	contradictory := membershipConflict || membershipLine != "" && legacyLine != "" && membershipLine != legacyLine
+	evidence := metroArrivalLineEvidence{station: station, membership: membershipLine, legacy: legacyLine, contradictory: contradictory}
+	if routeID != "" {
+		return metroTopologyArrivalRoute(routeIDs, routeID, evidence)
+	}
+	return metroFallbackArrivalRoute(routeIDs, evidence)
+}
+
+type metroArrivalLineEvidence struct {
+	station            MetroStation
+	membership, legacy string
+	contradictory      bool
+}
+
+func metroTopologyArrivalRoute(routeIDs map[string]string, routeID string, evidence metroArrivalLineEvidence) (string, string) {
+	line := metroUniqueRouteLine(routeIDs, routeID)
+	if evidence.contradictory || line == "" || evidence.membership != "" && evidence.membership != line || evidence.legacy != "" && evidence.legacy != line {
+		return "", ""
+	}
+	if members, valid := metroPublishedLines(evidence.station.Lines); valid && !members[line] {
+		return "", ""
+	}
+	return line, routeID
+}
+
+func metroFallbackArrivalRoute(routeIDs map[string]string, evidence metroArrivalLineEvidence) (string, string) {
+	line := evidence.membership
+	if evidence.contradictory {
+		line = ""
+	} else if line == "" && evidence.legacy != "" {
+		line = evidence.legacy
+		if members, valid := metroPublishedLines(evidence.station.Lines); valid && !members[line] {
+			line = ""
+		}
+	}
+	routeID := routeIDs[line]
+	if routeID != "" && (line == "" || metroUniqueRouteLine(routeIDs, routeID) != line) {
+		return "", ""
+	}
+	return line, routeID
+}
+
+// The same route ID assigned to different published lines cannot identify either.
+func metroUniqueRouteLine(routeIDs map[string]string, routeID string) string {
+	line := ""
+	matches := 0
+	for candidate, id := range routeIDs {
+		if id == routeID {
+			line = candidate
+			matches++
+		}
+	}
+	if matches != 1 {
+		return ""
+	}
+	return line
 }
 
 func metroUpcoming(wait MetroWait, base api.Arrival, from, to time.Time) []api.Arrival {

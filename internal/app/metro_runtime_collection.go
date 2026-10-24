@@ -31,22 +31,26 @@ type metroLocalForecast struct {
 	Valid     bool
 }
 
-func collectMetroPoints(data *MetroData, topology patterns.Topology, now time.Time) *metroPointBatch {
+func collectMetroPoints(data *MetroData, topology patterns.Topology, static *StaticData, now time.Time) *metroPointBatch {
 	b := &metroPointBatch{provenance: map[string]metroSourceSlot{}, groups: map[string][]metroPoint{}, paths: map[string]patterns.Pattern{}, references: map[string]map[string]bool{}, rejected: map[string]bool{}}
+	resolver, routeIDs := newMetroDestinationResolver(data, topology), metroRouteIDs(static)
 	for _, row := range data.Waits {
-		b.collectRow(row, topology, now)
+		b.collectRow(row, topology, resolver, routeIDs, now)
 	}
 	return b
 }
 func metroWaitRowKey(row MetroWait) string {
 	return row.Stop + "|" + row.Platform + "|" + row.Destination
 }
-func (b *metroPointBatch) collectRow(row MetroWait, topology patterns.Topology, now time.Time) {
+func (b *metroPointBatch) collectRow(row MetroWait, topology patterns.Topology, resolver *metroDestinationResolver, routeIDs map[string]string, now time.Time) {
 	clock, err := time.ParseInLocation("20060102150405", row.At, lisbon)
 	if err != nil || now.Sub(clock) > sourceFreshness || clock.After(now.Add(providerClockSkew)) {
 		return
 	}
 	path, pathOK := uniqueMetroPath(topology, row.Stop, row.Destination)
+	if pathOK && resolver.admittedRoute(row, routeIDs) != path.Route {
+		pathOK = false
+	}
 	values := []json.RawMessage{row.Wait1, row.Wait2, row.Wait3}
 	refs := []string{row.Train, row.Train2, row.Train3}
 	counts := map[string]int{}

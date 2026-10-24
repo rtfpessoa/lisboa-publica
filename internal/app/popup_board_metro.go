@@ -24,13 +24,14 @@ func metroBoardCalls(state *State, f Filter) []api.StopCall {
 func metroBoardDirection(d *StaticData, stop string, a api.Arrival) (string, *string) {
 	line := a.RouteId
 	var key *string
-	if d == nil || d.Schedule == nil {
+	if line == "" || d == nil || d.Schedule == nil {
 		return line, key
 	}
+	selectedLine := metroBoardLine(d, line)
 	idx := d.journeys("metro")
 	matches := map[string]*string{}
 	for _, t := range idx.stopTrips(d, "metro", stop) {
-		if normalizeName(tripDestination(d.Schedule, t)) == normalizeName(a.Headsign) {
+		if idx.lineFor(t) == selectedLine && normalizeName(tripDestination(d.Schedule, t)) == normalizeName(a.Headsign) {
 			line = idx.lineFor(t)
 			if idx.directionFor(t) != nil {
 				matches[*idx.directionFor(t)] = idx.directionFor(t)

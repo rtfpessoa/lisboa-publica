@@ -185,7 +185,7 @@ func (r *metroRuntime) forecastContexts(now time.Time) []api.MetroForecastContex
 func (r *metroRuntime) pathForecastContext(key string, now time.Time) api.MetroForecastContext {
 	path := r.batch.paths[key]
 	parts := strings.Split(key, "|")
-	direction := canonicalMetroDirection(r.topology, path)
+	direction := canonicalMetroDirection(r.directionTopology, path)
 	context := api.MetroForecastContext{Reference: parts[len(parts)-1], RouteId: path.Route, DirectionCode: &direction, Destination: metroDestinationName(r.publication, path), Status: "admissible", Calls: []api.StopCall{}}
 	if r.batch.rejected[key] {
 		context.Reason = "Suporte de percurso ou movimento indisponível; previsões locais preservadas"
@@ -254,7 +254,7 @@ func metroSourceForecast(c api.StopCall, p metroPoint, now time.Time) (api.StopC
 // A missing unique whole path cannot erase a valid local platform forecast. It
 // never admits a journey; only a uniquely mapped canonical direction is exposed.
 func (r *metroRuntime) localForecastContexts(now time.Time) []api.MetroForecastContext {
-	local := metroLocalContexts{contexts: map[string]*api.MetroForecastContext{}, stations: map[string]MetroStation{}, runtime: r, now: now, routes: metroRouteIDs(r.plan), catalog: metroStopCatalog(r.plan)}
+	local := metroLocalContexts{contexts: map[string]*api.MetroForecastContext{}, stations: map[string]MetroStation{}, runtime: r, now: now, routes: metroRouteIDs(r.plan), catalog: metroStopCatalog(r.plan), destinations: newMetroDestinationResolver(r.publication, r.topology)}
 	for _, station := range r.publication.Stations {
 		local.stations[station.ID] = station
 	}
@@ -281,12 +281,13 @@ func metroLocalForecastKey(f metroLocalForecast) string {
 }
 
 type metroLocalContexts struct {
-	runtime  *metroRuntime
-	now      time.Time
-	contexts map[string]*api.MetroForecastContext
-	stations map[string]MetroStation
-	routes   map[string]string
-	catalog  map[string]api.Stop
+	runtime      *metroRuntime
+	now          time.Time
+	contexts     map[string]*api.MetroForecastContext
+	stations     map[string]MetroStation
+	routes       map[string]string
+	catalog      map[string]api.Stop
+	destinations *metroDestinationResolver
 }
 
 func (l metroLocalContexts) add(f metroLocalForecast) {
@@ -306,10 +307,7 @@ func (l metroLocalContexts) add(f metroLocalForecast) {
 			return
 		}
 	} else {
-		arrival = metroArrival(f.Row, l.stations, l.routes, metroPopupStationID(station, l.catalog))
-	}
-	if arrival.RouteId == "" {
-		return
+		arrival = metroArrival(f.Row, l.routes, l.destinations, metroPopupStationID(station, l.catalog))
 	}
 	context := l.context(f, arrival)
 	context.Calls = append(context.Calls, metroLocalForecastCall(f, station, arrival, context))
@@ -332,22 +330,25 @@ func metroLocalForecastCall(f metroLocalForecast, station MetroStation, arrival 
 }
 
 func (l metroLocalContexts) context(f metroLocalForecast, arrival api.Arrival) *api.MetroForecastContext {
-	key := arrival.RouteId + "|" + f.Reference + "|" + f.Row.Destination
+	var direction *string
+	if !l.runtime.batch.topologyUnavailable && arrival.RouteId != "" {
+		direction = localMetroDirection(l.runtime.directionTopology, arrival.RouteId, f.Row.Destination, f.Row.Stop)
+	}
+	key := arrival.RouteId + "|" + f.Reference + "|" + f.Row.Destination + "|unknown"
+	if direction != nil {
+		key = arrival.RouteId + "|" + f.Reference + "|" + f.Row.Destination + "|known|" + *direction
+	}
 	if c := l.contexts[key]; c != nil {
 		return c
-	}
-	var direction *string
-	if !l.runtime.batch.topologyUnavailable {
-		direction = localMetroDirection(l.runtime.topology, arrival.RouteId, f.Row.Destination)
 	}
 	c := &api.MetroForecastContext{Reference: f.Reference, RouteId: arrival.RouteId, DirectionCode: direction, Destination: arrival.Headsign, Status: "admissible", Reason: "Previsão local; percurso completo por confirmar", Calls: []api.StopCall{}}
 	l.contexts[key] = c
 	return c
 }
-func localMetroDirection(topology patterns.Topology, route, destination string) *string {
+func localMetroDirection(topology patterns.Topology, route, destination, stop string) *string {
 	candidates := map[string]bool{}
 	for _, path := range topology.Patterns {
-		if path.Route == route && path.Direction == destination {
+		if path.Route == route && path.Direction == destination && metroPathContains(path, stop) {
 			candidates[canonicalMetroDirection(topology, path)] = true
 		}
 	}
@@ -386,9 +387,9 @@ func (r *metroRuntime) viewLocked(now time.Time) (*MetroData, *StaticData, []api
 		return nil, r.plan, []api.MetroForecastContext{}, r.historyStatus
 	}
 	data := *r.publication
-	data.Topology, data.Trains, data.InventoryOverflow = r.topology, r.current(now), r.inventoryOverflow
+	data.Topology, data.topologyPlan, data.directionTopology, data.directionsReady, data.Trains, data.InventoryOverflow = r.topology, r.plan, r.directionTopology, true, r.current(now), r.inventoryOverflow
 	if !r.directUsable && data.Status.Status == "ok" {
-		data.Topology = patterns.Topology{}
+		data.Topology, data.topologyPlan, data.directionTopology = patterns.Topology{}, nil, patterns.Topology{}
 	}
 	return &data, r.plan, r.forecastContexts(now), r.historyStatus
 }

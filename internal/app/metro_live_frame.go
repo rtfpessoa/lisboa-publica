@@ -63,7 +63,9 @@ func (b *metroFrameBuilder) readRuntimeView() string {
 		copy.Metro, b.state = &cached, &copy
 		if b.static != nil {
 			topology := metroTopology(&cached, b.static)
-			classifier := &metroRuntime{metroRuntimeTopology: metroRuntimeTopology{plan: b.static, topology: topology}, metroRuntimePublication: metroRuntimePublication{publication: &cached, batch: collectMetroPoints(&cached, topology, b.now)}}
+			directions := metroDirectionTopology(&cached, b.static, topology)
+			cached.Topology, cached.topologyPlan, cached.directionTopology, cached.directionsReady = topology, b.static, directions, true
+			classifier := &metroRuntime{metroRuntimeTopology: metroRuntimeTopology{plan: b.static, topology: topology, directionTopology: directions}, metroRuntimePublication: metroRuntimePublication{publication: &cached, batch: collectMetroPoints(&cached, directions, b.static, b.now)}}
 			classifier.selectedContexts(classifier.batch, b.now)
 			b.contexts = classifier.forecastContexts(b.now)
 		}

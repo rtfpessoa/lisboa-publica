@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"lisboapublica/internal/api"
+	"lisboapublica/internal/patterns"
 	"strings"
 	"time"
 )
@@ -51,7 +52,7 @@ func metroPublicationConflict(previous metroPublication, clock time.Time, second
 
 type metroArrivalSelection struct {
 	data                   *MetroData
-	stations               map[string]MetroStation
+	topology               patterns.Topology
 	routeIDs               map[string]string
 	asOf, from, to         time.Time
 	route, stop, stationID string
@@ -60,11 +61,12 @@ type metroArrivalSelection struct {
 
 func currentMetroArrivals(q metroArrivalSelection) map[string]api.Arrival {
 	seen := map[string]api.Arrival{}
+	resolver := newMetroDestinationResolver(q.data, q.topology)
 	for _, wait := range q.data.Waits {
 		if wait.Stop != q.stationID {
 			continue
 		}
-		for _, arrival := range platformArrivals(wait, q.stations, q.routeIDs, q.asOf, q.from, q.to, q.route, q.stop) {
+		for _, arrival := range platformArrivals(wait, q.routeIDs, resolver, q.asOf, q.from, q.to, q.route, q.stop) {
 			publication := q.latest[arrival.Id]
 			if publication.valid && !publication.conflict && publication.clock.Equal(*arrival.ObservedAt) {
 				seen[arrival.Id] = arrival
