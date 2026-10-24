@@ -43,8 +43,8 @@ func metroWaitRowKey(row MetroWait) string {
 	return row.Stop + "|" + row.Platform + "|" + row.Destination
 }
 func (b *metroPointBatch) collectRow(row MetroWait, topology patterns.Topology, resolver *metroDestinationResolver, routeIDs map[string]string, now time.Time) {
-	clock, err := time.ParseInLocation("20060102150405", row.At, lisbon)
-	if err != nil || now.Sub(clock) > sourceFreshness || clock.After(now.Add(providerClockSkew)) {
+	clock, ok := patterns.MetroSourceClock(row.At)
+	if !ok || now.Sub(clock) > sourceFreshness || clock.After(now.Add(providerClockSkew)) {
 		return
 	}
 	path, pathOK := uniqueMetroPath(topology, row.Stop, row.Destination)
