@@ -381,6 +381,15 @@ Keep `info` outside diagnosis.
 `METRO_REFRESH_MILLISECONDS` defaults to 500 and accepts 500–60000. It affects only serialized direct Metro
 collection; existing live JSON intervals and other providers are unchanged. Keep one subscribed collector and
 shared attempt budget; multiple independently budgeted instances or external consumers can exceed an account quota.
+The direct refresh is a target, not a promise of new provider data: a longer interval can reduce
+the target request rate and delivery pressure but can delay or coarsen movement observations. The
+2026-10-24 sandbox experiment used an explicit 1000 ms override in protected `dashboard.env`; the
+application default remains 500 ms. For a rate change, compare the resolved configuration without exposing credentials,
+then observe the debug `delivery` fields over time: queue depth and trend, rejection and failure
+counters, cut state and worker timings. Counters reset on restart; missing diagnostics do not
+prove health. Also check source clocks, both pattern statuses, newly hash-verified durable detail,
+filesystem bytes/inodes and database pressure. A short healthy interval does not establish ongoing
+headroom. See the [dated sandbox experiment](../docs/validation/metro-refresh-sandbox-2026-10-24.md).
 The inferred-event lane uses the existing archive volume and global allocated-byte budget, with a seven-day target
 and pressure floor; collection gaps remain possible. Do not lower `TRANSPORT_SAMPLE_SECONDS` to enable per-update event processing.
 
