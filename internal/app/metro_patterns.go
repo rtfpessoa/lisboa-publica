@@ -49,7 +49,7 @@ func (m *MetroClient) recordPatternsWith(data *MetroData, static *StaticData, no
 			}
 			r.mu.Unlock()
 		}
-		m.logMetroSample()
+		m.logMetroSample(false)
 	}
 	return err
 }
@@ -73,7 +73,7 @@ func (m *MetroClient) patternReceipt(data *MetroData, static *StaticData, now ti
 }
 
 // logMetroSample emits the bounded per-sample diagnostic counters at debug level.
-func (m *MetroClient) logMetroSample() {
+func (m *MetroClient) logMetroSample(fifo bool) {
 	if m.Log == nil || m.History == nil {
 		return
 	}
@@ -82,7 +82,7 @@ func (m *MetroClient) logMetroSample() {
 		return
 	}
 	m.lastSampleLogged = stats.SampledAt
-	m.Log.Debug("metro sample",
+	fields := []zap.Field{
 		zap.Time("sampled_at", stats.SampledAt),
 		zap.Bool("gap", stats.Gap),
 		zap.Bool("empty", stats.Empty),
@@ -102,7 +102,12 @@ func (m *MetroClient) logMetroSample() {
 		zap.Int("groups_deleted_absent", stats.GroupsDeleted),
 		zap.Int("active_groups", stats.ActiveGroups),
 		zap.Int64("intermediate_cuts", stats.IntermediateCuts),
-		zap.Int64("gaps", stats.Gaps))
+		zap.Int64("gaps", stats.Gaps),
+	}
+	if field, ok := m.metroDeliveryDiagnosticField(fifo); ok {
+		fields = append(fields, field)
+	}
+	m.Log.Debug("metro sample", fields...)
 }
 
 func (s *Server) GetMetroPatterns(ctx context.Context, request api.GetMetroPatternsRequestObject) (api.GetMetroPatternsResponseObject, error) {
