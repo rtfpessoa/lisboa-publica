@@ -133,6 +133,9 @@ func (s *Service) replayMetroDetails() error {
 	if err := s.validateRecoveryDetailIdentities(); err != nil {
 		return err
 	}
+	if s.hasUnprovenMetroSegments(checkpointHour) {
+		return s.fenceMetroRecoveryTail()
+	}
 	latest := s.latestMetroDetail(checkpointHour)
 	if latest == nil {
 		return nil
@@ -156,37 +159,18 @@ func (s *Service) replayMetroDetails() error {
 // Check reserved identities before choosing a tail or starting maintenance.
 // Invalid or duplicate keys cannot be treated as an absent detail generation.
 func (s *Service) validateRecoveryDetailIdentities() error {
-	counts := make(map[string]int, len(s.index.Blocks))
-	for _, b := range s.index.Blocks {
-		counts[b.Key]++
-	}
-	invalid := map[string]bool{}
-	for _, b := range s.index.Blocks {
-		if (b.Kind == "detail" && b.Operator == "metro") || strings.HasPrefix(b.Key, "metro:detail:") {
-			if counts[b.Key] > 1 || !validRecoveryDetailIdentity(b) {
-				invalid[b.Key] = true
-			}
-		}
-	}
+	invalid := invalidRecoveryDetailIdentities(s.index.Blocks)
 	if len(invalid) == 0 {
 		return nil
 	}
+	segmented := hasMetroDetailSegments(s.index.Blocks)
 	for i := range s.index.Blocks {
 		b := &s.index.Blocks[i]
-		if invalid[b.Key] {
+		if invalid[b.Key] || segmented && metroDetailIdentity(*b) {
 			s.fenceDetail(fmt.Errorf("ambiguous detail generation"), b)
 		}
 	}
 	return s.fenceMetroRecoveryTail()
-}
-
-func validRecoveryDetailIdentity(b block) bool {
-	const prefix = "metro:detail:"
-	if b.Kind != "detail" || b.Operator != "metro" || !strings.HasPrefix(b.Key, prefix) {
-		return false
-	}
-	hour, err := time.Parse(time.RFC3339, strings.TrimPrefix(b.Key, prefix))
-	return err == nil && hour.Equal(hour.UTC().Truncate(time.Hour)) && b.Age.Equal(hour) && b.Key == prefix+hour.UTC().Format(time.RFC3339)
 }
 
 func (s *Service) fenceMetroRecoveryTail() error {
@@ -201,8 +185,11 @@ func (s *Service) fenceMetroRecoveryTail() error {
 }
 
 func (s *Service) recoveryTailBlock(b block) bool {
-	if !(b.Kind == "detail" && b.Operator == "metro") && !strings.HasPrefix(b.Key, "metro:detail:") {
+	if !metroDetailIdentity(b) {
 		return false
+	}
+	if b.Kind == metroDetailSegmentKind || strings.HasPrefix(b.Key, metroDetailSegmentPrefix) {
+		return !validRecoveryDetailIdentity(b) || !s.checkpointRecovered || b.Age.Add(metroDetailSegmentInterval).After(s.hour)
 	}
 	hour, err := time.Parse(time.RFC3339, strings.TrimPrefix(b.Key, "metro:detail:"))
 	return err != nil || !hour.Before(s.hour) || !b.Age.Before(s.hour)

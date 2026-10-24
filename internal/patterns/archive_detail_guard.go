@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 )
 
@@ -30,7 +29,7 @@ func (s *Service) protectCheckpointDetails() {
 		s.protectedGenerations = map[retentionClockKey]bool{}
 	}
 	for _, b := range s.index.Blocks {
-		if b.Kind == "detail" && b.Operator == "metro" || strings.HasPrefix(b.Key, "metro:detail:") {
+		if metroDetailIdentity(b) {
 			s.protectedGenerations[retentionKey(b)] = true
 		}
 	}
@@ -100,6 +99,20 @@ func decodeDetailRecords(raw []byte, b block) ([]Receipt, error) {
 	if len(raw) > maxDetailHourBytes {
 		return nil, fmt.Errorf("detail byte limit")
 	}
+	if b.Kind == metroDetailSegmentKind && !validRecoveryDetailIdentity(b) {
+		return nil, fmt.Errorf("invalid detail segment identity")
+	}
+	records, canonical, err := decodeDetailLines(raw, b)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateDecodedDetail(raw, canonical, b, records); err != nil {
+		return nil, err
+	}
+	return records, nil
+}
+
+func decodeDetailLines(raw []byte, b block) ([]Receipt, []byte, error) {
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	var records []Receipt
 	var canonical bytes.Buffer
@@ -110,28 +123,40 @@ func decodeDetailRecords(raw []byte, b block) ([]Receipt, error) {
 			break
 		}
 		if err != nil || len(records) >= maxDetailHourReceipts {
-			return nil, fmt.Errorf("invalid or oversized detail")
+			return nil, nil, fmt.Errorf("invalid or oversized detail")
 		}
-		receipt, err := decodeDetailReceipt(encoded, records, b.Age)
+		receipt, err := decodeDetailReceipt(encoded, records, b)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		canonical.Write(encoded)
 		canonical.WriteByte('\n')
 		records = append(records, receipt)
 	}
-	if !bytes.Equal(raw, canonical.Bytes()) || b.Samples > 0 && b.Samples != int64(len(records)) {
-		return nil, fmt.Errorf("detail representation is incomplete")
-	}
-	return records, nil
+	return records, canonical.Bytes(), nil
 }
 
-func decodeDetailReceipt(encoded []byte, earlier []Receipt, hour time.Time) (Receipt, error) {
+func validateDecodedDetail(raw, canonical []byte, b block, records []Receipt) error {
+	if !bytes.Equal(raw, canonical) || b.Samples > 0 && b.Samples != int64(len(records)) {
+		return fmt.Errorf("detail representation is incomplete")
+	}
+	if b.Kind == metroDetailSegmentKind && (len(records) == 0 || !b.AsOf.Equal(records[len(records)-1].ReceivedAt)) {
+		return fmt.Errorf("detail segment watermark invalid")
+	}
+	return nil
+}
+
+func decodeDetailReceipt(encoded []byte, earlier []Receipt, b block) (Receipt, error) {
 	var receipt Receipt
 	if err := knownJSON(encoded, &receipt); err != nil {
 		return receipt, err
 	}
-	if receipt.ReceivedAt.IsZero() || !receipt.ReceivedAt.UTC().Truncate(time.Hour).Equal(hour) || (len(earlier) > 0 && receipt.ReceivedAt.Before(earlier[len(earlier)-1].ReceivedAt)) {
+	interval := time.Hour
+	if b.Kind == metroDetailSegmentKind {
+		interval = metroDetailSegmentInterval
+	}
+	if receipt.ReceivedAt.IsZero() || !receipt.ReceivedAt.UTC().Truncate(interval).Equal(b.Age) ||
+		(len(earlier) > 0 && (receipt.ReceivedAt.Before(earlier[len(earlier)-1].ReceivedAt) || b.Kind == metroDetailSegmentKind && receipt.ReceivedAt.Equal(earlier[len(earlier)-1].ReceivedAt))) {
 		return receipt, fmt.Errorf("detail receipt clock invalid")
 	}
 	return receipt, nil

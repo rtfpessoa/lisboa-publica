@@ -110,6 +110,11 @@ func (o *metroRecoveryOwner) loadManifest() error {
 	if err = validateArchiveBlocks(o.manifest.Blocks); err != nil {
 		return err
 	}
+	// This repair proves the order of one legacy hourly tail only. A segment
+	// may contain additional Metro evidence whose relationship is unproven.
+	if hasMetroDetailSegments(o.manifest.Blocks) {
+		return fmt.Errorf("segmented Metro detail requires separate recovery")
+	}
 	return validateRecoveryIdentities(o.manifest)
 }
 
