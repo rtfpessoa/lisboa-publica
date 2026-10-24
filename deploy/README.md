@@ -231,6 +231,13 @@ For subsequent releases, update `LISBOA_IMAGE` in the protected
 image, then recreate only `lisboa-dashboard` with the targeted command above.
 Check the effective configuration and owner state first.
 
+For this sandbox, set `SNAPSHOT_RETENTION_DAYS=24` in the protected
+`/etc/lisboa-publica/dashboard.env` and recreate only the dashboard. Public
+history queries use that window. The independent cleanup worker removes expired
+snapshots in bounded batches with one hour of grace; pressure cleanup can shorten
+the window but protects the newest seven days. Deleting old rows can make space
+reusable after vacuum; it does not guarantee smaller database files.
+
 ## Separate application Compose project
 
 The separate application Compose project is a recovery and deployment option;
