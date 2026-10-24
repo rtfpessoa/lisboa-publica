@@ -104,6 +104,8 @@ type metroArchiveState struct {
 	detail                     []Receipt
 	detailBytes                int
 	lastSample, lastCheckpoint time.Time
+	detailLimitHour            time.Time
+	detailLimitError           error
 	status, message            string
 }
 
