@@ -86,7 +86,7 @@ func validMetroCheckpoint(cp checkpoint) bool {
 	if len(cp.Engine.Aggregates) > maxEngineAggregates || len(cp.Engine.Cases) > maxPendingForecasts {
 		return false
 	}
-	return validProviderCheckpoint(cp.Providers)
+	return validProviderCheckpoint(cp.Providers) && validMetroTailRecovery(cp.TailRecovery)
 }
 
 func (s *Service) decodedArchiveBlock(b block) ([]byte, error) {
@@ -106,6 +106,7 @@ func (s *Service) applyCheckpoint(cp checkpoint, b block) {
 		s.providers = map[string]*providerState{}
 	}
 	s.engine = cp.Engine
+	s.tailRecovery = cp.TailRecovery
 	normalized := map[string]Aggregate{}
 	for _, a := range s.engine.Aggregates {
 		normalized[aggregateKey(a)] = a
