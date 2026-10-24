@@ -96,9 +96,9 @@ func TestMetroSampleStatsDeletionAndActive(t *testing.T) {
 	active := e.LastMetroStats.ActiveGroups
 	// A second, single-signal train creates an inactive group next to the active one.
 	at := base.Add(6 * 30 * time.Second)
-	e.step(testReceipt(at, testRow("F", "x", at, 600), testRow("A", "y", at, 600)), topology, config)
+	e.step(testReceipt(at, testRow("D", "x", at, 600), testRow("E", "x", at, 600), testRow("F", "x", at, 600), testRow("A", "y", at, 600)), topology, config)
 	at = at.Add(30 * time.Second)
-	e.step(testReceipt(at, testRow("F", "x", at, 600), testRow("A", "y", at, 0)), topology, config)
+	e.step(testReceipt(at, testRow("D", "x", at, 600), testRow("E", "x", at, 600), testRow("F", "x", at, 600), testRow("A", "y", at, 0)), topology, config)
 	stats := e.LastMetroStats
 	if stats.GroupsCreated != 1 || stats.ActiveGroups != active {
 		t.Fatalf("inactive group counted: %+v", stats)

@@ -25,6 +25,9 @@ type priorRow struct {
 	Signature string
 	Train     string
 	ETA       float64
+	// Intermediate evidence is process-local; restart resets continuity.
+	IntermediateClock, IntermediateZero time.Time `json:"-"`
+	IntermediateSignature               string    `json:"-"`
 }
 type selection struct {
 	Episode string
@@ -45,7 +48,7 @@ type engine struct {
 	// LastMetroStats is diagnostic only and deliberately not persisted.
 	LastMetroStats MetroSampleStats `json:"-"`
 	Gaps           int64
-	// IntermediateCuts counts cuts of unsupported groups made between samples.
+	// IntermediateCuts counts successful intermediate receipts that lose baseline or group support.
 	IntermediateCuts int64
 	Aggregates       map[string]Aggregate
 	Cases            []Forecast

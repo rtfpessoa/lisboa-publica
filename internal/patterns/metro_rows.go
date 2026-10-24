@@ -1,6 +1,9 @@
 package patterns
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type metroSampleRow struct {
 	row                   Row
@@ -15,7 +18,7 @@ type metroSampleRow struct {
 func (e *engine) collectMetroRows(sample *metroSample) {
 	keyed := map[string][]Row{}
 	for _, row := range sample.receipt.Rows {
-		if row.Stop != "" && row.Platform != "" && row.Destination != "" {
+		if validMetroContext(row) {
 			keyed[contextKey(row)] = append(keyed[contextKey(row)], row)
 		}
 	}
@@ -29,14 +32,12 @@ func (e *engine) collectMetroRows(sample *metroSample) {
 
 func (e *engine) collectMetroRow(sample *metroSample, row Row, count int) {
 	route := sample.topology.route(row.Stop, row.Destination)
-	if route == "" {
+	if route == "" || strings.Contains(route, "|") {
 		sample.stats.RejectedRoute++
 		return
 	}
 	ids := intermediateTrainIDs(row)
-	if count != 1 {
-		sample.stats.RejectedDuplicate++
-		sample.presence.reject(ids, row.Destination, route)
+	if rejectMetroSampleContext(sample, row, route, ids, count) {
 		return
 	}
 	clock, valid := sourceClock(row.Clock)
@@ -54,6 +55,18 @@ func (e *engine) collectMetroRow(sample *metroSample, row Row, count int) {
 		sample.stats.Admitted++
 	}
 	context.collectFirstSlot(sample)
+}
+
+func rejectMetroSampleContext(sample *metroSample, row Row, route string, ids []string, count int) bool {
+	if count != 1 {
+		sample.stats.RejectedDuplicate++
+	} else if sample.rejected[contextKey(row)] {
+		sample.stats.RejectedContinuity++
+	} else {
+		return false
+	}
+	sample.presence.reject(ids, row.Destination, route)
+	return true
 }
 
 func validMetroSampleClock(clock time.Time, valid bool, now time.Time) bool {
@@ -75,7 +88,7 @@ func (r metroSampleRow) collectFirstSlot(sample *metroSample) {
 	if !r.validFirstSlot(valid) {
 		return
 	}
-	sample.current[r.key] = priorRow{r.clock, r.signature, r.ids[0], first}
+	sample.current[r.key] = priorRow{Clock: r.clock, Signature: r.signature, Train: r.ids[0], ETA: first}
 	sample.stats.FirstSlots++
 	if !sample.gap && r.hasOld && r.old.Train == r.ids[0] && r.clock.After(r.old.Clock) && r.clock.Sub(r.old.Clock) <= 60*time.Second {
 		sample.stats.WithPrior++
@@ -94,7 +107,7 @@ func (r metroSampleRow) validFirstSlot(validETA bool) bool {
 	if !validETA || r.badClock {
 		return false
 	}
-	return validTrain(r.ids[0]) && r.counts[r.ids[0]] == 1
+	return validMetroGroupTrain(r.ids[0]) && r.counts[r.ids[0]] == 1
 }
 
 func (r metroSampleRow) transitionSignal(first float64, gap bool) bool {
