@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 func safeFilename(value string) bool {
@@ -51,16 +52,33 @@ func encodeManifest(next manifest) ([]byte, error) {
 
 func (s *Service) readBlock(b block) ([]byte, error) {
 	path := filepath.Join(s.config.Directory, b.File)
-	f, err := os.Open(path)
+	f, err := openArchiveGeneration(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
+	return readGeneration(f, b.Hash)
+}
+
+func openArchiveGeneration(path string) (*os.File, error) {
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, err
+	}
+	info, err := f.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		_ = f.Close()
+		return nil, fmt.Errorf("archive generation is not a regular file")
+	}
+	return f, nil
+}
+
+func readGeneration(f *os.File, hash string) ([]byte, error) {
 	data, err := io.ReadAll(io.LimitReader(f, maxBlockBytes+1))
 	if err != nil {
 		return nil, err
 	}
-	if len(data) > maxBlockBytes || digestBytes(data) != b.Hash {
+	if len(data) > maxBlockBytes || digestBytes(data) != hash {
 		return nil, fmt.Errorf("archive block corrupt")
 	}
 	return data, nil

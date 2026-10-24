@@ -73,6 +73,7 @@ type archiveResources struct {
 	manifestUncertain bool
 	manifestSync      func(string) error
 	publicationSync   func(string) error
+	generationSync    func(*os.File) error
 	reconcileSync     func(string) error
 	reconciledHead    bool
 	aggregateClocks   map[retentionClockKey]aggregateClock
@@ -91,6 +92,8 @@ type archiveResources struct {
 	pressurePasses    int
 	pressureManifest  bool
 	maintenanceWork   *cleanupWork
+	retirementSerial  uint64
+	lastRetired       retentionClockKey
 }
 
 // metroArchiveState is the inference and publication cursor for Metro receipts.

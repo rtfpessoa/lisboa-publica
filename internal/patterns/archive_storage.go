@@ -140,6 +140,9 @@ func (s *Service) removeOrphanedGenerations() error {
 	for _, b := range s.index.Blocks {
 		keep[b.File] = true
 	}
+	for source := range s.protectedGenerations {
+		keep[source.file] = true
+	}
 	s.retainRecoverySource(keep)
 	dir, err := os.Open(s.config.Directory)
 	if err != nil {
@@ -201,29 +204,42 @@ func (s *Service) removeOrphanedEntry(entry os.DirEntry, keep map[string]bool) e
 	return nil
 }
 
-// Generated detail/state names embed a hash. Do not delete an orphan whose
+// Generated names embed a hash. Do not delete an identified orphan whose
 // contents cannot be verified, including across a restart after a partial commit.
 func (s *Service) preserveUncertainOrphan(name string) bool {
-	if !strings.HasPrefix(name, "metro-detail-") && !strings.HasPrefix(name, "metro-"+metroDetailSegmentKind+"-") && !strings.HasPrefix(name, "metro-state-") {
-		return false
-	}
-	const suffix = ".json.zst"
-	stem := strings.TrimSuffix(name, suffix)
-	cut := strings.LastIndexByte(stem, '-')
-	if !strings.HasSuffix(name, suffix) || cut < 0 || len(stem)-cut-1 != 64 {
-		s.fenceDetail(fmt.Errorf("unidentifiable archive orphan"), nil)
-		return true
-	}
-	hash := stem[cut+1:]
-	if _, err := hex.DecodeString(hash); err != nil {
-		s.fenceDetail(fmt.Errorf("unidentifiable archive orphan"), nil)
-		return true
+	strict := strings.HasPrefix(name, "metro-detail-") || strings.HasPrefix(name, "metro-"+metroDetailSegmentKind+"-") || strings.HasPrefix(name, "metro-state-")
+	hash, identified := orphanContentHash(name, strict)
+	if !identified {
+		if strict {
+			s.fenceDetail(fmt.Errorf("unidentifiable archive orphan"), nil)
+		}
+		return strict
 	}
 	if _, err := s.readBlock(block{File: name, Hash: hash}); err != nil {
 		s.fenceDetail(err, nil)
 		return true
 	}
 	return false
+}
+
+func orphanContentHash(name string, strict bool) (string, bool) {
+	suffix := ".json.zst"
+	if !strict && strings.HasSuffix(name, ".parquet") {
+		suffix = ".parquet"
+	}
+	if !strict && !strings.HasSuffix(name, suffix) {
+		return "", false
+	}
+	stem := strings.TrimSuffix(name, suffix)
+	cut := strings.LastIndexByte(stem, '-')
+	if !strings.HasSuffix(name, suffix) || cut < 0 || len(stem)-cut-1 != 64 {
+		return "", false
+	}
+	hash := stem[cut+1:]
+	if _, err := hex.DecodeString(hash); err != nil {
+		return "", false
+	}
+	return hash, true
 }
 
 func (s *Service) ensureSpace(reserve int64, now time.Time) error {
@@ -405,6 +421,8 @@ func (s *Service) retireBlock(index int) error {
 	if err := s.saveManifest(next); err != nil {
 		return err
 	}
+	s.retirementSerial++
+	s.lastRetired = retentionKey(removed)
 	s.forgetRetiredAggregate(removed)
 	delete(s.aggregateClocks, retentionKey(removed))
 	return s.removeRetiredGeneration(removed)
