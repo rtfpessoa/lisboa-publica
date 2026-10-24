@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -120,17 +122,20 @@ func TestProviderRejectsUnsupportedPhysicalAndIdentityInputs(t *testing.T) {
 }
 func TestProviderArchiveRecoveryDedupAndFailedPublication(t *testing.T) {
 	c := DefaultConfig(t.TempDir())
+	c.MaintenanceInterval = 50 * time.Millisecond
 	s, err := Open(c)
 	if err != nil {
 		t.Fatal(err)
 	}
+	initial := s
+	t.Cleanup(func() { _ = initial.Close() })
 	if err = s.ConfigureOperators([]string{"metro", "cm"}); err != nil {
 		t.Fatal(err)
 	}
 	base := time.Now().UTC().Truncate(time.Hour).Add(10 * time.Minute)
 	path := syntheticProviderPath("cm")
 	seedProviderArchiveSequence(t, s, path, base)
-	if componentCount(s.providers["cm"].Engine) != 3 {
+	if providerRetainedState(s).components != 3 {
 		t.Fatal("archive did not train")
 	}
 	assertProviderPublicationRollback(t, s, c, path, base)
@@ -142,7 +147,10 @@ func TestProviderArchiveRecoveryDedupAndFailedPublication(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s.Close()
-	if componentCount(s.providers["cm"].Engine) != 3 || len(s.providers["cm"].Tracks) != 0 {
+	s.mu.Lock()
+	components, tracks := componentCount(s.providers["cm"].Engine), len(s.providers["cm"].Tracks)
+	s.mu.Unlock()
+	if components != 3 || tracks != 0 {
 		t.Fatal("recovery changed evidence or invented continuity")
 	}
 	assertProviderDictionaryDeduplicated(t, s)
@@ -157,10 +165,13 @@ func TestProviderArchiveRecoveryDedupAndFailedPublication(t *testing.T) {
 
 func TestProviderRevisionsAreAtomicScopedAndPreserveOriginalEvidence(t *testing.T) {
 	c := DefaultConfig(t.TempDir())
+	c.MaintenanceInterval = 50 * time.Millisecond
 	s, err := Open(c)
 	if err != nil {
 		t.Fatal(err)
 	}
+	initial := s
+	t.Cleanup(func() { _ = initial.Close() })
 	if err = s.ConfigureOperators([]string{"metro", "cm", "carris"}); err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +179,7 @@ func TestProviderRevisionsAreAtomicScopedAndPreserveOriginalEvidence(t *testing.
 	path := syntheticProviderPath("cm")
 	var original ProviderReceipt
 	original = seedProviderArchiveSequence(t, s, path, base)
-	before := componentCount(s.providers["cm"].Engine)
+	before := providerRetainedState(s).components
 	change := ProviderCorrection{ReceivedAt: original.ReceivedAt, ExpectedHash: digest(original.Rows[0]), Row: original.Rows[0], Evidence: "Synthetic source revision: reported position was estimated."}
 	change.Row.PositionKind = "estimated"
 	now := base.Add(5 * time.Minute)
@@ -177,10 +188,12 @@ func TestProviderRevisionsAreAtomicScopedAndPreserveOriginalEvidence(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Corrections != 1 || componentCount(s.providers["cm"].Engine) != 0 {
+	if result.Corrections != 1 || providerRetainedState(s).components != 0 {
 		t.Fatal("revision did not revoke unsupported sequence")
 	}
+	s.mu.Lock()
 	ledger, err := s.providerCorrections("cm")
+	s.mu.Unlock()
 	if err != nil || len(ledger) != 1 {
 		t.Fatal("revision ledger missing")
 	}
@@ -196,9 +209,65 @@ func TestProviderRevisionsAreAtomicScopedAndPreserveOriginalEvidence(t *testing.
 		t.Fatal(err)
 	}
 	defer s.Close()
-	if componentCount(s.providers["cm"].Engine) != 0 {
+	if providerRetainedState(s).components != 0 {
 		t.Fatal("restart resurrected revised training")
 	}
+}
+
+func TestProviderManifestPreRenameFailureKeepsPriorEvidence(t *testing.T) {
+	s, c, next := providerManifestFixture(t)
+	prior := providerRetainedState(s)
+	manifestPath := filepath.Join(c.Directory, "manifest.json")
+	manifestBefore, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocker := filepath.Join(c.Directory, ".manifest.tmp")
+	if err = os.WriteFile(blocker, []byte("synthetic pre-rename blocker"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Remove(blocker) })
+	err = s.RecordProvider(next)
+	var pathErr *os.PathError
+	if !errors.Is(err, os.ErrExist) || !errors.As(err, &pathErr) || pathErr.Path != blocker {
+		t.Fatalf("expected manifest temporary-file collision, got %v", err)
+	}
+	assertProviderRetained(t, s, prior)
+	manifestAfter, err := os.ReadFile(manifestPath)
+	if err != nil || !bytes.Equal(manifestBefore, manifestAfter) {
+		t.Fatalf("pre-rename failure changed the committed manifest: %v", err)
+	}
+	if err = os.Remove(blocker); err != nil {
+		t.Fatal(err)
+	}
+	if err = s.RecordProvider(next); err != nil {
+		t.Fatalf("provider did not retry after pre-rename failure: %v", err)
+	}
+	if state := providerRetainedState(s); !state.lastSample.Equal(next.ReceivedAt) {
+		t.Fatal("successful retry did not advance the provider sample")
+	}
+	if err = s.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func providerManifestFixture(t *testing.T) (*Service, Config, ProviderReceipt) {
+	t.Helper()
+	c := DefaultConfig(t.TempDir())
+	c.MaintenanceInterval = time.Hour
+	s, err := Open(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	if err = s.ConfigureOperators([]string{"metro", "cm"}); err != nil {
+		t.Fatal(err)
+	}
+	base := time.Now().UTC().Truncate(time.Hour).Add(10 * time.Minute)
+	path := syntheticProviderPath("cm")
+	seedProviderArchiveSequence(t, s, path, base)
+	next := syntheticProviderReceipt("cm", "v", path, base.Add(240*time.Second), 4, false)
+	return s, c, next
 }
 
 func TestProviderIntermediateCutsReplayOnlyTheAffectedAssociation(t *testing.T) {
@@ -307,6 +376,8 @@ func TestProviderLongJourneysBoundComponentPayloadForBothFunctions(t *testing.T)
 
 func assertProviderDictionaryDeduplicated(t *testing.T, s *Service) {
 	t.Helper()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	definitions := 0
 	for _, b := range s.index.Blocks {
 		if b.Operator != "cm" || b.Kind != "observations" {
@@ -335,44 +406,107 @@ func assertProviderDictionaryDeduplicated(t *testing.T, s *Service) {
 
 func assertProviderPublicationRollback(t *testing.T, s *Service, c Config, path ProviderJourney, base time.Time) {
 	t.Helper()
-	var err error
-	// Force a failed manifest publication; uncommitted inputs must roll back.
-	if err = os.Mkdir(filepath.Join(c.Directory, ".manifest.tmp"), 0700); err != nil {
-		t.Fatal(err)
-	}
+	// The directory invalidates allocation before manifest publication.
+	blocker := providerLayoutBlocker(t, c.Directory)
 	next := syntheticProviderReceipt("cm", "v", path, base.Add(240*time.Second), 4, false)
-	prior := s.providers["cm"].LastSample
-	if err = s.RecordProvider(next); err == nil {
-		t.Fatal("publication failure not surfaced")
+	prior := providerRetainedState(s)
+	if err := s.RecordProvider(next); err == nil || !strings.Contains(err.Error(), "transport archive directory exceeds bounded layout") {
+		t.Fatalf("publication did not reject the invalid layout: %v", err)
 	}
-	if s.providers["cm"].LastSample != prior || componentCount(s.providers["cm"].Engine) != 3 {
-		t.Fatal("unarchived input advanced statistics or cadence")
-	}
-	if err = os.Remove(filepath.Join(c.Directory, ".manifest.tmp")); err != nil {
-		t.Fatal(err)
-	}
+	assertProviderRetained(t, s, prior)
+	waitProviderLayoutFailure(t, s, false)
+	releaseProviderLayout(t, s, blocker)
+	assertProviderRetained(t, s, prior)
 }
 
 func assertProviderRevisionRollback(t *testing.T, s *Service, c Config, change ProviderCorrection, now time.Time, before int64) {
 	t.Helper()
-	var err error
-	// Failure before the manifest commit must not alter the current statistics.
-	if err = os.Mkdir(filepath.Join(c.Directory, ".manifest.tmp"), 0700); err != nil {
-		t.Fatal(err)
+	// Reconciliation rejects this layout before a revision can be published.
+	blocker := providerLayoutBlocker(t, c.Directory)
+	prior := providerRetainedState(s)
+	if _, err := s.ReprocessProvider(context.Background(), "cm", []ProviderCorrection{change}, now); err == nil || !strings.Contains(err.Error(), "unmanaged file in transport archive") {
+		t.Fatalf("revision did not reject the invalid layout during reconciliation: %v", err)
 	}
-	if _, err = s.ReprocessProvider(context.Background(), "cm", []ProviderCorrection{change}, now); err == nil {
-		t.Fatal("failed transaction not rejected")
-	}
-	if componentCount(s.providers["cm"].Engine) != before {
+	if prior.components != before {
 		t.Fatal("failed revision changed hot state")
 	}
-	if err = os.Remove(filepath.Join(c.Directory, ".manifest.tmp")); err != nil {
+	assertProviderRetained(t, s, prior)
+	waitProviderLayoutFailure(t, s, true)
+	releaseProviderLayout(t, s, blocker)
+	assertProviderRetained(t, s, prior)
+}
+
+type retainedProviderEvidence struct {
+	components     int64
+	lastSample     time.Time
+	lastInput      time.Time
+	aggregatesHash string
+}
+
+func providerRetainedState(s *Service) retainedProviderEvidence {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	state := s.providers["cm"]
+	return retainedProviderEvidence{componentCount(state.Engine), state.LastSample, state.LastInputAt, digest(state.Engine.Aggregates)}
+}
+
+func assertProviderRetained(t *testing.T, s *Service, prior retainedProviderEvidence) {
+	t.Helper()
+	if got := providerRetainedState(s); got != prior {
+		t.Fatalf("failure or maintenance changed retained provider evidence: got %+v, want %+v", got, prior)
+	}
+}
+
+func providerLayoutBlocker(t *testing.T, directory string) string {
+	t.Helper()
+	blocker := filepath.Join(directory, ".manifest.tmp")
+	if err := os.Mkdir(blocker, 0700); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = os.Remove(blocker) })
+	return blocker
+}
+
+func waitProviderLayoutFailure(t *testing.T, s *Service, requireUnreserved bool) {
+	t.Helper()
+	started := time.Now()
+	wakeMaintenance(s)
+	waitMaintenanceProgress(t, s, func(p MaintenanceProgress) bool {
+		return !p.InProgress && p.LastResult == "error" && p.LastStartedAt.After(started)
+	})
+	s.mu.Lock()
+	pending, err := s.pressurePending, s.maintenanceError
+	s.mu.Unlock()
+	if err == nil || !strings.Contains(err.Error(), "transport archive directory exceeds bounded layout") {
+		t.Fatalf("worker did not observe the invalid layout: %v", err)
+	}
+	if requireUnreserved && pending {
+		t.Fatal("revision unexpectedly reserved maintenance before the failing pass")
+	}
+}
+
+func releaseProviderLayout(t *testing.T, s *Service, blocker string) {
+	t.Helper()
+	if err := os.Remove(blocker); err != nil {
+		t.Fatal(err)
+	}
+	started := time.Now()
+	wakeMaintenance(s)
+	waitMaintenanceProgress(t, s, func(p MaintenanceProgress) bool {
+		if p.InProgress || p.LastResult != "completed" || !p.LastStartedAt.After(started) {
+			return false
+		}
+		s.mu.Lock()
+		ready := !s.pressurePending && s.maintenanceError == nil
+		s.mu.Unlock()
+		return ready
+	})
 }
 
 func assertProviderOriginalObservation(t *testing.T, s *Service, original ProviderReceipt, change ProviderCorrection) {
 	t.Helper()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	for _, b := range s.index.Blocks {
 		if b.Operator != "cm" || b.Kind != "observations" {
 			continue
