@@ -48,6 +48,11 @@ func (j *providerRevision) prepareCheckpoint() error {
 	states[j.operator] = j.replacement
 	s := j.service
 	cp := s.checkpointFor(states, s.engine)
+	detail, err := s.segmentCheckpointBlocks(cp, j.now)
+	if err != nil {
+		return err
+	}
+	j.prepared = append(j.prepared, detail...)
 	raw, err := json.Marshal(cp)
 	if err != nil || len(raw) > maxBlockBytes {
 		return fmt.Errorf("provider revised checkpoint limit")

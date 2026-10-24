@@ -14,6 +14,9 @@ func (s *Service) flush(now time.Time) error {
 	if s.encoder == nil || s.engine == nil {
 		return nil
 	}
+	if !s.segmentStart.IsZero() {
+		return s.flushSegmented(now)
+	}
 	steps := []func(time.Time) error{s.prepareFlush, s.flushMetroDetail, s.flushMetroAggregates, s.flushProviders, s.flushCheckpoint}
 	for _, step := range steps {
 		if err := step(now); err != nil {
@@ -187,9 +190,20 @@ func (s *Service) marshalCheckpoint() ([]byte, error) {
 }
 
 func (s *Service) checkpointFor(providers map[string]*providerState, current *engine) checkpoint {
-	return checkpoint{Providers: providers, Engine: current, Hour: s.hour, Detail: s.detail,
+	cp := checkpoint{Providers: providers, Engine: current, Hour: s.hour, Detail: s.detail,
 		BinSeconds: s.config.BinSeconds, SampleSeconds: int(s.config.SampleInterval / time.Second),
 		Topology: s.topology, TailRecovery: s.tailRecovery}
+	if !s.segmentStart.IsZero() {
+		if len(s.detail) > 0 {
+			cp.SegmentStart = &s.segmentStart
+		} else if !s.checkpointHour.IsZero() {
+			cp.Hour, cp.Detail = s.checkpointHour, s.checkpointDetail
+			if !s.checkpointSegmentStart.IsZero() {
+				cp.SegmentStart = &s.checkpointSegmentStart
+			}
+		}
+	}
+	return cp
 }
 
 // trimCheckpointAggregates removes the oldest droppable aggregate days from the
@@ -291,6 +305,13 @@ func (s *Service) flushCheckpoint(now time.Time) error {
 }
 
 func (s *Service) acknowledgeFlush(now time.Time) {
+	cp := s.checkpointFor(s.providers, s.engine)
+	s.checkpointHour, s.checkpointDetail = cp.Hour, cp.Detail
+	var segmentStart time.Time
+	if cp.SegmentStart != nil {
+		segmentStart = *cp.SegmentStart
+	}
+	s.checkpointSegmentStart = segmentStart
 	s.lastCheckpoint = now
 	s.engine.DirtyDays = map[string]bool{}
 	for _, p := range s.providers {

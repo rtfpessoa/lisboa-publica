@@ -156,10 +156,17 @@ func recordSizeLimit(kind string) int {
 	}
 }
 
+const maxRetentionClockNodes = 1000000
+
 func scanRecordClocks(raw []byte) (time.Time, bool) {
+	latest, _, ok := scanRecordClocksBudget(raw, maxRetentionClockNodes)
+	return latest, ok
+}
+
+func scanRecordClocksBudget(raw []byte, budget int) (time.Time, int, bool) {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.UseNumber()
-	scan := retentionClockScan{budget: 1000000}
+	scan := retentionClockScan{budget: budget}
 	count := 0
 	for {
 		var value any
@@ -168,11 +175,11 @@ func scanRecordClocks(raw []byte) (time.Time, bool) {
 			break
 		}
 		if err != nil || !scan.value(value, "", 0, false) {
-			return time.Time{}, false
+			return time.Time{}, 0, false
 		}
 		count++
 	}
-	return scan.latest, count > 0 && !scan.latest.IsZero()
+	return scan.latest, budget - scan.budget, count > 0 && !scan.latest.IsZero()
 }
 
 type retentionClockScan struct {

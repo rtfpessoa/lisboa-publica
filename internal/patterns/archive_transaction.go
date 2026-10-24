@@ -46,11 +46,15 @@ func (s *Service) prepareTransaction(prepared []preparedBlock, sources map[strin
 	if err = s.admitTransaction(prepared, guarded, reserve, now); err != nil {
 		return nil, err
 	}
+	return s.admittedTransaction(prepared, guarded, sources)
+}
+
+func (s *Service) admittedTransaction(prepared []preparedBlock, guarded []publicationSource, sources map[string]bool) (*archiveTransaction, error) {
 	transaction := &archiveTransaction{service: s, sources: guarded, next: manifest{Version: 1, Blocks: append([]block{}, s.index.Blocks...)}, admitted: map[string]bool{}}
 	for _, b := range s.index.Blocks {
 		transaction.admitted[b.File] = true
 	}
-	if err = transaction.checkSources(sources); err != nil {
+	if err := transaction.checkSources(sources); err != nil {
 		return nil, err
 	}
 	for _, p := range prepared {

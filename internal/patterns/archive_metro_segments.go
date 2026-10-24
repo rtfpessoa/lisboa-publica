@@ -1,6 +1,8 @@
 package patterns
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -12,6 +14,26 @@ const metroDetailSegmentInterval = 5 * time.Minute
 func metroDetailIdentity(b block) bool {
 	return b.Operator == "metro" && (b.Kind == "detail" || b.Kind == metroDetailSegmentKind) ||
 		strings.HasPrefix(b.Key, "metro:detail:") || strings.HasPrefix(b.Key, metroDetailSegmentPrefix)
+}
+
+func segmentRetentionWork(rows []Receipt) (int, error) {
+	used := 0
+	for _, row := range rows {
+		raw, err := json.Marshal(row)
+		if err != nil {
+			return 0, err
+		}
+		_, work, ok := scanRecordClocksBudget(raw, maxRetentionClockNodes-used)
+		if !ok {
+			return 0, fmt.Errorf("segment retention clocks exceed scan limit")
+		}
+		used += work
+	}
+	return used, nil
+}
+
+func (s *Service) checkpointSegment(b block) bool {
+	return b.Kind == metroDetailSegmentKind && !s.checkpointSegmentStart.IsZero() && b.Age.Equal(s.checkpointSegmentStart)
 }
 
 func validRecoveryDetailIdentity(b block) bool {
@@ -66,7 +88,8 @@ func recoveryDetailCounts(blocks []block) (map[string]int, map[time.Time]bool) {
 
 func hasMetroDetailSegments(blocks []block) bool {
 	for _, b := range blocks {
-		if b.Kind == metroDetailSegmentKind || strings.HasPrefix(b.Key, metroDetailSegmentPrefix) {
+		if b.Kind == metroDetailSegmentKind || strings.HasPrefix(b.Key, metroDetailSegmentPrefix) ||
+			b.Kind == metroSegmentFormatKind || b.Key == metroSegmentFormatKey {
 			return true
 		}
 	}
@@ -75,9 +98,57 @@ func hasMetroDetailSegments(blocks []block) bool {
 
 func (s *Service) hasUnprovenMetroSegments(checkpointHour time.Time) bool {
 	for _, b := range s.index.Blocks {
-		if b.Kind == metroDetailSegmentKind && (!s.checkpointRecovered || b.Age.Add(metroDetailSegmentInterval).After(checkpointHour)) {
+		if b.Kind != metroDetailSegmentKind {
+			continue
+		}
+		if !s.checkpointRecovered || (!s.checkpointSegmentStart.IsZero() && b.Age.After(s.checkpointSegmentStart)) ||
+			(s.checkpointSegmentStart.IsZero() && b.Age.Add(metroDetailSegmentInterval).After(checkpointHour)) {
 			return true
 		}
 	}
 	return false
+}
+
+func validCheckpointSegment(cp checkpoint) bool {
+	if cp.SegmentStart == nil {
+		return true
+	}
+	start := *cp.SegmentStart
+	if start.IsZero() || !start.Equal(start.UTC().Truncate(metroDetailSegmentInterval)) ||
+		!cp.Hour.Equal(start.UTC().Truncate(time.Hour)) || len(cp.Detail) == 0 {
+		return false
+	}
+	for i, row := range cp.Detail {
+		if !row.ReceivedAt.UTC().Truncate(metroDetailSegmentInterval).Equal(start) ||
+			(i > 0 && !row.ReceivedAt.After(cp.Detail[i-1].ReceivedAt)) {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *Service) verifyCheckpointSegment() error {
+	key := metroDetailSegmentPrefix + s.checkpointSegmentStart.UTC().Format(time.RFC3339)
+	var current *block
+	for i := range s.index.Blocks {
+		b := &s.index.Blocks[i]
+		if b.Kind == "detail" && b.Operator == "metro" && !b.Age.Before(s.checkpointHour) {
+			return s.fenceMetroRecoveryTail()
+		}
+		if b.Key == key {
+			copy := *b
+			current = &copy
+		}
+	}
+	if current == nil {
+		return s.fenceDetail(fmt.Errorf("checkpoint segment is missing"), nil)
+	}
+	rows, err := s.readDetailBlock(*current)
+	if err != nil {
+		return err
+	}
+	if len(rows) != len(s.checkpointDetail) || !receiptPrefix(rows, s.checkpointDetail) {
+		return s.fenceDetail(fmt.Errorf("checkpoint and segment conflict"), current)
+	}
+	return nil
 }
