@@ -489,7 +489,7 @@ export type BoardDirection = {
     color: string;
     direction_key: string | null;
     label: string;
-    /** Number of assembled call results for this direction in the board window; null when overall board evidence is unavailable, stale or loading. Not a count of distinct vehicles or proven operated journeys. */
+    /** For StopBoard, the number of assembled call results for this direction in the board window; null when overall board evidence is unavailable, stale or loading. MetroLiveFrame does not calculate a board-window count and always returns null. Not a count of distinct vehicles or proven operated journeys. */
     count: number | null;
 };
 export type PopupCoverage = {

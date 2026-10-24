@@ -27,6 +27,7 @@ func TestStationCoverageFollowsContributingForecasts(t *testing.T) {
 	if !hasStationForecast(calls.Data, now) {
 		t.Fatal("fixture did not provide a direct Metro forecast")
 	}
+	assertBoardCounts(t, board, calls.Data)
 	if board.Coverage.Status != "partial" || !strings.Contains(board.Coverage.Message, "Previsões disponíveis") {
 		t.Fatalf("unrelated stale TML publication hid a usable Metro forecast: %+v", board.Coverage)
 	}
@@ -136,4 +137,44 @@ func hasStationForecast(calls []api.StopCall, now time.Time) bool {
 		}
 	}
 	return false
+}
+
+// Generic StopBoard counts all assembled results, including independent forecasts.
+func assertBoardCounts(t *testing.T, board api.StopBoard, calls []api.StopCall) {
+	t.Helper()
+	if len(board.Directions) == 0 {
+		t.Fatal("fixture did not publish any board directions")
+	}
+	foundForecast := false
+	for _, direction := range board.Directions {
+		want := 0
+		for _, call := range calls {
+			if boardSelection(call.LineKey, call.DirectionKey) == boardSelection(direction.LineKey, direction.DirectionKey) {
+				want++
+				if hasStationForecast([]api.StopCall{call}, time.Now().UTC()) {
+					foundForecast = true
+				}
+			}
+		}
+		if direction.Count == nil || *direction.Count != want {
+			t.Fatalf("generic board count = %v, want %d for %+v", direction.Count, want, direction)
+		}
+	}
+	if !foundForecast {
+		t.Fatal("independent forecast did not contribute to any direction count")
+	}
+}
+
+func TestStationBoardCountUnavailableForStaleCoverage(t *testing.T) {
+	s, data, _ := popupFixture(t, "carris", 3)
+	data.Updated = time.Now().UTC().Add(-13 * time.Hour)
+	board := popupGET[api.StopBoard](t, s, "/api/v1/stops/carris%3AS/board")
+	if board.Coverage.Status != "stale" || len(board.Directions) == 0 {
+		t.Fatalf("fixture did not provide a stale direction board: %+v", board)
+	}
+	for _, direction := range board.Directions {
+		if direction.Count != nil {
+			t.Fatalf("stale board claimed a result count: %+v", direction)
+		}
+	}
 }
