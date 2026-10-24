@@ -365,7 +365,7 @@ func assertMetroShortTurnFrame(t *testing.T, server *Server, stop string, tc met
 		t.Fatalf("target=%q stop=%s: frame train=%+v err=%v", tc.targetLines, stop, frame.Trains, err)
 	}
 	for _, direction := range frame.Directions {
-		if textValue(direction.DirectionKey) == tc.direction && direction.Label == tc.label && direction.Count != nil && *direction.Count == 1 {
+		if textValue(direction.DirectionKey) == tc.direction && direction.Label == tc.label && direction.Count == nil {
 			return
 		}
 	}

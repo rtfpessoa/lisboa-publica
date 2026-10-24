@@ -176,17 +176,12 @@ func (b *metroFrameBuilder) stationDirections() {
 	}
 }
 func (b *metroFrameBuilder) boardDirection(p patterns.Pattern, direction string, topology patterns.Topology) api.BoardDirection {
-	dir := api.BoardDirection{LineKey: p.Route, DirectionKey: ptr(direction), Label: metroBoardDirectionLabel(b.state.Metro, topology, p.Route, direction), Count: ptr(0)}
+	dir := api.BoardDirection{LineKey: p.Route, DirectionKey: ptr(direction), Label: metroBoardDirectionLabel(b.state.Metro, topology, p.Route, direction)}
 	for _, route := range b.static.Routes {
 		if sameMetroRoute(b.static, route.Id, p.Route) {
 			dir.LineName = route.LongName
 			dir.Color = route.Color
 			break
-		}
-	}
-	for _, t := range b.frame.Trains {
-		if t.RouteId == p.Route && t.DirectionCode == direction && metroCurrentDirection(t, b.now) {
-			*dir.Count++
 		}
 	}
 	return dir
