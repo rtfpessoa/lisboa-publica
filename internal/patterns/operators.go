@@ -120,7 +120,7 @@ func operatorHistoryBlock(b block, id string) bool {
 	if b.Operator != id {
 		return false
 	}
-	return b.Kind == "observations" || id == "metro" && b.Kind == "detail"
+	return b.Kind == "observations" || id == "metro" && (b.Kind == "detail" || b.Kind == metroDetailSegmentKind)
 }
 
 func addOperatorBlock(v *OperatorHistory, b block) {

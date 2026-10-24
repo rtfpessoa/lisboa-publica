@@ -204,7 +204,7 @@ func (s *Service) removeOrphanedEntry(entry os.DirEntry, keep map[string]bool) e
 // Generated detail/state names embed a hash. Do not delete an orphan whose
 // contents cannot be verified, including across a restart after a partial commit.
 func (s *Service) preserveUncertainOrphan(name string) bool {
-	if !strings.HasPrefix(name, "metro-detail-") && !strings.HasPrefix(name, "metro-state-") {
+	if !strings.HasPrefix(name, "metro-detail-") && !strings.HasPrefix(name, "metro-"+metroDetailSegmentKind+"-") && !strings.HasPrefix(name, "metro-state-") {
 		return false
 	}
 	const suffix = ".json.zst"
@@ -314,6 +314,8 @@ func (s *Service) closeRetainedBlocks(now time.Time) {
 	for i := range s.index.Blocks {
 		b := &s.index.Blocks[i]
 		switch b.Kind {
+		case metroDetailSegmentKind:
+			b.Closed = !b.Age.Add(metroDetailSegmentInterval).After(now.UTC())
 		case "detail", "correction", "observations", "popup-events", "popup-checkpoint", "metro-inputs":
 			b.Closed = b.Age.Before(now.UTC().Truncate(time.Hour))
 		case "aggregate":

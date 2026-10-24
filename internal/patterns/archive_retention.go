@@ -39,6 +39,8 @@ func bucketKeyMatches(b block, age time.Time) bool {
 	switch b.Kind {
 	case "detail":
 		return b.Key == "metro:detail:"+stamp
+	case metroDetailSegmentKind:
+		return b.Key == metroDetailSegmentPrefix+stamp
 	case "observations":
 		prefix := b.Operator + ":observations:" + stamp
 		return b.Key == prefix || strings.HasPrefix(b.Key, prefix+":")
@@ -64,7 +66,7 @@ func metadataBoundary(b block) (time.Time, bool, bool) {
 		return age, true, strings.HasPrefix(b.Key, "metro-popup-checkpoint:")
 	case "detail", "observations", "popup-events":
 		return bucketBoundary(b, age, time.Hour)
-	case "metro-inputs":
+	case "metro-inputs", metroDetailSegmentKind:
 		return bucketBoundary(b, age, 5*time.Minute)
 	case "aggregate":
 		return aggregateBoundary(b, age)
@@ -134,6 +136,11 @@ func (s *Service) readRecordNewest(b block) (time.Time, bool) {
 	raw, err := s.decoder.DecodeAll(blob, nil)
 	if err != nil || len(raw) > recordSizeLimit(b.Kind) {
 		return time.Time{}, false
+	}
+	if b.Kind == metroDetailSegmentKind {
+		if _, err = decodeDetailRecords(raw, b); err != nil {
+			return time.Time{}, false
+		}
 	}
 	return scanRecordClocks(raw)
 }
@@ -372,7 +379,7 @@ func (s *Service) expiryCutoff(b block, now time.Time) (time.Time, bool) {
 	switch b.Kind {
 	case "popup-events", "popup-checkpoint", "metro-inputs":
 		cutoff = now.AddDate(0, 0, -7)
-	case "detail", "correction", "observations":
+	case "detail", metroDetailSegmentKind, "correction", "observations":
 		cutoff = now.AddDate(0, 0, -s.config.DetailDays)
 	case "aggregate":
 		cutoff = now.In(lisbon).AddDate(0, -s.config.AggregateMonths, 0)

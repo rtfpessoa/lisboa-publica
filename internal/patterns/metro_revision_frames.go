@@ -34,7 +34,7 @@ func (j *metroRevision) loadFrames() error {
 		if err := j.context.Err(); err != nil {
 			return err
 		}
-		if b.Operator != "metro" || b.Kind != "detail" && b.Kind != "correction" {
+		if b.Operator != "metro" || b.Kind != "detail" && b.Kind != metroDetailSegmentKind && b.Kind != "correction" {
 			continue
 		}
 		if err := j.loadFrameBlock(b); err != nil {
@@ -48,6 +48,9 @@ func (j *metroRevision) loadFrames() error {
 }
 
 func (j *metroRevision) loadFrameBlock(b block) error {
+	if b.Kind == metroDetailSegmentKind {
+		return j.loadSegmentFrames(b)
+	}
 	raw, err := j.service.revisionBlock(b, &j.used, "reprocessing working set limit")
 	if err != nil {
 		return err
@@ -58,6 +61,29 @@ func (j *metroRevision) loadFrameBlock(b block) error {
 	values, err := decodeRevisionFrames(raw, 25000-len(j.frames), "reprocessing receipt limit", func(r *Receipt) { r.Raw = nil })
 	j.frames = append(j.frames, values...)
 	return err
+}
+
+func (j *metroRevision) loadSegmentFrames(b block) error {
+	raw, err := j.service.decodedArchiveBlock(b)
+	if err != nil {
+		return j.service.fenceDetail(err, &b)
+	}
+	j.used += len(raw)
+	if j.used > maxBlockBytes {
+		return fmt.Errorf("reprocessing working set limit")
+	}
+	values, err := decodeDetailRecords(raw, b)
+	if err != nil {
+		return j.service.fenceDetail(err, &b)
+	}
+	if len(j.frames)+len(values) > 25000 {
+		return fmt.Errorf("reprocessing receipt limit")
+	}
+	for i := range values {
+		values[i].Raw = nil
+	}
+	j.frames = append(j.frames, values...)
+	return nil
 }
 
 func (j *metroRevision) loadCorrectionLedger(raw []byte) error {
