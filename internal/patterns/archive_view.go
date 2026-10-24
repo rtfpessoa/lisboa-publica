@@ -75,6 +75,9 @@ func (s *Service) metroViewMetadata() View {
 	if s.engine.Limited {
 		v.Message += " A janela efetiva de treino pode ser menor por limite de memória; consultar o suporte de cada componente."
 	}
+	if s.tailRecovery != nil {
+		v.Message += " Histórico parcial: uma amostra e avaliações preservadas apenas como registos não foram incluídas nos agregados."
+	}
 	if !s.engine.LastReceipt.IsZero() {
 		at := s.engine.LastReceipt
 		v.AsOf = &at

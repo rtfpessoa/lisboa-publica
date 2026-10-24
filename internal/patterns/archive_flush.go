@@ -182,8 +182,14 @@ func (s *Service) checkpointPayload() ([]byte, error) {
 }
 
 func (s *Service) marshalCheckpoint() ([]byte, error) {
-	cp := checkpoint{s.providers, s.engine, s.hour, s.detail, s.config.BinSeconds, int(s.config.SampleInterval / time.Second), s.topology}
+	cp := s.checkpointFor(s.providers, s.engine)
 	return json.Marshal(cp)
+}
+
+func (s *Service) checkpointFor(providers map[string]*providerState, current *engine) checkpoint {
+	return checkpoint{Providers: providers, Engine: current, Hour: s.hour, Detail: s.detail,
+		BinSeconds: s.config.BinSeconds, SampleSeconds: int(s.config.SampleInterval / time.Second),
+		Topology: s.topology, TailRecovery: s.tailRecovery}
 }
 
 // trimCheckpointAggregates removes the oldest droppable aggregate days from the

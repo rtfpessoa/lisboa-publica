@@ -44,6 +44,7 @@ type checkpoint struct {
 	BinSeconds    int
 	SampleSeconds int
 	Topology      Topology
+	TailRecovery  *MetroTailRecovery `json:",omitempty"`
 }
 
 // Service owns one archive and inference engine. The lock bounds file reader lifetime:
@@ -95,6 +96,7 @@ type archiveResources struct {
 // metroArchiveState is the inference and publication cursor for Metro receipts.
 type metroArchiveState struct {
 	checkpointRecovered        bool
+	tailRecovery               *MetroTailRecovery
 	pendingMetroDeliveryGap    bool
 	detailFence                error
 	protectedGenerations       map[retentionClockKey]bool

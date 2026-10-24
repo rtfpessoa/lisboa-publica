@@ -140,6 +140,7 @@ func (s *Service) removeOrphanedGenerations() error {
 	for _, b := range s.index.Blocks {
 		keep[b.File] = true
 	}
+	s.retainRecoverySource(keep)
 	dir, err := os.Open(s.config.Directory)
 	if err != nil {
 		return err
@@ -166,12 +167,29 @@ func (s *Service) removeOrphanedGenerations() error {
 	}
 }
 
+func (s *Service) retainRecoverySource(keep map[string]bool) {
+	if s.tailRecovery == nil {
+		return
+	}
+	prior := s.tailRecovery.PriorState
+	keep[prior.File] = true
+	raw, err := readRecoveryFile(filepath.Join(s.config.Directory, prior.File), maxBlockBytes)
+	if err != nil || digestBytes(raw) != prior.Hash {
+		s.protectCheckpointDetails()
+		s.fenceDetail(fmt.Errorf("Metro recovery source unavailable or corrupt"), &prior)
+	}
+}
+
 func (s *Service) removeOrphanedEntry(entry os.DirEntry, keep map[string]bool) error {
 	if keep[entry.Name()] {
 		return nil
 	}
 	if entry.IsDir() || !(strings.HasPrefix(entry.Name(), "metro-") || entry.Name() == ".manifest.tmp") {
 		return fmt.Errorf("unmanaged file in transport archive")
+	}
+	// A fenced checkpoint may contain an unreadable reference to a prior state.
+	if s.detailFence != nil && strings.HasPrefix(entry.Name(), "metro-state-") {
+		return nil
 	}
 	if s.preserveUncertainOrphan(entry.Name()) {
 		return nil
