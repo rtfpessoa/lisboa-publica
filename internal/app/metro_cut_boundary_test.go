@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 	"lisboapublica/internal/api"
 	"lisboapublica/internal/patterns"
 )
@@ -166,6 +168,8 @@ func TestMetroStandaloneRefreshCompletesBeforeFIFOLeaseTransition(t *testing.T) 
 	}))
 	defer upstream.Close()
 	m := &MetroClient{Client: upstream.Client(), Store: &Store{}, Cache: s.Cache, ClientID: "test", Secret: "test", Base: upstream.URL, History: s.Patterns}
+	core, _ := observer.New(zap.DebugLevel)
+	m.Log, m.diagnostics = zap.New(core), newMetroDeliveryDiagnostics()
 	m.tokenValue, m.expires = "test-token", time.Now().Add(time.Hour)
 	m.data, m.lastPersist = data, time.Now()
 	refreshDone := make(chan *MetroData, 1)

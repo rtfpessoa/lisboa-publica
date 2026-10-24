@@ -77,7 +77,7 @@ type MetroClient struct {
 
 // NewMetroClient creates a client for server-side consumer credentials.
 func NewMetroClient(client *http.Client, store *Store, cache *Cache, id, secret string) *MetroClient {
-	return &MetroClient{Client: client, Store: store, Cache: cache, ClientID: id, Secret: secret, Base: metroBase, TokenURL: metroTokenURL, metroRefreshState: metroRefreshState{Interval: 500 * time.Millisecond}}
+	return &MetroClient{Client: client, Store: store, Cache: cache, ClientID: id, Secret: secret, Base: metroBase, TokenURL: metroTokenURL, metroRefreshState: metroRefreshState{Interval: 500 * time.Millisecond, metroHistoryDelivery: metroHistoryDelivery{diagnostics: newMetroDeliveryDiagnostics()}}}
 }
 
 func (m *MetroClient) interval() time.Duration {

@@ -370,6 +370,12 @@ The earlier local-only follow-up remains dated evidence in the validation log. T
 `LOG_LEVEL` defaults to `info`; `debug` enables the bounded per-sample Metro counters (rows,
 first slots, zero-ETA observations, presence, rejections, signals, groups), a cumulative
 own-forecast summary logged at most once per minute, and the existing per-request API path line.
+At most once per minute an existing Metro sample entry also contains aggregate FIFO admission,
+rejection, acknowledgement, queue and worker-stage diagnostics. Added fields are bounded to 2 KiB
+per enhanced entry (at most 2.8125 MiB/day before log metadata). Receipt times are local collection
+times; the counters reset at restart, and no entry is emitted by a stopped worker. Queue/cut
+snapshots are approximate, archive record time includes lock wait, and projection totals lag the
+current sample. See [history](../docs/data/history.md) for interpretation.
 Keep `info` outside diagnosis.
 
 `METRO_REFRESH_MILLISECONDS` defaults to 500 and accepts 500–60000. It affects only serialized direct Metro
