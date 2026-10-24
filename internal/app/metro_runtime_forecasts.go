@@ -96,7 +96,7 @@ func metroOwnForecastWorkCurrent(t *metroTrack, copy metroTrack, now time.Time) 
 	if t == nil || t.Train.Association != "supported" {
 		return false
 	}
-	return t.Revision == copy.Revision && t.Profile == copy.Profile && t.Train.SourceUpdatedAt.Equal(copy.Train.SourceUpdatedAt) && t.Train.ValidUntil.Equal(copy.Train.ValidUntil) && now.Before(t.Train.ValidUntil) && reflect.DeepEqual(t.Points, copy.Points) && metroOwnForecastInputsMatch(t.Train.Calls, copy.Train.Calls)
+	return t.Revision == copy.Revision && t.Profile == copy.Profile && t.ScopedContinuity == copy.ScopedContinuity && t.Train.SourceUpdatedAt.Equal(copy.Train.SourceUpdatedAt) && t.Train.ValidUntil.Equal(copy.Train.ValidUntil) && now.Before(t.Train.ValidUntil) && reflect.DeepEqual(t.Points, copy.Points) && metroOwnForecastInputsMatch(t.Train.Calls, copy.Train.Calls)
 }
 
 // Checkpoint revisions can remain unchanged when archive writes are blocked.

@@ -43,6 +43,7 @@ type metroTrack struct {
 	ProofBytes                     int
 	ProofOverflow                  bool
 	HistoricalOnly                 bool
+	ScopedContinuity               bool // Runtime-only; restored history never resumes a live episode.
 	BarrierBefore                  *api.MetroTrain
 	BarrierRevision                uint64
 	PendingSuccessor               string
@@ -118,6 +119,7 @@ type metroRuntimeJournal struct {
 	lifecycleAdmissions map[string]map[string]patterns.MetroJourneyCheckpoint
 	writer              sync.Mutex
 	pending             map[string]patterns.MetroEventRecord
+	pendingCorrections  map[string]bool
 	failedEvents        map[string]metroEventFailure
 	eventWriteSequence  uint64
 	eventWriteExhausted bool
@@ -199,7 +201,7 @@ func (r *metroRuntime) observeSupported(data *MetroData, static *StaticData, now
 	batch := collectMetroPoints(data, r.directionTopology, static, now)
 	r.batch = batch
 	for _, key := range r.selectedContexts(batch, now) {
-		points := batch.groups[key]
+		points := batch.episodePoints(key)
 		track := r.admitTrack(metroTrackAdmission{key: key, batch: batch, data: data, static: static, now: now})
 		if track != nil {
 			r.updateTrackDirection(track, batch.paths[key])

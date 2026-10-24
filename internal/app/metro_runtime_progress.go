@@ -51,18 +51,42 @@ func firstMetroCurrent(t *metroTrack, current map[string]metroPoint, now time.Ti
 // Retract a coherent newer positive wait before suspending backwards continuity.
 func (r *metroRuntime) retractArrivals(t *metroTrack, current map[string]metroPoint) {
 	for n := range t.Train.Calls {
-		c := &t.Train.Calls[n]
 		p, found := current[t.Codes[n]]
-		if found && metroArrivalContradicted(*c, p) {
-			markMetroRetraction(t)
-			withdrawMetroDeparture(t, n, p.Clock, "Chegada de suporte retirada por correção da mesma visita")
-			delete(t.ModelStops, c.Id)
-			c.Arrival = missingCallTime("Chegada inferida retirada: previsão posterior incompatível")
-			c.LastOfficialEstimate = nil
-			if old, ok := t.Points[p.Stop]; ok {
-				r.queueArrival(t, *c, old, p)
-			}
+		if !found {
+			continue
 		}
+		old, ok := r.metroRetractionPrior(t, n, p)
+		r.retractMetroArrival(t, n, p, old, ok)
+	}
+}
+
+func (r *metroRuntime) metroRetractionPrior(t *metroTrack, n int, point metroPoint) (metroPoint, bool) {
+	old, ok := t.Points[point.Stop]
+	if ok || !metroArrivalContradicted(t.Train.Calls[n], point) {
+		return old, ok
+	}
+	old, ok = metroEpisodeArrivalAfter(t, n)
+	if ok && old.Platform == point.Platform {
+		return old, true
+	}
+	r.markEventAdmissionLoss(point.Clock)
+	if r.archiveAvailable {
+		r.historyStatus = "paused"
+	}
+	return metroPoint{}, false
+}
+func (r *metroRuntime) retractMetroArrival(t *metroTrack, n int, p, old metroPoint, hasOld bool) {
+	c := &t.Train.Calls[n]
+	if !metroArrivalContradicted(*c, p) {
+		return
+	}
+	markMetroRetraction(t)
+	withdrawMetroDeparture(t, n, p.Clock, "Chegada de suporte retirada por correção da mesma visita")
+	delete(t.ModelStops, c.Id)
+	c.Arrival = missingCallTime("Chegada inferida retirada: previsão posterior incompatível")
+	c.LastOfficialEstimate = nil
+	if hasOld {
+		r.queueArrival(t, *c, old, p)
 	}
 }
 func metroArrivalContradicted(c api.StopCall, p metroPoint) bool {

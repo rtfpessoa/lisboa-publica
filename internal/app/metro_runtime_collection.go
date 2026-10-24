@@ -10,11 +10,38 @@ import (
 type metroPointBatch struct {
 	provenance          map[string]metroSourceSlot
 	groups              map[string][]metroPoint
+	episodes            map[string][]metroPoint
 	paths               map[string]patterns.Pattern
 	references          map[string]map[string]bool
 	rejected            map[string]bool
 	localOnly           []metroLocalForecast
 	topologyUnavailable bool
+}
+
+// Episode points are a scoped view; groups retain the independent source forecasts.
+func (b *metroPointBatch) episodePoints(key string) []metroPoint {
+	if points, ok := b.episodes[key]; ok {
+		return points
+	}
+	return b.groups[key]
+}
+
+func (b *metroPointBatch) episodeExcludes(key, stop string) bool {
+	points, scoped := b.episodes[key]
+	if !scoped {
+		return false
+	}
+	for _, point := range points {
+		if point.Stop == stop {
+			return false
+		}
+	}
+	for _, point := range b.groups[key] {
+		if point.Stop == stop {
+			return true
+		}
+	}
+	return false
 }
 
 type metroSourceSlot struct {

@@ -81,7 +81,7 @@ func (b *metroFrameBuilder) includeForecastContext(c api.MetroForecastContext) b
 	}
 	return b.interest.Stop != "" || b.interest.Vehicle != ""
 }
-func (b *metroFrameBuilder) addForecastContext(context api.MetroForecastContext, linked map[string]bool) {
+func (b *metroFrameBuilder) addForecastContext(context api.MetroForecastContext, linked map[string]metroLinkedForecast) {
 	if b.interest.Vehicle != "" {
 		*b.frame.ForecastContexts = append(*b.frame.ForecastContexts, context)
 	}
@@ -89,7 +89,12 @@ func (b *metroFrameBuilder) addForecastContext(context api.MetroForecastContext,
 		return
 	}
 	for _, c := range context.Calls {
-		if !linked[context.RouteId+"|"+context.Reference+"|"+c.StopId+"|"+context.Destination] {
+		link, exists := linked[context.RouteId+"|"+context.Reference+"|"+c.StopId+"|"+context.Destination]
+		prediction := c.Arrival.Prediction
+		if exists && prediction != nil && prediction.SourceUpdatedAt != nil {
+			_, exists = link.predictions[metroForecastLinkKey{prediction.SourceUpdatedAt.UTC(), prediction.At.UTC()}]
+		}
+		if !exists {
 			b.frame.UnassociatedForecasts = append(b.frame.UnassociatedForecasts, c)
 		}
 	}
@@ -128,8 +133,12 @@ func (b *metroFrameBuilder) contextMatchesVehicle(context api.MetroForecastConte
 	}
 	return false
 }
-func linkedMetroForecastsAt(trains []api.MetroTrain, now time.Time) map[string]bool {
-	linked := map[string]bool{}
+
+type metroForecastLinkKey struct{ source, at time.Time }
+type metroLinkedForecast struct{ predictions map[metroForecastLinkKey]bool }
+
+func linkedMetroForecastsAt(trains []api.MetroTrain, now time.Time) map[string]metroLinkedForecast {
+	linked := map[string]metroLinkedForecast{}
 	for _, t := range trains {
 		if metroCurrentDirection(t, now) {
 			linkMetroCalls(linked, t)
@@ -137,10 +146,18 @@ func linkedMetroForecastsAt(trains []api.MetroTrain, now time.Time) map[string]b
 	}
 	return linked
 }
-func linkMetroCalls(linked map[string]bool, t api.MetroTrain) {
-	for _, c := range t.Calls {
-		if c.Arrival.Prediction != nil || c.OwnPrediction != nil {
-			linked[t.RouteId+"|"+t.Reference+"|"+c.StopId+"|"+t.Destination] = true
+func linkMetroCalls(linked map[string]metroLinkedForecast, t api.MetroTrain) {
+	for n, c := range t.Calls {
+		if (t.NextIndex == nil && t.CurrentIndex == nil || metroVisitUpcoming(t, n)) && (c.Arrival.Prediction != nil || c.OwnPrediction != nil) {
+			key := t.RouteId + "|" + t.Reference + "|" + c.StopId + "|" + t.Destination
+			entry, exists := linked[key]
+			if !exists {
+				entry.predictions = map[metroForecastLinkKey]bool{}
+			}
+			if p := c.Arrival.Prediction; p != nil && p.SourceUpdatedAt != nil {
+				entry.predictions[metroForecastLinkKey{p.SourceUpdatedAt.UTC(), p.At.UTC()}] = true
+			}
+			linked[key] = entry
 		}
 	}
 }

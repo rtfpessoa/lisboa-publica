@@ -44,6 +44,12 @@ func (r *metroRuntime) queueArrivalWithClaim(t *metroTrack, c api.StopCall, befo
 	}
 	r.pendingBytes += len(raw)
 	r.pending[record.ID] = record
+	if c.Arrival.Inferred == nil {
+		if r.pendingCorrections == nil {
+			r.pendingCorrections = map[string]bool{}
+		}
+		r.pendingCorrections[record.ID] = true
+	}
 }
 func (r *metroRuntime) markEventAdmissionLoss(at time.Time) {
 	r.eventAdmissionLost = true
@@ -163,10 +169,17 @@ func (r *metroRuntime) eventBatch(now time.Time) ([]patterns.MetroEventRecord, b
 	for id, v := range r.pending {
 		if v.At.Before(now.AddDate(0, 0, -7)) {
 			delete(r.pending, id)
+			delete(r.pendingCorrections, id)
 			r.pendingBytes -= len(v.Payload)
 			r.expireEvent(v)
 			retired = r.clearFailedEvent(v) || retired
 			continue
+		}
+		if r.pendingCorrections[id] {
+			t := r.tracks[v.Journey]
+			if t == nil || t.UncommittedRetraction {
+				continue
+			}
 		}
 		batch = append(batch, v)
 	}
@@ -190,6 +203,7 @@ func (r *metroRuntime) commitEvent(record patterns.MetroEventRecord, attempt uin
 		return
 	}
 	delete(r.pending, record.ID)
+	delete(r.pendingCorrections, record.ID)
 	r.pendingBytes -= len(record.Payload)
 	r.clearFailedEvent(record)
 	if t := r.tracks[record.Journey]; t != nil {

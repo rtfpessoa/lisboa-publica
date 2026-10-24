@@ -60,12 +60,12 @@ func (r *metroRuntime) continuingTrack(track *metroTrack, v metroTrackAdmission)
 		return nil
 	}
 	latest := track.Train.SourceUpdatedAt
-	for _, point := range v.batch.groups[v.key] {
+	for _, point := range v.batch.episodePoints(v.key) {
 		if point.Clock.After(latest) {
 			latest = point.Clock
 		}
 	}
-	if !metroTrackClosed(track) && latest.Sub(track.Train.SourceUpdatedAt) <= 60*time.Second && track.Profile == r.topology.Profile && !v.now.After(track.Train.ValidUntil) {
+	if !metroTrackClosed(track) && latest.Sub(track.Train.SourceUpdatedAt) <= 60*time.Second && track.Profile == r.topology.Profile && v.now.Before(track.Train.ValidUntil) {
 		return track
 	}
 	suspendMetroTrack(track, "Continuidade interrompida")
