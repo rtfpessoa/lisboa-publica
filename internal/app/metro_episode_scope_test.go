@@ -126,6 +126,66 @@ func TestMetroEpisodeScopeNewPointCannotRenewStaleAnchor(t *testing.T) {
 	}
 }
 
+func TestMetroEpisodeScopeDoesNotRestoreSupersededPoint(t *testing.T) {
+	r, batch, track, now := metroEpisodeScopeFixture()
+	key := "metro:green|50|24C"
+	delete(track.Points, "TE")
+	newer := batch.groups[key][2]
+	newer.Clock = newer.Clock.Add(time.Second)
+	newer.Seconds = ptr(*newer.Seconds - 1)
+	batch.groups[key] = append(batch.groups[key], newer)
+	if selected := r.selectedContexts(batch, now); len(selected) != 1 {
+		t.Fatalf("supported downstream anchor lost: %v", selected)
+	}
+	r.applyPoints(track, batch.episodePoints(key), now)
+	if _, exists := track.Points["TE"]; exists || !batch.episodeExcludes(key, "TE") {
+		t.Fatal("a superseded station point became an anchor or inherited the episode model")
+	}
+	forecasts := metroLatestForecastPoints(batch.groups[key])
+	for _, point := range forecasts {
+		if point.Stop == "TE" && point.Clock.Equal(newer.Clock) {
+			return
+		}
+	}
+	t.Fatal("the independent latest source forecast was lost")
+}
+
+func TestMetroEpisodeScopeDoesNotInferFromSupersededZero(t *testing.T) {
+	r, batch, track, now := metroEpisodeScopeFixture()
+	key := "metro:green|50|24C"
+	older := batch.groups[key][2]
+	older.Seconds = ptr(0)
+	prior := older
+	prior.Clock, prior.Seconds = older.Clock.Add(-2*time.Second), ptr(2)
+	track.Points["TE"] = prior
+	newer := older
+	newer.Clock, newer.Seconds = older.Clock.Add(time.Second), nil
+	batch.groups[key][2] = older
+	batch.groups[key] = append(batch.groups[key], newer)
+	if selected := r.selectedContexts(batch, now); len(selected) != 1 {
+		t.Fatalf("supported downstream anchor lost: %v", selected)
+	}
+	r.applyPoints(track, batch.episodePoints(key), now)
+	if track.Train.Calls[3].Arrival.Inferred != nil {
+		t.Fatal("a superseded zero created an inferred terminal arrival")
+	}
+}
+
+func TestMetroEpisodeScopeDoesNotAttachModelToOtherPlatform(t *testing.T) {
+	r, batch, track, now := metroEpisodeScopeFixture()
+	key := "metro:green|50|24C"
+	delete(track.Points, "TE")
+	earlier := batch.groups[key][2]
+	earlier.Seconds = nil
+	newer := batch.groups[key][2]
+	newer.Platform, newer.Clock = "TE6O", earlier.Clock.Add(time.Second)
+	batch.groups[key][2] = earlier
+	batch.groups[key] = append(batch.groups[key], newer)
+	if selected := r.selectedContexts(batch, now); len(selected) != 1 || !batch.episodeExcludes(key, "TE") {
+		t.Fatal("an excluded newer platform could inherit the episode model")
+	}
+}
+
 func TestMetroEpisodeScopeSameClockAnchorCanAdvance(t *testing.T) {
 	r, first, track, now := metroEpisodeScopeFixture()
 	key := "metro:green|50|24C"
@@ -409,6 +469,14 @@ func TestMetroEpisodeScopePlatformAndMotionAmbiguity(t *testing.T) {
 			key := "metro:green|50|24C"
 			p := b.groups[key][1]
 			p.Platform, p.Seconds = "other", ptr(143)
+			b.groups[key] = append(b.groups[key], p)
+		}},
+		{"conflicting latest revisions beyond anchor", func(_ *metroRuntime, b *metroPointBatch, _ *metroTrack, _ time.Time) {
+			key := "metro:green|50|24C"
+			p := b.groups[key][2]
+			p.Clock = p.Clock.Add(time.Second)
+			b.groups[key] = append(b.groups[key], p)
+			p.Seconds = ptr(*p.Seconds + 1)
 			b.groups[key] = append(b.groups[key], p)
 		}},
 		{"expired downstream", func(_ *metroRuntime, b *metroPointBatch, tr *metroTrack, now time.Time) {

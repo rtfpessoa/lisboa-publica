@@ -348,7 +348,14 @@ func (r *metroRuntime) acceptMetroCurrent(t *metroTrack, current map[string]metr
 		suspendMetroTrack(t, "Plataformas contraditórias")
 		return false
 	}
-	r.retractArrivals(t, current)
+	if metroIncompatibleArrival(t, current, now) {
+		suspendMetroTrack(t, "Sem continuidade suficiente da chegada")
+		return false
+	}
+	if !r.retractArrivals(t, current, now) {
+		suspendMetroTrack(t, "Correção de chegada sem suporte suficiente")
+		return false
+	}
 	if metroRegressiveCurrent(t, current, now) {
 		regressMetroTrack(t, now)
 		return false

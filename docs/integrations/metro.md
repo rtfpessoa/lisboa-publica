@@ -60,7 +60,7 @@ The direct station records are held in the Metro cache, not substituted wholesal
 | Raw field | Type/validation | Application use |
 |---|---|---|
 | `stop_id` | String | Match the selected direct station |
-| `cais` | String | Decoded as `Platform`, retained in direct cache; not used to construct public arrivals |
+| `cais` | String | Decoded as `Platform` and retained in direct cache; live inferred arrivals and their corrections require the same nonempty source platform. It is not mapped to a GTFS platform or used to construct generic public arrivals |
 | `hora` | String `YYYYMMDDHHMMSS`, Europe/Lisbon, without an offset | Original `observed_at`; must identify a unique instant, be fresh within 90 seconds and not over 30 seconds ahead |
 | `comboio`, `comboio2`, `comboio3` | Train-reference strings | Nonempty reference required for generic arrival `trip_id`; missing references remain anonymous forecasts in Metro live frames |
 | `tempoChegada1`, `tempoChegada2`, `tempoChegada3` | Raw JSON decoded into an integer and bounded to 0–7,200 seconds | `expected_at=hora+wait`; JSON `null`, omitted fields, `"--"`, malformed values, fractions and numeric strings are rejected |

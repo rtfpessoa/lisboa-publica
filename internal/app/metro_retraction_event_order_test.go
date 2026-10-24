@@ -224,7 +224,7 @@ func TestMetroOrdinaryCorrectionWithoutPointSurvivesEventOnlyReopen(t *testing.T
 	}
 }
 
-func TestMetroOrdinaryCorrectionWithoutUniqueProofDisclosesLoss(t *testing.T) {
+func TestMetroOrdinaryCorrectionWithoutUniqueProofPreservesArrival(t *testing.T) {
 	for _, variant := range []string{"missing", "ambiguous", "different platform"} {
 		t.Run(variant, func(t *testing.T) {
 			r, batch, track, now := metroOrdinaryCorrectionFixture()
@@ -244,8 +244,8 @@ func TestMetroOrdinaryCorrectionWithoutUniqueProofDisclosesLoss(t *testing.T) {
 				t.Fatalf("normal correction path was not selected: %v", selected)
 			}
 			r.applyPoints(track, batch.episodePoints(key), now)
-			if track.Train.Calls[1].Arrival.Inferred != nil || !r.eventAdmissionLost || r.historyStatus != "paused" || len(r.pendingCorrections) != 0 {
-				t.Fatal("unprovable correction did not disclose missing event evidence")
+			if track.Train.Calls[1].Arrival.Inferred == nil || track.Train.Association != "suspended" || track.UncommittedRetraction || len(r.pendingCorrections) != 0 {
+				t.Fatal("unprovable correction did not preserve the inferred arrival")
 			}
 		})
 	}

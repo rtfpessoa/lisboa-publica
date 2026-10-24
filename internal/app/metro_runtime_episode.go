@@ -2,6 +2,7 @@ package app
 
 import (
 	"slices"
+	"sort"
 	"time"
 
 	"lisboapublica/internal/api"
@@ -50,7 +51,7 @@ func (r *metroRuntime) scopeMetroEpisode(key string, batch *metroPointBatch, cur
 	if last.IsZero() || anchor.IsZero() || !metroEpisodeUpstreamSeparate(t, current, bound, last, now) {
 		return nil, false
 	}
-	return metroEpisodeScopedPoints(batch.groups[key], indices, bound, anchor)
+	return metroEpisodeScopedPoints(current, indices, bound, anchor)
 }
 
 func (r *metroRuntime) metroEpisodeScopeEligible(t *metroTrack, stops []string, direction string, now time.Time) bool {
@@ -95,9 +96,15 @@ func metroEpisodeIndices(codes []string) (map[string]int, bool) {
 	return indices, true
 }
 
-func metroEpisodeScopedPoints(points []metroPoint, indices map[string]int, bound int, anchor time.Time) ([]metroPoint, bool) {
-	kept := make([]metroPoint, 0, len(points))
-	for _, point := range points {
+func metroEpisodeScopedPoints(current map[string]metroPoint, indices map[string]int, bound int, anchor time.Time) ([]metroPoint, bool) {
+	stops := make([]string, 0, len(current))
+	for stop := range current {
+		stops = append(stops, stop)
+	}
+	sort.Strings(stops)
+	kept := make([]metroPoint, 0, len(stops))
+	for _, stop := range stops {
+		point := current[stop]
 		n, ok := indices[point.Stop]
 		if !ok {
 			return nil, false
@@ -206,7 +213,7 @@ func (s metroContextSelection) retractEpisodeCorrections(scope, key string, curr
 			continue
 		}
 		if metroEpisodeCorrectionOrdered(point, evidence.remaining, evidence.track.Codes[evidence.bound:], s.now) {
-			s.runtime.retractMetroArrival(evidence.track, n, point, after, true)
+			s.runtime.retractMetroArrival(evidence.track, n, point, after)
 		}
 	}
 }
@@ -265,7 +272,7 @@ func metroCorrectionRemaining(t *metroTrack, current map[string]metroPoint, indi
 }
 
 func metroCorrectionClockValid(t *metroTrack, after, point metroPoint, now time.Time) bool {
-	if point.Platform != after.Platform || !point.Clock.After(after.Clock) || point.Clock.Sub(after.Clock) > 60*time.Second {
+	if !metroSameArrivalPlatform(after, point) || !point.Clock.After(after.Clock) || point.Clock.Sub(after.Clock) > 60*time.Second {
 		return false
 	}
 	return !point.Clock.Before(t.Train.SourceUpdatedAt) && !point.Clock.After(now) && now.Sub(point.Clock) < sourceFreshness
