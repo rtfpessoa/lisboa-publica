@@ -361,7 +361,7 @@ func (s *Service) retirementCandidate(now time.Time, pressure bool, work *cleanu
 func (s *Service) retirementCandidates(now time.Time, pressure bool) []int {
 	indices := make([]int, 0)
 	for i, b := range s.index.Blocks {
-		if !b.Closed || b.Kind == "state" || s.protectedGenerations[retentionKey(b)] {
+		if !b.Closed || b.Kind == "state" || s.checkpointSegment(b) || s.protectedGenerations[retentionKey(b)] {
 			continue
 		}
 		cutoff, ok := s.expiryCutoff(b, now)
@@ -394,6 +394,9 @@ func (s *Service) retireVerified(index int, now time.Time, pressure bool, work *
 	}
 	work.checks++
 	b := s.index.Blocks[index]
+	if s.checkpointSegment(b) {
+		return errRetentionChanged
+	}
 	// Rehash the complete generation immediately before retirement. If it is
 	// unchanged, a validated cached clock for this exact block remains valid.
 	if _, err := s.readBlock(b); err != nil {

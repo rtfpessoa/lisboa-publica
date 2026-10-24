@@ -22,6 +22,11 @@ func (j *metroRevision) prepareBlocks() error {
 	}
 	j.prepared = append(j.prepared, ledger)
 	cp := j.service.checkpointFor(j.service.providers, j.replacement)
+	detail, err := j.service.segmentCheckpointBlocks(cp, j.now)
+	if err != nil {
+		return err
+	}
+	j.prepared = append(j.prepared, detail...)
 	raw, err := json.Marshal(cp)
 	if err != nil {
 		return err

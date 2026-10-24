@@ -10,7 +10,11 @@ func (s *Service) restoreArchive() error {
 	if err := s.readManifest(); err != nil {
 		return err
 	}
-	if err := s.restoreMetroCheckpoint(); err == nil {
+	formatErr := s.restoreSegmentFormat()
+	if formatErr != nil {
+		s.fenceDetail(formatErr, nil)
+	}
+	if formatErr == nil && s.restoreMetroCheckpoint() == nil {
 		_ = s.replayMetroDetails()
 	} else {
 		s.protectCheckpointDetails()
@@ -28,8 +32,14 @@ func (s *Service) restoreArchive() error {
 
 func (s *Service) restoreMetroCheckpoint() error {
 	found, err := s.metroCheckpointBlock()
-	if err != nil || found == nil {
+	if err != nil {
 		return err
+	}
+	if found == nil {
+		if s.segmentFormat {
+			return s.fenceDetail(fmt.Errorf("Metro segment checkpoint is missing"), nil)
+		}
+		return nil
 	}
 	raw, err := s.decodedArchiveBlock(*found)
 	if err != nil {
@@ -39,11 +49,28 @@ func (s *Service) restoreMetroCheckpoint() error {
 	if err = knownJSON(raw, &cp); err != nil || !validMetroCheckpoint(cp) {
 		return s.fenceDetail(fmt.Errorf("invalid or unknown Metro checkpoint"), found)
 	}
-	if err = validateDetailReceipts(cp.Detail, cp.Hour); err != nil {
-		return s.fenceDetail(err, found)
+	if err = s.validateRestoredCheckpoint(cp, found); err != nil {
+		return err
 	}
 	s.applyCheckpoint(cp, *found)
 	s.checkpointRecovered = checkpointHasMetroEvidence(cp)
+	return nil
+}
+
+func (s *Service) validateRestoredCheckpoint(cp checkpoint, found *block) error {
+	if (cp.SegmentStart != nil) != s.segmentFormat {
+		return s.fenceDetail(fmt.Errorf("Metro segment format and checkpoint conflict"), found)
+	}
+	if err := validateDetailReceipts(cp.Detail, cp.Hour); err != nil {
+		return s.fenceDetail(err, found)
+	}
+	if cp.SegmentStart != nil {
+		work, err := segmentRetentionWork(cp.Detail)
+		if err != nil {
+			return s.fenceDetail(err, found)
+		}
+		s.segmentClockWork = work
+	}
 	return nil
 }
 
@@ -86,7 +113,7 @@ func validMetroCheckpoint(cp checkpoint) bool {
 	if len(cp.Engine.Aggregates) > maxEngineAggregates || len(cp.Engine.Cases) > maxPendingForecasts {
 		return false
 	}
-	return validProviderCheckpoint(cp.Providers) && validMetroTailRecovery(cp.TailRecovery)
+	return validProviderCheckpoint(cp.Providers) && validMetroTailRecovery(cp.TailRecovery) && validCheckpointSegment(cp)
 }
 
 func (s *Service) decodedArchiveBlock(b block) ([]byte, error) {
@@ -114,6 +141,10 @@ func (s *Service) applyCheckpoint(cp checkpoint, b block) {
 	s.engine.Aggregates = normalized
 	s.lastCheckpoint = b.Age
 	s.topology = cp.Topology
+	s.checkpointHour, s.checkpointDetail = cp.Hour, cp.Detail
+	if cp.SegmentStart != nil {
+		s.segmentStart, s.checkpointSegmentStart = *cp.SegmentStart, *cp.SegmentStart
+	}
 	s.setRecoveredMetroHour(cp.Hour, cp.Detail)
 }
 
@@ -135,6 +166,9 @@ func (s *Service) replayMetroDetails() error {
 	}
 	if s.hasUnprovenMetroSegments(checkpointHour) {
 		return s.fenceMetroRecoveryTail()
+	}
+	if !s.checkpointSegmentStart.IsZero() {
+		return s.verifyCheckpointSegment()
 	}
 	latest := s.latestMetroDetail(checkpointHour)
 	if latest == nil {

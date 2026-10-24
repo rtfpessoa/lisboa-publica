@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-var errDetailHourLimit = errors.New("detail and forecasts exceed hour buffer")
+var errDetailHourLimit = errors.New("detail and forecasts exceed bounded buffer")
 
 // MetroRecordKind identifies whether an input was admitted as a full sample.
 type MetroRecordKind uint8
@@ -83,7 +83,7 @@ func (s *Service) checkMetroAdmission(receipt Receipt) error {
 	if s.detailFence != nil {
 		return s.detailFence
 	}
-	if s.detailLimitError != nil && !receipt.ReceivedAt.UTC().Truncate(time.Hour).After(s.detailLimitHour) {
+	if s.detailLimitError != nil && !receipt.ReceivedAt.UTC().Truncate(s.detailInterval()).After(s.detailLimitHour) {
 		return s.detailLimitError
 	}
 	if len(receipt.Rows) > 2000 {
@@ -157,7 +157,7 @@ func (s *Service) recordMetroSample(receipt Receipt, topology Topology) (bool, e
 	if err := s.prepareMetroSample(receipt); err != nil {
 		return false, err
 	}
-	if s.hour.After(s.detailLimitHour) {
+	if s.detailStart().After(s.detailLimitHour) {
 		s.detailLimitHour, s.detailLimitError = time.Time{}, nil
 	}
 	candidate := cloneMetroEngine(s.engine)
@@ -168,10 +168,10 @@ func (s *Service) recordMetroSample(receipt Receipt, topology Topology) (bool, e
 	}
 	if err := s.appendMetroSample(receipt); err != nil {
 		if errors.Is(err, errDetailHourLimit) {
-			s.detailLimitHour, s.detailLimitError = s.hour, err
+			s.detailLimitHour, s.detailLimitError = s.detailStart(), err
 			return false, err
 		}
-		if persistErr := s.flushMetroDetail(s.lastSample); persistErr != nil {
+		if persistErr := s.preserveAdmittedMetroDetail(); persistErr != nil {
 			err = fmt.Errorf("%w; preserving earlier detail: %v", err, persistErr)
 		}
 		return false, s.markPaused(s.fenceDetail(err, nil))
@@ -179,6 +179,20 @@ func (s *Service) recordMetroSample(receipt Receipt, topology Topology) (bool, e
 	s.engine = candidate
 	s.lastSample, s.topology = receipt.ReceivedAt, topology
 	return true, s.checkpointMetroSample(receipt.ReceivedAt)
+}
+
+func (s *Service) preserveAdmittedMetroDetail() error {
+	if !s.segmentStart.IsZero() {
+		err := s.flush(s.lastSample)
+		if err == nil || s.detailFence != nil || s.manifestUncertain || s.checkpointUncertain {
+			return err
+		}
+		if preserveErr := s.preserveUncheckpointedSegment(s.lastSample); preserveErr != nil {
+			return errors.Join(err, preserveErr)
+		}
+		return nil
+	}
+	return s.flushMetroDetail(s.lastSample)
 }
 
 func (s *Service) prepareMetroSample(receipt Receipt) error {
@@ -211,6 +225,9 @@ func boundedMetroReceipt(receipt Receipt) ([]byte, error) {
 
 func (s *Service) advanceMetroHour(at time.Time) error {
 	next := at.UTC().Truncate(time.Hour)
+	if !s.segmentStart.IsZero() {
+		return s.advanceMetroSegment(at, next)
+	}
 	if !s.hour.IsZero() && !next.Equal(s.hour) {
 		if next.Before(s.hour) {
 			return s.pause(fmt.Errorf("detail hour clock regressed"))
@@ -219,6 +236,9 @@ func (s *Service) advanceMetroHour(at time.Time) error {
 			return s.pause(err)
 		}
 		s.detail, s.detailBytes = []Receipt{}, 0
+		s.segmentClockWork = 0
+		s.hour, s.segmentStart = next, at.UTC().Truncate(metroDetailSegmentInterval)
+		return nil
 	}
 	if !next.Equal(s.hour) {
 		if err := s.loadDetailHour(next); err != nil {
@@ -229,6 +249,36 @@ func (s *Service) advanceMetroHour(at time.Time) error {
 	return nil
 }
 
+func (s *Service) advanceMetroSegment(at, hour time.Time) error {
+	start := at.UTC().Truncate(metroDetailSegmentInterval)
+	if start.Before(s.segmentStart) {
+		return s.pause(fmt.Errorf("detail segment clock regressed"))
+	}
+	if start.After(s.segmentStart) {
+		if err := s.flush(at); err != nil {
+			return s.pause(err)
+		}
+		s.detail, s.detailBytes = []Receipt{}, 0
+		s.segmentClockWork = 0
+		s.hour, s.segmentStart = hour, start
+	}
+	return nil
+}
+
+func (s *Service) detailStart() time.Time {
+	if !s.segmentStart.IsZero() {
+		return s.segmentStart
+	}
+	return s.hour
+}
+
+func (s *Service) detailInterval() time.Duration {
+	if !s.segmentStart.IsZero() {
+		return metroDetailSegmentInterval
+	}
+	return time.Hour
+}
+
 func (s *Service) appendMetroSample(receipt Receipt) error {
 	raw, err := json.Marshal(receipt)
 	if err != nil {
@@ -236,6 +286,13 @@ func (s *Service) appendMetroSample(receipt Receipt) error {
 	}
 	if len(s.detail) >= maxDetailHourReceipts || s.detailBytes+len(raw)+1 > maxDetailHourBytes {
 		return s.pause(errDetailHourLimit)
+	}
+	if !s.segmentStart.IsZero() {
+		_, used, ok := scanRecordClocksBudget(raw, maxRetentionClockNodes-s.segmentClockWork)
+		if !ok {
+			return s.pause(errDetailHourLimit)
+		}
+		s.segmentClockWork += used
 	}
 	s.detail = append(s.detail, receipt)
 	s.detailBytes += len(raw) + 1

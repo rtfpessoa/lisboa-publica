@@ -41,6 +41,7 @@ type checkpoint struct {
 	Engine        *engine
 	Hour          time.Time
 	Detail        []Receipt
+	SegmentStart  *time.Time `json:",omitempty"`
 	BinSeconds    int
 	SampleSeconds int
 	Topology      Topology
@@ -99,6 +100,7 @@ type archiveResources struct {
 // metroArchiveState is the inference and publication cursor for Metro receipts.
 type metroArchiveState struct {
 	checkpointRecovered        bool
+	segmentFormat              bool
 	tailRecovery               *MetroTailRecovery
 	pendingMetroDeliveryGap    bool
 	detailFence                error
@@ -106,8 +108,13 @@ type metroArchiveState struct {
 	engine                     *engine
 	topology                   Topology
 	hour                       time.Time
+	segmentStart               time.Time
+	checkpointHour             time.Time
+	checkpointSegmentStart     time.Time
+	checkpointDetail           []Receipt
 	detail                     []Receipt
 	detailBytes                int
+	segmentClockWork           int
 	lastSample, lastCheckpoint time.Time
 	detailLimitHour            time.Time
 	detailLimitError           error

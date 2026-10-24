@@ -73,11 +73,13 @@ goroutine until it unblocks; the later process logger sync can also block.
 Detail is JSON lines compressed with Zstd, retaining the original wait response,
 issued forecasts and later evaluation outcomes. Sparse daily hourly aggregates
 use Parquet+Zstd. Checksummed immutable generations and an atomic fsynced manifest
-are stored on this volume, avoiding additional database writes. A checkpoint is
-published last; a Metro detail tail beyond that checkpoint whose order cannot be proved is preserved and fenced rather than replayed after a crash.
+are stored on this volume, avoiding additional database writes. Legacy detail is
+published before its checkpoint. Segmented detail, its shared checkpoint and changed
+aggregates are admitted through one manifest. Unproven tails are preserved and fenced
+rather than replayed after a crash.
 A restart always reinitializes live association support, showing a gap rather than
 assuming continuous presence during downtime. Unknown/corrupt data stay unavailable.
-Hourly detail and checkpoint buffers, row counts, query duration and output are bounded;
+Detail and checkpoint buffers, row counts, query duration and output are bounded;
 if a buffer or budget is exhausted, historical collection pauses and official live
 data remain independent. The source collection and compression costs still need
 weekday/weekend measurements after deployment.
@@ -90,11 +92,17 @@ owner is restarted; both generations are retained. On reopen, the selected manif
 is directory-synced before orphan cleanup and the cleanup is synced afterwards.
 Buffered Metro detail blocked by pressure is retried before other admissions.
 Rejected receipts are not recovered, and unacknowledged detail can be lost on restart.
-The Metro hour buffer holds at most 1,200 receipts and 16 MiB of encoded JSON lines;
-ordinary write failures retain it for retry. If a sampled inference would overflow
-the buffer, its isolated candidate is discarded and collection records a gap for
-the rest of that UTC hour. The next hour resumes only after the retained detail and
-checkpoint flush; failed or uncertain publication retains the existing fences.
+The Metro buffer holds at most 1,200 receipts and 16 MiB of JSON lines. The writer
+finishes the active legacy UTC hour before switching to five-minute UTC segments.
+Each segment also has a bounded one-million-node clock scan so it can be checked
+for retirement. If inference exceeds a buffer or clock-scan bound, its candidate is
+discarded and collection records a gap for that segment. A later segment resumes
+after the prior detail and checkpoint flush; the legacy hour resumes at the next
+hour. Failed or uncertain publication retains the existing fences. The active
+checkpoint-referenced segment is pinned against expiry and pressure, even after an
+idle restart. A permanent manifest marker makes older executables reject a segmented
+archive before reconciliation; use a compatible binary or a verified pre-change
+backup for rollback.
 Missing referenced, corrupt, oversized, conflicting or non-round-trippable detail
 or checkpoint data, and multiple later hours after a checkpoint, also fence
 collection and preserve identified evidence. The
@@ -390,7 +398,7 @@ For evidence-backed revisions, build/run `cmd/patterns-maintenance` locally agai
 
 ## Offline Metro tail repair
 
-`/app/patterns-recover` is a narrowly scoped repair for a single verified Metro detail receipt following an identical checkpoint prefix. It is not automatic recovery or general reprocessing. Stop every archive owner and preserve a verified full-volume backup first. Inspect the quiesced manifest and source generations, measure storage headroom and rehearse on a private copy. The tool takes the archive's exclusive lock itself, does not call normal archive startup or cleanup, and does not contact providers. This legacy-tail repair refuses any manifest containing a Metro detail segment kind or reserved segment key, including on an idempotent retry. Segmented archives require a separately verified recovery procedure. Use a private request file outside the archive and invoke:
+`/app/patterns-recover` is a narrowly scoped repair for a single verified Metro detail receipt following an identical checkpoint prefix. It is not automatic recovery or general reprocessing. Stop every archive owner and preserve a verified full-volume backup first. Inspect the quiesced manifest and source generations, measure storage headroom and rehearse on a private copy. The tool takes the archive's exclusive lock itself, does not call normal archive startup or cleanup, and does not contact providers. This legacy-tail repair refuses any manifest containing a Metro detail segment or segment-format marker identity, including on an idempotent retry. Segmented archives require a separately verified recovery procedure. Use a private request file outside the archive and invoke:
 
 ```sh
 /app/patterns-recover -archive /absolute/archive/path -request /private/request.json
@@ -443,7 +451,7 @@ The dedicated Hub positions loop targets one-second starts, with no overlap/catc
 
 Latest Metro journey checkpoints add the `popup-checkpoint` archive kind under the existing persistent archive volume/cap. Preserve that volume with the database and run one archive/ingestion owner. Older binaries that reject unknown archive kinds cannot read this additive manifest: rollback requires a compatible binary or a verified pre-change archive backup, never deletion of current evidence. Without an archive, fresh supported journey identities and forecasts remain selectable with unavailable persistence. Archive latency does not gate their initial visibility. Lifecycle checkpoint groups reserve and commit together; retain the additive `metro-inputs` kind as well. Restart never restores live motion continuity.
 
-The archive reader also recognizes historical `metro-detail-segment` blocks. This release still writes hourly Metro detail and does not activate segmented collection. If a retained archive contains the new kind, an older binary rejects its manifest: use a compatible binary or a verified backup for rollback and preserve the current archive. Segments without a recovered checkpoint or extending into its active hour fence Metro collection. See [history](../docs/data/history.md) for validation and retention.
+Metro detail switches from the active legacy UTC hour to `metro-detail-segment` blocks after the prior hour flushes. A manifest format marker makes incompatible older binaries reject the archive before reconciliation; use a compatible binary or a verified pre-change backup for rollback. An absent or conflicting active segment, or a later unproven segment, fences collection. See [history](../docs/data/history.md) for validation and retention.
 
 `METRO_MODEL_ALLOWLIST` is optional and defaults unset. To enable a reviewed profile, mount its bounded JSON file read-only and pass its container path through an explicit Compose override. Startup rejects malformed/unreviewed/nonmatching replay evidence; there is no production allowlist bundled in this release. Preserve the persistent archive and run one owner. Lifecycle changes publish complete in-memory state immediately and reserve their durable generation together; restart recovers suspended history without motion continuity. The operational browser model evaluates source-bound published polylines every 500 ms without more provider requests.
 
