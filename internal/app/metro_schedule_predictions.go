@@ -24,6 +24,9 @@ func metroSchedulePriors(data *MetroData, static *StaticData, path patterns.Patt
 	b := metroPlanBuilder{data: data, static: static, stations: map[string]MetroStation{}, mapping: map[string]string{}, routes: map[string]string{}}
 	b.addStations()
 	b.mapStaticPlan()
+	if len(static.Schedule.Trips) > 0 {
+		b.prepareNames()
+	}
 	dwell, run := make([][]int, len(out)), make([][]int, len(out))
 	for _, trip := range static.Schedule.Trips {
 		collectMetroPriorDurations(metroPriorVisits(&b, trip, path, now), dwell, run)
