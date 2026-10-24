@@ -9,6 +9,7 @@ type metroSample struct {
 	now      time.Time
 	gap      bool
 	presence intermediatePresence
+	rejected map[string]bool
 	current  map[string]priorRow
 	signals  map[string][]signal
 	stats    MetroSampleStats
@@ -46,12 +47,21 @@ func (e *engine) step(receipt Receipt, topology Topology, config Config) {
 	sample := e.prepareMetroStep(receipt, topology, config)
 	sample.stats.Gap = sample.gap
 	sample.stats.Empty = len(receipt.Rows) == 0 && receipt.Error == ""
-	sample.stats.IntermediateCuts, sample.stats.Gaps = e.IntermediateCuts, e.Gaps
 	if receipt.Error != "" {
+		sample.stats.IntermediateCuts, sample.stats.Gaps = e.IntermediateCuts, e.Gaps
 		sample.stats.SampledAt, sample.stats.ActiveGroups = sample.now, activeMetroGroups(e.Groups)
 		e.LastMetroStats = sample.stats
 		return
 	}
+	rows := intermediateRows(receipt)
+	sample.rejected = e.conflictingSampleContexts(rows)
+	support := e.intermediateSupport(rows, receipt.ReceivedAt, topology)
+	lost, _, deleted := e.cutIntermediateSupport(rows, receipt.Rows, support, receipt.ReceivedAt, topology)
+	sample.stats.GroupsDeleted += deleted
+	if lost {
+		e.Gaps++
+	}
+	sample.stats.IntermediateCuts, sample.stats.Gaps = e.IntermediateCuts, e.Gaps
 	e.collectMetroRows(&sample)
 	e.applyMetroPresence(&sample)
 	e.supportMetroGroups(sample)
