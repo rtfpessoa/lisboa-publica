@@ -11,6 +11,24 @@ const maintenanceRetryInterval = time.Second
 const unownedReservationTTL = 5 * time.Second
 const maxUnownedMaintenancePasses = 2
 
+// MaintenanceProgress is a bounded snapshot of the background worker, independent
+// of the archive mutex. Startup cleanup is separate from these worker passes.
+type MaintenanceProgress struct {
+	WorkerStartedAt, LastStartedAt, LastCompletedAt time.Time
+	Interval                                        time.Duration
+	LastResult                                      string
+	InProgress, Stopped                             bool
+}
+
+// MaintenanceProgress can be read even when the worker is waiting for, or
+// holding, the archive mutex. It does not report the archive's overall health.
+func (s *Service) MaintenanceProgress() MaintenanceProgress {
+	if progress := s.maintenanceProgress.Load(); progress != nil {
+		return *progress
+	}
+	return MaintenanceProgress{LastResult: "never_started"}
+}
+
 // startMaintenance runs under the existing archive owner; Close stops and joins it.
 func (s *Service) startMaintenance(pending bool) {
 	s.maintenanceStop = make(chan struct{})
@@ -20,6 +38,7 @@ func (s *Service) startMaintenance(pending bool) {
 	if interval == 0 {
 		interval = defaultMaintenanceInterval
 	}
+	s.maintenanceProgress.Store(&MaintenanceProgress{WorkerStartedAt: time.Now(), Interval: interval, LastResult: "never_started"})
 	delay := interval
 	if errors.Is(s.maintenanceError, errMaintenancePending) || (s.maintenanceError == nil && pending) {
 		delay = maintenanceRetryInterval
@@ -28,16 +47,46 @@ func (s *Service) startMaintenance(pending bool) {
 }
 
 func (s *Service) runMaintenance(interval, delay time.Duration) {
-	defer close(s.maintenanceDone)
+	defer s.finishMaintenanceWorker()
 	timer := time.NewTimer(delay)
 	defer timer.Stop()
 	for s.waitMaintenance(timer) {
+		progress := s.beginMaintenancePass()
 		s.mu.Lock()
 		pending := s.maintenancePass(time.Now().UTC())
 		delay = s.nextMaintenanceDelay(interval, pending)
+		failed := s.maintenanceError != nil
 		s.mu.Unlock()
+		s.finishMaintenancePass(progress, pending, failed)
 		timer.Reset(delay)
 	}
+}
+
+func (s *Service) finishMaintenanceWorker() {
+	progress := s.MaintenanceProgress()
+	progress.Stopped = true
+	s.maintenanceProgress.Store(&progress)
+	close(s.maintenanceDone)
+}
+
+func (s *Service) beginMaintenancePass() MaintenanceProgress {
+	progress := s.MaintenanceProgress()
+	progress.InProgress = true
+	progress.LastStartedAt = time.Now()
+	s.maintenanceProgress.Store(&progress)
+	return progress
+}
+
+func (s *Service) finishMaintenancePass(progress MaintenanceProgress, pending, failed bool) {
+	progress.InProgress = false
+	progress.LastResult = "completed"
+	if pending {
+		progress.LastResult = "pending"
+	} else if failed {
+		progress.LastResult = "error"
+	}
+	progress.LastCompletedAt = time.Now()
+	s.maintenanceProgress.Store(&progress)
 }
 
 func (s *Service) waitMaintenance(timer *time.Timer) bool {
