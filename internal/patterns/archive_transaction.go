@@ -1,8 +1,11 @@
 package patterns
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"time"
@@ -14,7 +17,8 @@ type archiveTransaction struct {
 	admitted     map[string]bool
 	created, old []string
 	committed    bool
-	stateSource  *publicationSource
+	sources      []publicationSource
+	candidates   []block
 }
 
 // Admit corrected days, ledger and checkpoint through one durable manifest.
@@ -31,7 +35,7 @@ func (s *Service) publishTransaction(ctx context.Context, prepared []preparedBlo
 }
 
 func (s *Service) prepareTransaction(prepared []preparedBlock, sources map[string]bool, now time.Time) (*archiveTransaction, error) {
-	source, err := s.transactionStateSource(prepared)
+	guarded, err := s.transactionSources(prepared)
 	if err != nil {
 		return nil, err
 	}
@@ -39,22 +43,10 @@ func (s *Service) prepareTransaction(prepared []preparedBlock, sources map[strin
 	if err != nil {
 		return nil, err
 	}
-	build := func() manifest {
-		next := manifest{Version: 1, Blocks: append([]block{}, s.index.Blocks...)}
-		for _, p := range prepared {
-			next = mergeTransactionManifest(next, p.block)
-		}
-		return next
-	}
-	if err = s.admitManifestFiles(build, reserve, uint64(len(prepared)), now); err != nil {
+	if err = s.admitTransaction(prepared, guarded, reserve, now); err != nil {
 		return nil, err
 	}
-	if source != nil {
-		if err = s.verifyPublicationSource(*source); err != nil {
-			return nil, err
-		}
-	}
-	transaction := &archiveTransaction{service: s, stateSource: source, next: manifest{Version: 1, Blocks: append([]block{}, s.index.Blocks...)}, admitted: map[string]bool{}}
+	transaction := &archiveTransaction{service: s, sources: guarded, next: manifest{Version: 1, Blocks: append([]block{}, s.index.Blocks...)}, admitted: map[string]bool{}}
 	for _, b := range s.index.Blocks {
 		transaction.admitted[b.File] = true
 	}
@@ -62,17 +54,64 @@ func (s *Service) prepareTransaction(prepared []preparedBlock, sources map[strin
 		return nil, err
 	}
 	for _, p := range prepared {
+		transaction.candidates = append(transaction.candidates, p.block)
 		transaction.mergeBlock(p.block)
 	}
 	return transaction, nil
 }
 
-func (s *Service) transactionStateSource(prepared []preparedBlock) (*publicationSource, error) {
-	for _, item := range prepared {
-		if item.block.Key != "metro:state" {
-			continue
+func (s *Service) admitTransaction(prepared []preparedBlock, guarded []publicationSource, reserve int64, now time.Time) error {
+	aggregates := s.transactionAggregateSources()
+	retirementSerial := s.retirementSerial
+	build := func() manifest {
+		next := manifest{Version: 1, Blocks: append([]block{}, s.index.Blocks...)}
+		for _, p := range prepared {
+			next = mergeTransactionManifest(next, p.block)
 		}
-		if s.detailFence != nil {
+		return next
+	}
+	if err := s.admitManifestFiles(build, reserve, uint64(len(prepared)), now); err != nil {
+		return err
+	}
+	// Retention may delete in-memory aggregate state during admission. The
+	// caller must rebuild every payload against the newly admitted state.
+	if !maps.Equal(aggregates, s.transactionAggregateSources()) {
+		return fmt.Errorf("archive changed during transaction admission; retry")
+	}
+	// Admission has a one-retirement work budget. A source retired by this
+	// owner is not corruption; the caller must rebuild against its absence.
+	if s.transactionSourceRetired(guarded, retirementSerial) {
+		return fmt.Errorf("transaction source retired during admission; retry")
+	}
+	for _, source := range guarded {
+		if err := s.verifyPublicationSource(source); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) transactionSourceRetired(guarded []publicationSource, serial uint64) bool {
+	if s.retirementSerial == serial {
+		return false
+	}
+	for _, source := range guarded {
+		if source.block != nil && retentionKey(*source.block) == s.lastRetired {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Service) transactionSources(prepared []preparedBlock) ([]publicationSource, error) {
+	guarded := make([]publicationSource, 0, len(prepared))
+	keys := make(map[string]bool, len(prepared))
+	for _, item := range prepared {
+		if keys[item.block.Key] {
+			return nil, fmt.Errorf("duplicate transaction publication key")
+		}
+		keys[item.block.Key] = true
+		if item.block.Key == "metro:state" && s.detailFence != nil {
 			return nil, s.detailFence
 		}
 		source, err := s.publicationSource(item.block.Key)
@@ -82,9 +121,19 @@ func (s *Service) transactionStateSource(prepared []preparedBlock) (*publication
 		if err = s.verifyPublicationSource(source); err != nil {
 			return nil, err
 		}
-		return &source, nil
+		guarded = append(guarded, source)
 	}
-	return nil, nil
+	return guarded, nil
+}
+
+func (s *Service) transactionAggregateSources() map[retentionClockKey]bool {
+	result := make(map[retentionClockKey]bool)
+	for _, b := range s.index.Blocks {
+		if b.Kind == "aggregate" {
+			result[retentionKey(b)] = true
+		}
+	}
+	return result
 }
 
 func mergeTransactionManifest(next manifest, value block) manifest {
@@ -129,14 +178,68 @@ func (t *archiveTransaction) write(ctx context.Context, prepared []preparedBlock
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if !t.admitted[p.block.File] {
-			if err := atomicFile(t.service.config.Directory, p.block.File, p.blob); err != nil {
-				return err
-			}
+		created, err := t.service.writeTransactionGeneration(p)
+		if created {
 			t.created = append(t.created, p.block.File)
+		}
+		if err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+func (s *Service) writeTransactionGeneration(p preparedBlock) (bool, error) {
+	path := filepath.Join(s.config.Directory, p.block.File)
+	info, err := os.Lstat(path)
+	if err == nil {
+		if !info.Mode().IsRegular() {
+			return false, s.fenceDetail(fmt.Errorf("transaction generation is not a regular file"), &p.block)
+		}
+		if err := s.verifyReusedTransactionGeneration(p); err != nil {
+			return false, s.fenceDetail(fmt.Errorf("existing transaction generation unavailable: %w", err), &p.block)
+		}
+		return false, syncDirectory(s.config.Directory)
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return false, err
+	}
+	temp, err := writeRecoveryTemporary(s.config.Directory, p.blob)
+	if err != nil {
+		return false, err
+	}
+	defer os.Remove(temp)
+	if err = renameRecoveryNoReplace(temp, path); err != nil {
+		return false, fmt.Errorf("create transaction generation: %w", err)
+	}
+	return true, syncDirectory(s.config.Directory)
+}
+
+func (s *Service) verifyReusedTransactionGeneration(p preparedBlock) error {
+	blob, err := s.readSyncedTransactionGeneration(p.block)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(blob, p.blob) {
+		return fmt.Errorf("transaction generation contents changed")
+	}
+	return nil
+}
+
+func (s *Service) readSyncedTransactionGeneration(b block) ([]byte, error) {
+	f, err := openArchiveGeneration(filepath.Join(s.config.Directory, b.File))
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	sync := s.generationSync
+	if sync == nil {
+		sync = (*os.File).Sync
+	}
+	if err := sync(f); err != nil {
+		return nil, err
+	}
+	return readGeneration(f, b.Hash)
 }
 
 func (t *archiveTransaction) mergeBlock(value block) {
@@ -154,10 +257,8 @@ func (t *archiveTransaction) mergeBlock(value block) {
 }
 
 func (t *archiveTransaction) commit() error {
-	if t.stateSource != nil {
-		if err := t.service.verifyPublicationSource(*t.stateSource); err != nil {
-			return err
-		}
+	if err := t.verifyBeforeCommit(); err != nil {
+		return err
 	}
 	if err := t.service.saveManifest(t.next); err != nil {
 		if t.service.manifestUncertain {
@@ -168,12 +269,41 @@ func (t *archiveTransaction) commit() error {
 	}
 	t.committed = true
 	// Cleanup after admission is recoverable by startup reconciliation.
-	if t.stateSource != nil && t.stateSource.block != nil && !t.service.generationReferenced(t.stateSource.block.File) {
-		if err := t.service.verifyOldGeneration(*t.stateSource); err != nil {
+	if err := t.verifyOldSources(); err != nil {
+		return err
+	}
+	t.removeFiles(t.old)
+	return nil
+}
+
+func (t *archiveTransaction) verifyBeforeCommit() error {
+	for _, candidate := range t.candidates {
+		if _, err := t.service.readSyncedTransactionGeneration(candidate); err != nil {
+			return t.service.fenceDetail(fmt.Errorf("transaction generation changed before commit: %w", err), &candidate)
+		}
+	}
+	if len(t.candidates) > 0 {
+		if err := syncDirectory(t.service.config.Directory); err != nil {
 			return err
 		}
 	}
-	t.removeFiles(t.old)
+	for _, source := range t.sources {
+		if err := t.service.verifyPublicationSource(source); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *archiveTransaction) verifyOldSources() error {
+	for _, source := range t.sources {
+		if source.block == nil || t.service.generationReferenced(source.block.File) {
+			continue
+		}
+		if err := t.service.verifyOldGeneration(source); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -185,7 +315,7 @@ func (t *archiveTransaction) rollback() {
 
 func (t *archiveTransaction) removeFiles(names []string) {
 	for _, name := range names {
-		if t.service.generationReferenced(name) {
+		if t.service.generationReferenced(name) || t.service.preserveUncertainOrphan(name) {
 			continue
 		}
 		t.service.forgetRetentionFile(name)
