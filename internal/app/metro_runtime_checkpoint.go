@@ -112,9 +112,12 @@ func coverMetroRetractionWithCheckpoint(t *metroTrack) {
 }
 
 func (r *metroRuntime) encodeCheckpoint(t *metroTrack) ([]byte, string, bool) {
+	return r.encodeCheckpointWithClaim(t, r.claimMetroSnapshot)
+}
+func (r *metroRuntime) encodeCheckpointWithClaim(t *metroTrack, claim func(patterns.MetroCutSnapshot) bool) ([]byte, string, bool) {
 	cut := r.historySnapshot()
 	raw, err := r.marshalMetroCheckpoint(t, cut, false)
-	if err == nil && !r.claimMetroSnapshot(cut) {
+	if err == nil && !claim(cut) {
 		raw, err = r.marshalMetroCheckpoint(t, patterns.MetroCutSnapshot{}, true)
 	}
 	if err != nil || len(raw) > (256<<10)-metroCheckpointMetadataReserve {
@@ -125,7 +128,13 @@ func (r *metroRuntime) encodeCheckpoint(t *metroTrack) ([]byte, string, bool) {
 func (r *metroRuntime) marshalMetroCheckpoint(t *metroTrack, cut patterns.MetroCutSnapshot, safe bool) ([]byte, error) {
 	copy := r.snapshotMetroTrack(t, cut, safe, time.Now().UTC()).Train
 	copy.Persistence, copy.VehicleId = nil, nil
-	return json.Marshal(metroCheckpointPayload{ForecastCut: metroCutOrigin(cut), Version: 1, Train: copy, Profile: t.Profile, ProviderDirection: t.ProviderDirection, Codes: t.Codes, Points: t.Points, Proofs: t.Proofs, ModelDepartureSupport: t.ModelDepartureSupport, Model: r.checkpointModel(t)})
+	// A pending cut cannot authorize historical forecasts. Omitting its transient
+	// revision keeps unchanged checkpoints stable while losses continue.
+	var provenance *metroCutProvenance
+	if !safe && !cut.Pending {
+		provenance = metroCutOrigin(cut)
+	}
+	return json.Marshal(metroCheckpointPayload{ForecastCut: provenance, Version: 1, Train: copy, Profile: t.Profile, ProviderDirection: t.ProviderDirection, Codes: t.Codes, Points: t.Points, Proofs: t.Proofs, ModelDepartureSupport: t.ModelDepartureSupport, Model: r.checkpointModel(t)})
 }
 func (r *metroRuntime) checkpointCapacity(old patterns.MetroJourneyCheckpoint, size int) bool {
 	if len(r.dirty) >= 1024 && old.Journey == "" {
