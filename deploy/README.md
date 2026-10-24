@@ -91,8 +91,10 @@ is directory-synced before orphan cleanup and the cleanup is synced afterwards.
 Buffered Metro detail blocked by pressure is retried before other admissions.
 Rejected receipts are not recovered, and unacknowledged detail can be lost on restart.
 The Metro hour buffer holds at most 1,200 receipts and 16 MiB of encoded JSON lines;
-ordinary write failures retain it for retry. A post-inference overflow attempts to
-publish earlier detail and fences further engine/checkpoint writes until reopen.
+ordinary write failures retain it for retry. If a sampled inference would overflow
+the buffer, its isolated candidate is discarded and collection records a gap for
+the rest of that UTC hour. The next hour resumes only after the retained detail and
+checkpoint flush; failed or uncertain publication retains the existing fences.
 Missing referenced, corrupt, oversized, conflicting or non-round-trippable detail
 or checkpoint data, and multiple later hours after a checkpoint, also fence
 collection and preserve identified evidence. The

@@ -2,9 +2,12 @@ package patterns
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
+
+var errDetailHourLimit = errors.New("detail and forecasts exceed hour buffer")
 
 // MetroRecordKind identifies whether an input was admitted as a full sample.
 type MetroRecordKind uint8
@@ -80,6 +83,9 @@ func (s *Service) checkMetroAdmission(receipt Receipt) error {
 	if s.detailFence != nil {
 		return s.detailFence
 	}
+	if s.detailLimitError != nil && !receipt.ReceivedAt.UTC().Truncate(time.Hour).After(s.detailLimitHour) {
+		return s.detailLimitError
+	}
 	if len(receipt.Rows) > 2000 {
 		return fmt.Errorf("Metro receipt exceeds archive limits")
 	}
@@ -151,22 +157,26 @@ func (s *Service) recordMetroSample(receipt Receipt, topology Topology) (bool, e
 	if err := s.prepareMetroSample(receipt); err != nil {
 		return false, err
 	}
-	previousReceipt := s.engine.LastReceipt
-	s.engine.step(receipt, topology, s.config)
-	receipt.Outcomes = append([]Forecast{}, s.engine.Outcomes...)
-	if s.engine.LastEvaluation.Equal(receipt.ReceivedAt) {
-		receipt.Forecasts = append([]Forecast{}, s.engine.Live...)
+	if s.hour.After(s.detailLimitHour) {
+		s.detailLimitHour, s.detailLimitError = time.Time{}, nil
+	}
+	candidate := cloneMetroEngine(s.engine)
+	candidate.step(receipt, topology, s.config)
+	receipt.Outcomes = append([]Forecast{}, candidate.Outcomes...)
+	if candidate.LastEvaluation.Equal(receipt.ReceivedAt) {
+		receipt.Forecasts = append([]Forecast{}, candidate.Live...)
 	}
 	if err := s.appendMetroSample(receipt); err != nil {
-		// Inference has already changed the engine. Persist only the previously
-		// admitted detail, then fence all further engine writes until reopen.
-		persistErr := s.flushMetroDetail(s.lastSample)
-		s.engine.LastReceipt = previousReceipt
-		if persistErr != nil {
+		if errors.Is(err, errDetailHourLimit) {
+			s.detailLimitHour, s.detailLimitError = s.hour, err
+			return false, err
+		}
+		if persistErr := s.flushMetroDetail(s.lastSample); persistErr != nil {
 			err = fmt.Errorf("%w; preserving earlier detail: %v", err, persistErr)
 		}
 		return false, s.markPaused(s.fenceDetail(err, nil))
 	}
+	s.engine = candidate
 	s.lastSample, s.topology = receipt.ReceivedAt, topology
 	return true, s.checkpointMetroSample(receipt.ReceivedAt)
 }
@@ -225,7 +235,7 @@ func (s *Service) appendMetroSample(receipt Receipt) error {
 		return err
 	}
 	if len(s.detail) >= maxDetailHourReceipts || s.detailBytes+len(raw)+1 > maxDetailHourBytes {
-		return s.pause(fmt.Errorf("detail and forecasts exceed hour buffer"))
+		return s.pause(errDetailHourLimit)
 	}
 	s.detail = append(s.detail, receipt)
 	s.detailBytes += len(raw) + 1
