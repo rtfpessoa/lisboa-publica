@@ -100,6 +100,7 @@ type metroRuntimeTopology struct {
 	priorCache            map[string][]metroVisitPrior
 	plan                  *StaticData
 	topology              patterns.Topology
+	directionTopology     patterns.Topology
 	unmappedStations      []string
 	stationsSignature     string
 	destinationsSignature string
@@ -179,7 +180,7 @@ func (r *metroRuntime) observe(data *MetroData, static *StaticData, history *pat
 func (r *metroRuntime) observeUnavailable(data *MetroData, now time.Time) {
 	if data.Status.Status == "ok" {
 		// The current waits remain useful without a complete route topology.
-		r.batch = collectMetroPoints(data, patterns.Topology{}, now)
+		r.batch = collectMetroPoints(data, patterns.Topology{}, r.plan, now)
 		r.batch.topologyUnavailable = true
 	}
 	r.suspendAll("Fonte ou topologia indisponível")
@@ -187,17 +188,21 @@ func (r *metroRuntime) observeUnavailable(data *MetroData, now time.Time) {
 	r.captureChanged(now)
 	r.queueCurrentCheckpoints()
 	data.Trains = r.current(now)
-	data.Topology = r.topology
+	data.Topology, data.topologyPlan, data.directionTopology, data.directionsReady = r.topology, r.plan, r.directionTopology, true
+	if data.Status.Status == "ok" {
+		data.Topology, data.topologyPlan, data.directionTopology = patterns.Topology{}, nil, patterns.Topology{}
+	}
 }
 func (r *metroRuntime) observeSupported(data *MetroData, static *StaticData, now time.Time) {
 	r.forecastCacheUntil = time.Time{}
 	r.updateTopology(data, static)
-	batch := collectMetroPoints(data, r.topology, now)
+	batch := collectMetroPoints(data, r.directionTopology, static, now)
 	r.batch = batch
 	for _, key := range r.selectedContexts(batch, now) {
 		points := batch.groups[key]
 		track := r.admitTrack(metroTrackAdmission{key: key, batch: batch, data: data, static: static, now: now})
 		if track != nil {
+			r.updateTrackDirection(track, batch.paths[key])
 			r.applyPoints(track, points, now)
 		}
 	}
@@ -223,8 +228,9 @@ func (r *metroRuntime) updateTopology(data *MetroData, static *StaticData) {
 		r.destinationsSignature = destinationsSignature
 		topology, unmapped := metroTopologyReport(data, static)
 		r.topology, r.unmappedStations = topology, unmapped
+		r.directionTopology = metroDirectionTopology(data, static, topology)
 	}
-	data.Topology = r.topology
+	data.Topology, data.topologyPlan, data.directionTopology, data.directionsReady = r.topology, static, r.directionTopology, true
 }
 
 // unmappedStaticStops reports static stops that could not be resolved to a published

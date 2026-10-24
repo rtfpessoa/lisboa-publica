@@ -53,6 +53,7 @@ func (r *metroRuntime) observeSuccessor(v metroSuccessorObservation) {
 }
 func (r *metroRuntime) successorCandidate(v metroSuccessorObservation, ref string) *metroTrack {
 	if t := r.tracks[r.candidates[v.key]]; t != nil {
+		r.updateTrackDirection(t, v.batch.paths[v.key])
 		return t
 	}
 	t := r.startTrack(metroTrackStart{key: v.key, reference: ref, path: v.batch.paths[v.key], data: v.data, static: v.static, now: v.now})

@@ -113,6 +113,9 @@ func metroForecastAssociationReason(contexts []api.MetroForecastContext) string 
 }
 
 func (b *metroFrameBuilder) contextMatchesVehicle(context api.MetroForecastContext) bool {
+	if context.RouteId == "" {
+		return false
+	}
 	for _, v := range b.frame.Vehicles {
 		if v.Id == b.interest.Vehicle && strings.TrimSpace(v.SourceId) == context.Reference && v.RouteId != nil && sameMetroRoute(b.static, *v.RouteId, context.RouteId) {
 			return true
@@ -148,25 +151,32 @@ func (b *metroFrameBuilder) stationDirections() {
 		return
 	}
 	seen := map[string]bool{}
-	topology := b.state.Metro.Topology
-	for _, p := range topology.Patterns {
+	admitted := b.state.Metro.directionTopology
+	if !b.state.Metro.directionsReady {
+		admitted = metroDirectionTopology(b.state.Metro, b.static, b.state.Metro.Topology)
+	}
+	for _, p := range admitted.Patterns {
 		calls := metroPathCalls(p, b.state.Metro, b.static, "metro:catalogue")
-		direction := canonicalMetroDirection(topology, p)
+		atStop := false
+		for _, call := range calls {
+			if call.StopId == b.interest.Stop {
+				atStop = true
+			}
+		}
+		if !atStop {
+			continue
+		}
+		direction := canonicalMetroDirection(admitted, p)
 		key := p.Route + "|" + direction
-		if len(metroCallsAtStop(calls, b.interest.Stop)) == 0 || seen[key] {
+		if seen[key] {
 			continue
 		}
 		seen[key] = true
-		b.frame.Directions = append(b.frame.Directions, b.boardDirection(p, direction))
+		b.frame.Directions = append(b.frame.Directions, b.boardDirection(p, direction, admitted))
 	}
 }
-func (b *metroFrameBuilder) boardDirection(p patterns.Pattern, direction string) api.BoardDirection {
-	dir := api.BoardDirection{LineKey: p.Route, DirectionKey: ptr(direction), Label: "Destino " + p.Destination, Count: ptr(0)}
-	for _, station := range b.state.Metro.Stations {
-		if station.ID == destinations[direction] {
-			dir.Label = station.Name
-		}
-	}
+func (b *metroFrameBuilder) boardDirection(p patterns.Pattern, direction string, topology patterns.Topology) api.BoardDirection {
+	dir := api.BoardDirection{LineKey: p.Route, DirectionKey: ptr(direction), Label: metroBoardDirectionLabel(b.state.Metro, topology, p.Route, direction), Count: ptr(0)}
 	for _, route := range b.static.Routes {
 		if sameMetroRoute(b.static, route.Id, p.Route) {
 			dir.LineName = route.LongName
@@ -180,4 +190,24 @@ func (b *metroFrameBuilder) boardDirection(p patterns.Pattern, direction string)
 		}
 	}
 	return dir
+}
+
+// A short turn shares the full path's direction but retains its own destination.
+// The board title names that canonical path only when it has one destination.
+func metroBoardDirectionLabel(data *MetroData, topology patterns.Topology, route, direction string) string {
+	id := ""
+	for _, candidate := range topology.Patterns {
+		if candidate.Route != route || candidate.Direction != direction {
+			continue
+		}
+		if candidate.Destination == "" || id != "" && id != candidate.Destination {
+			return "Destino publicado: " + direction
+		}
+		id = candidate.Destination
+	}
+	station, unique := uniqueMetroStation(data.Stations, func(s MetroStation) bool { return s.ID == id })
+	if unique && strings.TrimSpace(station.Name) != "" {
+		return station.Name
+	}
+	return "Destino publicado: " + direction
 }

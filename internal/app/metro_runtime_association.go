@@ -99,13 +99,22 @@ func (r *metroRuntime) startTrack(v metroTrackStart) *metroTrack {
 	track.Train.Lifecycle = &api.MetroJourneyLifecycle{State: "active", Reason: "Viagem inferida em curso"}
 	track.Train.DirectionEvidence = &api.MetroDirectionEvidence{State: "context", Reason: "Direção do percurso admitido; movimento independente por confirmar"}
 	track.Train.OriginKnown = ptr(false)
-	track.Train.DirectionCode = canonicalMetroDirection(r.topology, v.path)
-	for n := range track.Train.Calls {
-		track.Train.Calls[n].DirectionKey = ptr(track.Train.DirectionCode)
-	}
+	r.updateTrackDirection(track, v.path)
 	r.active[v.key] = id
 	r.tracks[id] = track
 	return track
+}
+
+// Metadata-only corrections can change the containing direction without
+// changing the journey identity. Never mutate an in-flight lifecycle barrier.
+func (r *metroRuntime) updateTrackDirection(track *metroTrack, path patterns.Pattern) {
+	if track.BarrierRevision != 0 {
+		return
+	}
+	track.Train.DirectionCode = canonicalMetroDirection(r.directionTopology, path)
+	for n := range track.Train.Calls {
+		track.Train.Calls[n].DirectionKey = ptr(track.Train.DirectionCode)
+	}
 }
 func metroDestinationName(data *MetroData, path patterns.Pattern) string {
 	name := ""

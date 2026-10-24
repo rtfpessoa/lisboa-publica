@@ -33,6 +33,32 @@ for(const width of [1280,390])test(`Metro inventory, countdown and shared journe
  if(width===1280){await page.mouse.move(500,300);await page.mouse.down();await page.mouse.move(550,340,{steps:5});await page.mouse.up();await expect(panel.getByRole('button',{name:'Retomar seguimento'})).toBeVisible()}
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
+
+test('Metro keeps an unknown-route wait visible without a claimed direction',async({page})=>{
+ await fixture(page);
+ await page.evaluate(()=>{
+  const w=window as any,f=w.metroFrame,call=f.trains[0].calls[0];
+  f.revision='unknown-route';f.trains=[];f.directions=[];
+  f.unassociated_forecasts=[{...call,id:'unknown-route-wait',journey_id:null,line_key:'',direction_key:null,destination:'Santa Apolónia',service_label:'7'}];
+  w.emitMetro('frame');
+ });
+ const panel=page.locator('.station-popup'),row=panel.locator('[data-call-id="unknown-route-wait"]');
+ await expect(panel.getByText('Previsões com sentido por confirmar')).toBeVisible();
+ await expect(row).toContainText('Santa Apolónia');await expect(row).toContainText('Previsão oficial');
+ await expect(panel.getByRole('tab')).toHaveCount(0);
+ await page.evaluate(()=>{
+  const w=window as any;w.metroFrame.revision='known-route-unknown-direction';
+  w.metroFrame.unassociated_forecasts[0].line_key='metro:r';w.emitMetro('frame');
+ });
+ await expect(panel).toHaveAttribute('data-metro-revision','known-route-unknown-direction');
+ await expect(row).toContainText('Santa Apolónia');await expect(row).toContainText('Previsão oficial');
+ await expect(panel.getByRole('tab')).toHaveCount(0);
+ await page.evaluate(()=>{
+  const w=window as any;w.metroFrame.revision='unknown-route-expired';
+  w.metroFrame.unassociated_forecasts[0].arrival.prediction.valid_until=new Date(Date.now()-1000).toISOString();w.emitMetro('frame');
+ });
+ await expect(panel.getByText('Previsões com sentido por confirmar')).toHaveCount(0);
+});
 test('Metro reconnect preserves direction and pinned run without fabricated events',async({page})=>{
  const f=await fixture(page),panel=page.locator('.detail-panel');await panel.getByRole('tab',{name:'São Sebastião',exact:true}).click();await page.evaluate(()=>(window as unknown as {failMetro:()=>void}).failMetro());await expect.poll(()=>f.requests.filter(p=>p.endsWith('/metro/live')).length).toBe(1);await expect(panel.getByRole('tab',{name:'São Sebastião',exact:true})).toHaveAttribute('aria-pressed','true');await page.waitForTimeout(1500);
  await panel.getByRole('tab',{name:'Aeroporto',exact:true}).click();await panel.getByRole('button',{name:'Abrir comboio',exact:true}).click();await page.evaluate(()=>{const w=window as unknown as {metroFrame:{revision:string;trains:{association:string;reason:string}[]};emitMetro:(s:string)=>void};w.metroFrame.revision='suspended';w.metroFrame.trains[0].association='suspended';w.metroFrame.trains[0].reason='Última viagem selecionada';w.emitMetro('frame')});await expect(panel).toContainText('Última viagem selecionada');await expect(panel.getByRole('button',{name:/Seguimento indisponível|Retomar seguimento/})).toBeDisabled();await expect(panel).not.toContainText('Chegada inferida');

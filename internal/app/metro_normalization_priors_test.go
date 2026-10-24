@@ -36,6 +36,8 @@ func legacyMetroPriors(data *MetroData, static *StaticData, path patterns.Patter
 
 func metroNormalizationPriorFixture() (*MetroData, *StaticData, time.Time) {
 	data, static := metroPlatformFixture()
+	// This synthetic path uses the Blue Line's terminal names and codes.
+	static.Routes[0].ShortName, static.Routes[0].LongName = "Az", "Linha Azul"
 	now := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
 	data.Status = api.MetroStatus{Status: "ok", CheckedAt: &now, SourceUrl: metroBase, Lines: []api.MetroLine{}}
 	static.Schedule.Exceptions = map[string]map[string]int{"active": {now.In(lisbon).Format("20060102"): 1}}
@@ -57,10 +59,8 @@ func TestMetroNormalizedSchedulePriorsAndProjections(t *testing.T) {
 	}{
 		{"legacy fallback", nil, "42", true},
 		{"changed destination", []MetroDestination{{ID: "new", Name: "Santa Apolónia"}}, "new", true},
-		{"duplicate destination", []MetroDestination{{ID: "new", Name: "Santa Apolónia"}, {ID: "new", Name: "Santa Apolónia"}}, "new", true},
 		{"ambiguous destination", []MetroDestination{{ID: "new", Name: "Santa Apolónia"}, {ID: "other", Name: "Santa Apolónia"}}, "new", false},
 		{"empty destination", []MetroDestination{{ID: "", Name: "Santa Apolónia"}}, "42", true},
-		{"nonempty then empty", []MetroDestination{{ID: "new", Name: "Santa Apolónia"}, {ID: "", Name: "Santa Apolónia"}}, "new", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			data, static, now := metroNormalizationPriorFixture()

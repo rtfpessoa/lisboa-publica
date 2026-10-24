@@ -9,11 +9,8 @@ func metroVehicleDestination(state *State, vehicle *api.Vehicle, now time.Time) 
 	if state.Metro == nil || state.Metro.Status.Status != "ok" {
 		return ""
 	}
-	stations := map[string]MetroStation{}
-	for _, station := range state.Metro.Stations {
-		stations[station.ID] = station
-	}
 	destinationsSeen := map[string]bool{}
+	resolver := newMetroDestinationResolver(state.Metro, state.Metro.Topology)
 	for _, wait := range state.Metro.Waits {
 		if wait.Train != vehicle.SourceId && wait.Train2 != vehicle.SourceId && wait.Train3 != vehicle.SourceId {
 			continue
@@ -22,8 +19,8 @@ func metroVehicleDestination(state *State, vehicle *api.Vehicle, now time.Time) 
 		if err != nil || now.Sub(at) > sourceFreshness || at.After(now.Add(providerClockSkew)) {
 			continue
 		}
-		if station, ok := stations[destinations[wait.Destination]]; ok && station.Name != "" {
-			destinationsSeen[station.Name] = true
+		if destination := resolver.resolve(wait.Destination); destination.named {
+			destinationsSeen[destination.name] = true
 		}
 	}
 	if len(destinationsSeen) == 1 {

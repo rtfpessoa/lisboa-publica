@@ -35,7 +35,7 @@ func TestMetroRedActualMinimalDirectionRegression(t *testing.T) {
 	now := *data.Status.CheckedAt
 	r := newMetroRuntime()
 	r.topology = topology
-	b := collectMetroPoints(&data, topology, now)
+	b := collectMetroPoints(&data, topology, &static, now)
 	selection := metroContextSelection{r, b, now}
 	valid, _ := selection.candidates("metro:4_0|7D")
 	if len(valid) != 2 || selection.choose("metro:4_0|7D") != "" {
@@ -152,7 +152,7 @@ func TestMetroForecastOnlyPriorCannotSelectAmongDirections(t *testing.T) {
 	data, static := redDirectionInputs(t)
 	now := *data.Status.CheckedAt
 	topology := metroTopology(&data, &static)
-	b := collectMetroPoints(&data, topology, now)
+	b := collectMetroPoints(&data, topology, &static, now)
 	r := newMetroRuntime()
 	r.topology = topology
 	key := "metro:4_0|38|4D"
@@ -169,7 +169,7 @@ func TestMetroRejectedAlternativeCannotConfirmOppositeDirection(t *testing.T) {
 	data, static := redDirectionInputs(t)
 	now := *data.Status.CheckedAt
 	topology := metroTopology(&data, &static)
-	b := collectMetroPoints(&data, topology, now)
+	b := collectMetroPoints(&data, topology, &static, now)
 	b.rejected["metro:4_0|60|4D"] = true
 	r := newMetroRuntime()
 	r.topology = topology

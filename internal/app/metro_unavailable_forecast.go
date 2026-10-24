@@ -15,10 +15,10 @@ func (l metroLocalContexts) unavailableArrival(row MetroWait) (api.Arrival, bool
 		return api.Arrival{}, false
 	}
 	destination, named := uniqueMetroDestination(data.Destinations, row.Destination)
-	line := unavailableMetroLine(station, destination, named, data.Stations)
+	line, _ := metroStationLineEvidence(station, destination, named, data.Stations)
 	route := l.routes[line]
-	if !unavailableMetroRoute(l.runtime.plan.Routes, route, line) {
-		return api.Arrival{}, false
+	if !validMetroRoute(l.runtime.plan.Routes, route, line) {
+		route = ""
 	}
 	if !named {
 		destination = "Destino publicado: " + row.Destination
@@ -26,7 +26,7 @@ func (l metroLocalContexts) unavailableArrival(row MetroWait) (api.Arrival, bool
 	return api.Arrival{OperatorId: "metro", StopId: metroPopupStationID(station, l.catalog), RouteId: route, Headsign: destination, Kind: api.ArrivalKindPrediction, SourceUrl: metroBase + "/tempoEspera/Estacao/todos"}, true
 }
 
-func unavailableMetroRoute(routes []api.RouteDetail, id, line string) bool {
+func validMetroRoute(routes []api.RouteDetail, id, line string) bool {
 	shortName := map[string]string{"azul": "Az", "amarela": "Am", "verde": "Vd", "vermelha": "Vm"}[line]
 	if id == "" || shortName == "" {
 		return false
@@ -67,39 +67,44 @@ func uniqueMetroStation(stations []MetroStation, matches func(MetroStation) bool
 	return result, count == 1
 }
 
-func unavailableMetroLine(origin MetroStation, destination string, named bool, stations []MetroStation) string {
+// An empty intersection of two valid memberships is a contradiction, not
+// merely an ambiguous line. Callers must not override it with older evidence.
+func metroStationLineEvidence(origin MetroStation, destination string, named bool, stations []MetroStation) (string, bool) {
 	lines, ok := metroPublishedLines(origin.Lines)
 	if !ok {
-		return ""
+		return "", false
 	}
 	if named {
-		narrowMetroStationLines(lines, destination, stations)
+		if narrowMetroStationLines(lines, destination, stations) && len(lines) == 0 {
+			return "", true
+		}
 	}
 	if len(lines) == 1 {
 		for line := range lines {
-			return line
+			return line, false
 		}
 	}
-	return ""
+	return "", false
 }
 
-func narrowMetroStationLines(lines map[string]bool, destination string, stations []MetroStation) {
+func narrowMetroStationLines(lines map[string]bool, destination string, stations []MetroStation) bool {
 	name := normalizeName(destination)
 	target, found := uniqueMetroStation(stations, func(s MetroStation) bool {
 		return strings.TrimSpace(s.Name) != "" && normalizeName(strings.TrimSpace(s.Name)) == name
 	})
 	if !found {
-		return
+		return false
 	}
 	targetLines, valid := metroPublishedLines(target.Lines)
 	if !valid {
-		return
+		return false
 	}
 	for line := range lines {
 		if !targetLines[line] {
 			delete(lines, line)
 		}
 	}
+	return true
 }
 
 func metroPublishedLines(value string) (map[string]bool, bool) {

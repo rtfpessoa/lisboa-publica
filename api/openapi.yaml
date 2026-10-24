@@ -4474,7 +4474,8 @@
             "description": "Position of this visit in the published path used for the call; a per-context path index, 0 when the position is unknown (local-only forecasts)."
           },
           "line_key": {
-            "type": "string"
+            "type": "string",
+            "description": "May be empty when a source forecast cannot be safely assigned to a line."
           },
           "direction_key": {
             "type": "string",

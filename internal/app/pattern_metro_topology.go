@@ -106,7 +106,10 @@ func (b *metroPlanBuilder) mapStaticPlan() {
 	routeIDs := metroRouteIDs(b.static)
 	lines := map[string]string{"Az": "azul", "Am": "amarela", "Vd": "verde", "Vm": "vermelha"}
 	for _, route := range b.static.Routes {
-		b.routes[route.SourceId] = routeIDs[lines[route.ShortName]]
+		line := lines[route.ShortName]
+		if validMetroRoute(b.static.Routes, route.Id, line) {
+			b.routes[route.SourceId] = routeIDs[line]
+		}
 	}
 }
 
@@ -124,7 +127,7 @@ func (b *metroPlanBuilder) tripDestination(trip ScheduledTrip) (string, string) 
 	}
 	direction := ""
 	for i, d := range b.data.Destinations {
-		if b.destinationName(i, d.Name) == normalized {
+		if d.ID != "" && b.destinationName(i, d.Name) == normalized {
 			if direction != "" && direction != d.ID {
 				return "", ""
 			}
@@ -132,10 +135,20 @@ func (b *metroPlanBuilder) tripDestination(trip ScheduledTrip) (string, string) 
 		}
 	}
 	if direction != "" {
+		if _, unique := uniqueMetroDestination(b.data.Destinations, direction); !unique {
+			return "", ""
+		}
 		return headsign, direction
 	}
 	for code, id := range destinations {
 		if id == headsign {
+			// A current assignment to this code overrides the legacy crosswalk,
+			// even when it names another station or is itself ambiguous.
+			for _, current := range b.data.Destinations {
+				if current.ID == code {
+					return "", ""
+				}
+			}
 			direction = code
 		}
 	}
