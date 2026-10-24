@@ -72,9 +72,7 @@ func main() {
 		log.Fatal("cache restoration failed", zap.Error(err))
 	}
 	server := configuredServer(store, cache, log)
-	if server.Patterns != nil {
-		defer server.Patterns.Close()
-	}
+	defer manageArchiveLifecycle(ctx, server.Patterns, log)()
 	services := backgroundServices{server: server, store: store, cache: cache, log: log}
 	services.start(ctx)
 	handler, err := server.Handler()

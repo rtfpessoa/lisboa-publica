@@ -54,6 +54,22 @@ still hold the archive owner lock for an unbounded duration. Archive status repo
 storage pauses generically; check the archive limit, filesystem headroom and
 directory contents when diagnosing them.
 
+At `info` level the server emits `transport archive maintenance heartbeat` at
+startup and every minute while the archive is enabled. It reports the worker's
+start and pass clocks, normal interval, `in_progress`, `stopped` and last result
+(`never_started`, `completed`, `pending` or `error`); startup cleanup is separate.
+A `warn` heartbeat indicates a hard error, stopped worker, pass in progress for at
+least two minutes, or no completed pass within the configured interval plus two
+minutes. Its `stale_reason` is `in_progress`, `overdue`, `never_started` or
+`stopped`, or empty for a hard error. The log never waits for the archive mutex
+or includes filesystem paths or raw errors. A stale pass can be waiting on the
+mutex or filesystem; the heartbeat does not establish the cause, successful
+reclamation or completeness of seven days of history. State and clocks reset
+on restart. A missing heartbeat alone can also mean the server or logging stopped.
+On shutdown the server cancels the heartbeat and waits up to 250 ms for it to
+exit before closing the archive. A blocked log sink can retain that one heartbeat
+goroutine until it unblocks; the later process logger sync can also block.
+
 Detail is JSON lines compressed with Zstd, retaining the original wait response,
 issued forecasts and later evaluation outcomes. Sparse daily hourly aggregates
 use Parquet+Zstd. Checksummed immutable generations and an atomic fsynced manifest

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -49,6 +50,7 @@ type checkpoint struct {
 // FIFO cannot unlink until reads are closed. No file descriptors escape a query.
 type Service struct {
 	mu                  sync.Mutex
+	maintenanceProgress atomic.Pointer[MaintenanceProgress]
 	metroCut            *MetroCut
 	metroFIFO           *MetroFIFO
 	checkpointRetry     *MetroCheckpointAttempt
