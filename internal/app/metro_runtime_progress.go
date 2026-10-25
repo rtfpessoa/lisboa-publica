@@ -48,22 +48,60 @@ func firstMetroCurrent(t *metroTrack, current map[string]metroPoint, now time.Ti
 	return nil
 }
 
-// Retract a coherent newer positive wait before suspending backwards continuity.
-func (r *metroRuntime) retractArrivals(t *metroTrack, current map[string]metroPoint) {
+type metroArrivalCorrection struct {
+	index         int
+	point, before metroPoint
+}
+
+// Validate every correction before withdrawing any retained occurrence.
+func (r *metroRuntime) retractArrivals(t *metroTrack, current map[string]metroPoint, now time.Time) bool {
+	corrections := []metroArrivalCorrection{}
+	var evidence *metroCorrectionEvidence
 	for n := range t.Train.Calls {
-		c := &t.Train.Calls[n]
 		p, found := current[t.Codes[n]]
-		if found && metroArrivalContradicted(*c, p) {
-			markMetroRetraction(t)
-			withdrawMetroDeparture(t, n, p.Clock, "Chegada de suporte retirada por correção da mesma visita")
-			delete(t.ModelStops, c.Id)
-			c.Arrival = missingCallTime("Chegada inferida retirada: previsão posterior incompatível")
-			c.LastOfficialEstimate = nil
-			if old, ok := t.Points[p.Stop]; ok {
-				r.queueArrival(t, *c, old, p)
-			}
+		if !found || !metroArrivalContradicted(t.Train.Calls[n], p) {
+			continue
 		}
+		if evidence == nil {
+			context, ok := r.metroOrdinaryCorrectionEvidence(t, current, now)
+			if !ok {
+				return false
+			}
+			evidence = &context
+		}
+		before, ok := metroEpisodeArrivalAfter(t, n)
+		if !ok || !metroCorrectionClockValid(t, before, p, now) || !metroEpisodeCorrectionOrdered(p, evidence.remaining, t.Codes[evidence.bound:], now) {
+			return false
+		}
+		corrections = append(corrections, metroArrivalCorrection{n, p, before})
 	}
+	for _, correction := range corrections {
+		r.retractMetroArrival(t, correction.index, correction.point, correction.before)
+	}
+	return true
+}
+
+func (r *metroRuntime) metroOrdinaryCorrectionEvidence(t *metroTrack, current map[string]metroPoint, now time.Time) (metroCorrectionEvidence, bool) {
+	if r.batch == nil {
+		return metroCorrectionEvidence{}, false
+	}
+	key := metroTrackKey(metroTrackIdentity{t.Train.RouteId, t.ProviderDirection, t.Train.Reference})
+	scope := t.Train.RouteId + "|" + t.Train.Reference
+	selection := metroContextSelection{runtime: r, batch: r.batch, now: now}
+	evidence, ok := selection.episodeCorrectionEvidence(scope, key, current)
+	return evidence, ok && evidence.track == t
+}
+func (r *metroRuntime) retractMetroArrival(t *metroTrack, n int, p, old metroPoint) {
+	c := &t.Train.Calls[n]
+	if !metroArrivalContradicted(*c, p) {
+		return
+	}
+	markMetroRetraction(t)
+	withdrawMetroDeparture(t, n, p.Clock, "Chegada de suporte retirada por correção da mesma visita")
+	delete(t.ModelStops, c.Id)
+	c.Arrival = missingCallTime("Chegada inferida retirada: previsão posterior incompatível")
+	c.LastOfficialEstimate = nil
+	r.queueArrival(t, *c, old, p)
 }
 func metroArrivalContradicted(c api.StopCall, p metroPoint) bool {
 	return p.Seconds != nil && *p.Seconds > 0 && c.Arrival.Inferred != nil && p.Clock.After(c.Arrival.Inferred.WindowEnd)

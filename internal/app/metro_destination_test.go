@@ -373,14 +373,15 @@ func assertMetroShortTurnFrame(t *testing.T, server *Server, stop string, tc met
 }
 
 func TestMetroSuccessorCandidateDirectionFollowsCurrentCatalogue(t *testing.T) {
+	now := time.Now()
 	short := patterns.Pattern{Route: "metro:4_0", Direction: "short", Stops: []string{"RB", "SS"}}
 	long := patterns.Pattern{Route: "metro:4_0", Direction: "new", Stops: []string{"RB", "SS", "SP"}}
-	track := &metroTrack{Train: api.MetroTrain{DirectionCode: "new", Calls: []api.StopCall{{DirectionKey: ptr("new")}}}}
+	track := &metroTrack{Train: api.MetroTrain{JourneyId: "journey", DirectionCode: "new", SourceUpdatedAt: now, ValidUntil: now.Add(time.Minute), Calls: []api.StopCall{{DirectionKey: ptr("new")}}}}
 	r := newMetroRuntime()
 	r.candidates["candidate"] = "journey"
 	r.tracks["journey"] = track
 	r.directionTopology.Patterns = []patterns.Pattern{short}
-	observation := metroSuccessorObservation{key: "candidate", batch: &metroPointBatch{paths: map[string]patterns.Pattern{"candidate": short}}}
+	observation := metroSuccessorObservation{key: "candidate", batch: &metroPointBatch{paths: map[string]patterns.Pattern{"candidate": short}}, now: now}
 	if got := r.successorCandidate(observation, "7"); got != track || track.Train.DirectionCode != "short" || textValue(track.Train.Calls[0].DirectionKey) != "short" {
 		t.Fatalf("candidate did not follow the admitted short turn: %+v", track.Train)
 	}

@@ -59,13 +59,8 @@ func (r *metroRuntime) continuingTrack(track *metroTrack, v metroTrackAdmission)
 	if track == nil {
 		return nil
 	}
-	latest := track.Train.SourceUpdatedAt
-	for _, point := range v.batch.groups[v.key] {
-		if point.Clock.After(latest) {
-			latest = point.Clock
-		}
-	}
-	if !metroTrackClosed(track) && latest.Sub(track.Train.SourceUpdatedAt) <= 60*time.Second && track.Profile == r.topology.Profile && !v.now.After(track.Train.ValidUntil) {
+	latest := latestMetroWaitClock(v.batch.episodePoints(v.key), track.Train.SourceUpdatedAt)
+	if !metroTrackClosed(track) && latest.Sub(track.Train.SourceUpdatedAt) <= 60*time.Second && track.Profile == r.topology.Profile && v.now.Before(track.Train.ValidUntil) {
 		return track
 	}
 	suspendMetroTrack(track, "Continuidade interrompida")
@@ -138,17 +133,35 @@ func (r *metroRuntime) trackCapacity(now time.Time) bool {
 }
 func (r *metroRuntime) suspendAbsent(b *metroPointBatch) {
 	for key, id := range r.active {
-		track := r.tracks[id]
-		if track == nil || track.BarrierRevision != 0 || metroTrackClosed(track) {
-			continue
-		}
-		if _, ok := b.groups[key]; !ok {
-			suspendMetroTrack(track, "Sem dados atuais para confirmar a viagem")
-		}
-		if b.rejected[key] {
-			suspendMetroTrack(track, "Dados incompatíveis nesta direção")
+		r.suspendAbsentTrack(b, key, r.tracks[id], false)
+	}
+	for key, id := range r.candidates {
+		r.suspendAbsentTrack(b, key, r.tracks[id], true)
+	}
+}
+
+func (r *metroRuntime) suspendAbsentTrack(b *metroPointBatch, key string, track *metroTrack, candidate bool) {
+	if track == nil || metroTrackClosed(track) || !candidate && track.BarrierRevision != 0 {
+		return
+	}
+	reason := metroAbsentReason(b, key)
+	if reason != "" {
+		if candidate {
+			r.suspendMetroCandidate(track, reason)
+		} else {
+			suspendMetroTrack(track, reason)
 		}
 	}
+}
+
+func metroAbsentReason(b *metroPointBatch, key string) string {
+	if b.rejected[key] {
+		return "Dados incompatíveis nesta direção"
+	}
+	if _, present := b.groups[key]; !present {
+		return "Sem dados atuais para confirmar a viagem"
+	}
+	return ""
 }
 
 func (r *metroRuntime) metroNewEpisodeEvidence(points []metroPoint, closed *metroTrack, path patterns.Pattern, now time.Time) bool {

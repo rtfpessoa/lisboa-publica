@@ -13,10 +13,10 @@ type metroPointProjection struct {
 }
 
 func (p *metroPointProjection) apply(n int, point metroPoint) bool {
-	p.updateClock(point)
 	if point.Seconds == nil {
 		return true
 	}
+	p.updateClock(point)
 	if !p.inferArrival(n, point) {
 		return false
 	}
@@ -69,9 +69,58 @@ func retainMetroLastOfficialEstimate(c *api.StopCall, at, source time.Time) {
 	c.LastOfficialEstimate = &api.CallTimeEvidence{At: at, SourceUrl: metroBase + "/tempoEspera/Estacao/todos", SourceUpdatedAt: &source, ValidUntil: &expiry}
 }
 func metroArrivalTransition(old, point metroPoint, now time.Time) bool {
-	transition := old.Seconds != nil && *old.Seconds > 0 && *point.Seconds == 0
+	return metroArrivalTransitionTiming(old, point, now) && metroSameArrivalPlatform(old, point)
+}
+
+func metroArrivalTransitionTiming(old, point metroPoint, now time.Time) bool {
+	transition := old.Seconds != nil && point.Seconds != nil && *old.Seconds > 0 && *point.Seconds == 0
 	clock := point.Clock.After(old.Clock) && point.Clock.Sub(old.Clock) <= 60*time.Second && !point.Clock.After(now)
 	return transition && clock
+}
+
+func metroSameArrivalPlatform(old, point metroPoint) bool {
+	return old.Platform != "" && old.Platform == point.Platform
+}
+
+func metroIncompatibleArrival(t *metroTrack, current map[string]metroPoint, now time.Time) bool {
+	for n, stop := range t.Codes {
+		point, exists := current[stop]
+		if !exists {
+			continue
+		}
+		if point.Seconds != nil && *point.Seconds == 0 && t.Train.Calls[n].Arrival.Inferred != nil {
+			if !metroRepeatedArrivalSupported(t, n, point, now) {
+				return true
+			}
+		}
+		old, exists := t.Points[stop]
+		if exists && metroArrivalTransitionTiming(old, point, now) && !metroSameArrivalPlatform(old, point) {
+			return true
+		}
+	}
+	return false
+}
+
+func metroRepeatedArrivalSupported(t *metroTrack, n int, point metroPoint, now time.Time) bool {
+	original, proven := metroEpisodeArrivalAfter(t, n)
+	if !proven || !metroSameArrivalPlatform(original, point) {
+		return false
+	}
+	previous, exists := t.Points[point.Stop]
+	if !exists || previous.Seconds == nil || *previous.Seconds != 0 {
+		return false
+	}
+	if !metroSameArrivalPlatform(previous, point) {
+		return false
+	}
+	return metroRepeatedArrivalClocks(original.Clock, previous.Clock, point.Clock, now)
+}
+
+func metroRepeatedArrivalClocks(original, previous, point, now time.Time) bool {
+	if point.Before(original) || point.Before(previous) || point.After(now) {
+		return false
+	}
+	return point.Sub(previous) <= 60*time.Second && now.Sub(point) <= 60*time.Second
 }
 func (p *metroPointProjection) predictArrival(n int, point metroPoint) {
 	c := &p.track.Train.Calls[n]

@@ -85,6 +85,9 @@ func (r *metroRuntime) commitLifecycle(t *metroTrack, revision uint64) {
 	if t.PendingSuccessor != "" {
 		for key, id := range r.candidates {
 			if id == t.PendingSuccessor {
+				if candidate := r.tracks[id]; candidate != nil && candidate.CandidateInterrupted {
+					continue
+				}
 				r.active[key] = id
 				delete(r.candidates, key)
 			}

@@ -34,26 +34,68 @@ type metroContextSelection struct {
 	now     time.Time
 }
 
-func (s metroContextSelection) candidates(scope string) ([]string, []string) {
-	valid, present := []string{}, []string{}
+func (s metroContextSelection) candidates(scope string) []string {
+	valid := []string{}
+	prior := s.prior(scope)
 	for key := range s.batch.references[scope] {
-		points, exists := s.batch.groups[key]
-		if !exists || s.batch.rejected[key] {
+		current, ok := s.candidatePoints(metroCandidateRef{scope: scope, key: key, prior: prior})
+		if !ok {
 			continue
 		}
-		current, conflict := latestMetroPoints(points)
-		probe := &metroTrack{Codes: s.batch.paths[key].Stops, Points: map[string]metroPoint{}}
-		if conflict || conflictingMetroPoints(probe, current, s.now) {
-			s.batch.rejected[key] = true
-			continue
-		}
-		present = append(present, key)
 		if metroContextHasWait(current) {
 			valid = append(valid, key)
 		}
 	}
 	sort.Strings(valid)
-	return valid, present
+	return valid
+}
+
+type metroCandidateRef struct{ scope, key, prior string }
+
+func (s metroContextSelection) candidatePoints(ref metroCandidateRef) (map[string]metroPoint, bool) {
+	points, exists := s.batch.groups[ref.key]
+	if !exists || s.batch.rejected[ref.key] {
+		return nil, false
+	}
+	current, conflict := latestMetroPoints(points)
+	if !conflict {
+		current, conflict = s.classifyEpisode(ref.scope, ref.key, ref.prior, current)
+	}
+	probe := &metroTrack{Codes: s.batch.paths[ref.key].Stops, Points: map[string]metroPoint{}}
+	if conflict || conflictingMetroPoints(probe, current, s.now) {
+		s.batch.rejected[ref.key] = true
+		return nil, false
+	}
+	return current, true
+}
+
+func (s metroContextSelection) classifyEpisode(scope, key, prior string, current map[string]metroPoint) (map[string]metroPoint, bool) {
+	track := s.runtime.tracks[s.runtime.active[key]]
+	required := metroScopeRequired(track, current, s.now)
+	if !required && (key != prior || !metroScopeWouldHelp(track, s.batch.paths[key].Stops, current, s.now)) {
+		return current, false
+	}
+	if scoped, ok := s.runtime.scopeMetroEpisode(key, s.batch, current, s.now); ok {
+		if s.batch.episodes == nil {
+			s.batch.episodes = map[string][]metroPoint{}
+		}
+		s.batch.episodes[key] = scoped
+		track.ScopedContinuity = true
+		return latestMetroPoints(scoped)
+	}
+	if required {
+		s.retractEpisodeCorrections(scope, key, current)
+		return current, true
+	}
+	return current, false
+}
+
+func metroScopeRequired(track *metroTrack, current map[string]metroPoint, now time.Time) bool {
+	return track != nil && now.Before(track.Train.ValidUntil) && (track.ScopedContinuity || metroEpisodeHasUpstream(track, current))
+}
+
+func metroScopeWouldHelp(track *metroTrack, stops []string, current map[string]metroPoint, now time.Time) bool {
+	return conflictingMetroOrder(stops, current, now) || metroRegressiveCurrent(track, current, now)
 }
 func metroContextHasWait(points map[string]metroPoint) bool {
 	for _, p := range points {
@@ -81,48 +123,40 @@ func (s metroContextSelection) supportedPrior(key string) bool {
 	if key == "" || s.batch.rejected[key] || !metroQualifiedDirection(s.runtime.tracks[s.runtime.active[key]], s.now) {
 		return false
 	}
-	points, exists := s.batch.groups[key]
-	if !exists {
+	if _, exists := s.batch.groups[key]; !exists {
 		return false
 	}
+	points := s.batch.episodePoints(key)
 	current, conflict := latestMetroPoints(points)
-	return !conflict && !conflictingMetroPoints(s.runtime.tracks[s.runtime.active[key]], current, s.now)
+	return !conflict && metroContextHasWait(current) && !conflictingMetroPoints(s.runtime.tracks[s.runtime.active[key]], current, s.now)
 }
 func (s metroContextSelection) choose(scope string) string {
-	valid, present := s.candidates(scope)
+	valid := s.candidates(scope)
 	prior := s.prior(scope)
 	if key := s.motionChoice(scope, valid); key != "" {
 		return key
 	}
 	selected := ""
 	if !metroOrderingMotionFresh(s.runtime.operational[scope], s.now) {
-		selected = s.forecastChoice(scope, prior, valid, present)
+		selected = s.forecastChoice(scope, prior, valid)
 	}
 	if selected == "" {
 		s.suspend(scope, len(valid))
 	}
 	return selected
 }
-func (s metroContextSelection) forecastChoice(scope, prior string, valid, present []string) string {
+func (s metroContextSelection) forecastChoice(scope, prior string, valid []string) string {
 	if s.supportedPrior(prior) {
 		return prior
 	}
 	if s.uniqueValidChoice(scope, prior, valid) {
 		return valid[0]
 	}
-	selected := ""
-	if s.uniquePresentChoice(scope, prior, valid, present) {
-		selected = present[0]
-	}
-	return selected
+	return ""
 }
 func (s metroContextSelection) uniqueValidChoice(scope, prior string, valid []string) bool {
 	return len(valid) == 1 && (prior == "" || valid[0] == prior) && !s.rejectedAlternative(scope, valid[0])
 }
-func (s metroContextSelection) uniquePresentChoice(scope, prior string, valid, present []string) bool {
-	return prior == "" && len(valid) == 0 && len(present) == 1 && len(s.batch.references[scope]) == 1
-}
-
 func (s metroContextSelection) rejectedAlternative(scope, selected string) bool {
 	for key := range s.batch.references[scope] {
 		if key == selected || !s.batch.rejected[key] {
@@ -197,8 +231,12 @@ func (r *metroRuntime) pathForecastContext(key string, now time.Time) api.MetroF
 		call := calls[n]
 		call.JourneyId = nil
 		call.ServiceLabel, call.DirectionKey = ptr(context.Reference), &direction
-		own := r.contextOwnPrediction(key, code, now, false)
-		context.Calls = append(context.Calls, r.metroContextVisitCalls(metroForecastVisit{call: call, code: code, scope: key, own: own, departure: r.contextOwnPrediction(key, code, now, true)}, points, now)...)
+		var own, departure *api.CallTimeEvidence
+		if !r.batch.episodeExcludes(key, code) {
+			own = r.contextOwnPrediction(key, code, now, false)
+			departure = r.contextOwnPrediction(key, code, now, true)
+		}
+		context.Calls = append(context.Calls, r.metroContextVisitCalls(metroForecastVisit{call: call, code: code, scope: key, own: own, departure: departure}, points, now)...)
 	}
 
 	context.Calls = canonicalMetroForecastCalls(context.Calls)

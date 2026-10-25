@@ -35,6 +35,7 @@ func TestMetroLastOfficialEstimateRetainedAndWithdrawn(t *testing.T) {
 	if call.Arrival.Inferred == nil {
 		t.Fatal("inferred arrival missing")
 	}
+	inferred := call.Arrival
 	if call.LastOfficialEstimate == nil || !call.LastOfficialEstimate.At.Equal(clock.Add(2*time.Minute)) {
 		t.Fatalf("inference did not retain the previous official estimate: %+v", call.LastOfficialEstimate)
 	}
@@ -57,9 +58,13 @@ func TestMetroLastOfficialEstimateRetainedAndWithdrawn(t *testing.T) {
 	}
 
 	// A retracted inferred arrival also retracts the retained estimate.
-	track.Train.Calls[0].Arrival = api.CallTime{Kind: "inferred", Inferred: &api.MetroEventEvidence{At: clock, WindowStart: clock, WindowEnd: clock}}
+	track.Train.Calls[0].Arrival = inferred
 	newer := 90
-	runtime.retractArrivals(track, map[string]metroPoint{"RM": {Stop: "RM", Platform: "1", Clock: clock.Add(time.Minute), Seconds: &newer}})
+	before, ok := metroEpisodeArrivalAfter(track, 0)
+	if !ok {
+		t.Fatal("arrival transition proof missing")
+	}
+	runtime.retractMetroArrival(track, 0, metroPoint{Stop: "RM", Platform: "1", Clock: clock.Add(time.Minute), Seconds: &newer}, before)
 	if track.Train.Calls[0].LastOfficialEstimate != nil {
 		t.Fatal("retracted arrival kept a last official estimate")
 	}

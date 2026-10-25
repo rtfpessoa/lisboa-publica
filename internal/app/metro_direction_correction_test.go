@@ -37,7 +37,7 @@ func TestMetroRedActualMinimalDirectionRegression(t *testing.T) {
 	r.topology = topology
 	b := collectMetroPoints(&data, topology, &static, now)
 	selection := metroContextSelection{r, b, now}
-	valid, _ := selection.candidates("metro:4_0|7D")
+	valid := selection.candidates("metro:4_0|7D")
 	if len(valid) != 2 || selection.choose("metro:4_0|7D") != "" {
 		t.Fatalf("compatible suffix erased possible direction: %v", valid)
 	}

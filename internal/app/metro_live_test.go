@@ -105,13 +105,16 @@ func TestMetroNullIdentityInventoryAndGap(t *testing.T) {
 	s, d, data, now := metroLiveFixture(t)
 	data.Waits = []MetroWait{metroTestRow(now, "RM", "7", "null")}
 	publishMetroTest(s, d, data, now)
-	if len(data.Trains) != 1 || data.Trains[0].Association != "supported" || data.Trains[0].Calls[0].Arrival.Kind != "unavailable" {
-		t.Fatal("missing ETA train excluded or phantom zero", data.Trains)
+	if len(data.Trains) != 0 {
+		t.Fatal("missing ETA admitted a journey", data.Trains)
 	}
-	first := data.Trains[0].JourneyId
 	next := *data
 	next.Waits = []MetroWait{metroTestRow(now.Add(time.Second), "RM", "7", "10")}
 	publishMetroTest(s, d, &next, now.Add(time.Second))
+	if len(next.Trains) != 1 {
+		t.Fatal("usable ETA did not admit a journey")
+	}
+	first := next.Trains[0].JourneyId
 	failed := next
 	failed.Status.Status = "error"
 	publishMetroTest(s, d, &failed, now.Add(2*time.Second))
