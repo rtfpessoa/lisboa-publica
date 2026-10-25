@@ -13,10 +13,10 @@ type metroPointProjection struct {
 }
 
 func (p *metroPointProjection) apply(n int, point metroPoint) bool {
-	p.updateClock(point)
 	if point.Seconds == nil {
 		return true
 	}
+	p.updateClock(point)
 	if !p.inferArrival(n, point) {
 		return false
 	}

@@ -26,6 +26,17 @@ func (b *metroPointBatch) episodePoints(key string) []metroPoint {
 	return b.groups[key]
 }
 
+// Only the current usable wait at each station can extend episode continuity.
+func latestMetroWaitClock(points []metroPoint, baseline time.Time) time.Time {
+	current, _ := latestMetroPoints(points)
+	for _, point := range current {
+		if point.Seconds != nil && point.Clock.After(baseline) {
+			baseline = point.Clock
+		}
+	}
+	return baseline
+}
+
 func (b *metroPointBatch) episodeExcludes(key, stop string) bool {
 	points, scoped := b.episodes[key]
 	if !scoped {

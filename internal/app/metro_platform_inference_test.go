@@ -106,16 +106,21 @@ func TestMetroRepeatedZeroCannotBridgeMissingStop(t *testing.T) {
 	if len(next.Trains) != 1 || next.Trains[0].Calls[0].Arrival.Inferred == nil {
 		t.Fatal("supported arrival missing")
 	}
+	original := next.Trains[0]
 	for _, seconds := range []int{40, 70, 100, 130} {
 		at = now.Add(time.Duration(seconds) * time.Second)
 		next.Waits = []MetroWait{metroTestRow(at, "CS", "7", "null")}
 		publishMetroTest(s, static, &next, at)
 	}
-	original := next.Trains[0]
 	at = now.Add(140 * time.Second)
 	next.Waits = []MetroWait{metroTestRow(at, "RM", "7", "0"), metroTestRow(at, "CS", "7", "null")}
 	publishMetroTest(s, static, &next, at)
-	if next.Trains[0].Calls[0].Arrival.Inferred == nil || next.Trains[0].Association != "suspended" || !next.Trains[0].SourceUpdatedAt.Equal(original.SourceUpdatedAt) || next.Trains[0].CurrentIndex != nil {
+	r := s.Cache.metroRuntime
+	r.mu.Lock()
+	track := r.tracks[original.JourneyId]
+	valid := track != nil && track.Train.Calls[0].Arrival.Inferred != nil && track.Train.Association == "suspended" && track.Train.SourceUpdatedAt.Equal(original.SourceUpdatedAt) && track.Train.CurrentIndex == nil
+	r.mu.Unlock()
+	if !valid {
 		t.Fatal("a zero after a stop gap recreated or renewed the old current visit")
 	}
 }

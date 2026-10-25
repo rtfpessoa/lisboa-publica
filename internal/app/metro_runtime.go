@@ -44,6 +44,7 @@ type metroTrack struct {
 	ProofOverflow                  bool
 	HistoricalOnly                 bool
 	ScopedContinuity               bool // Runtime-only; restored history never resumes a live episode.
+	CandidateInterrupted           bool // Runtime-only; a frozen candidate cannot bridge a support gap.
 	BarrierBefore                  *api.MetroTrain
 	BarrierRevision                uint64
 	PendingSuccessor               string
@@ -198,6 +199,7 @@ func (r *metroRuntime) observeUnavailable(data *MetroData, now time.Time) {
 func (r *metroRuntime) observeSupported(data *MetroData, static *StaticData, now time.Time) {
 	r.forecastCacheUntil = time.Time{}
 	r.updateTopology(data, static)
+	r.fenceMetroCandidateProfiles()
 	batch := collectMetroPoints(data, r.directionTopology, static, now)
 	r.batch = batch
 	for _, key := range r.selectedContexts(batch, now) {
@@ -325,6 +327,11 @@ func (r *metroRuntime) suspendAll(reason string) {
 			suspendMetroTrack(t, reason)
 		}
 	}
+	for _, id := range r.candidates {
+		if t := r.tracks[id]; t != nil {
+			r.suspendMetroCandidate(t, reason)
+		}
+	}
 }
 func (r *metroRuntime) applyPoints(t *metroTrack, points []metroPoint, now time.Time) {
 	if t.BarrierRevision != 0 || metroTrackClosed(t) {
@@ -372,12 +379,7 @@ func (r *metroRuntime) projectMetroOperationalState(t *metroTrack, now time.Time
 }
 
 func clearMetroSourceGap(t *metroTrack, points []metroPoint) {
-	latest := t.Train.SourceUpdatedAt
-	for _, p := range points {
-		if p.Clock.After(latest) {
-			latest = p.Clock
-		}
-	}
+	latest := latestMetroWaitClock(points, t.Train.SourceUpdatedAt)
 	if !t.Train.SourceUpdatedAt.IsZero() && latest.Sub(t.Train.SourceUpdatedAt) > 60*time.Second {
 		suspendMetroTrack(t, "Intervalo entre publicações superior a 60 segundos; continuidade por confirmar")
 	}
